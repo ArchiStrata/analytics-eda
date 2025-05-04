@@ -1,0 +1,14 @@
+name: analytics_eda
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - build
+  - setuptools
+  - twine
+  - wheel
+
+  # install package, plus everything in [project.optional-dependencies.dev]
+  - pip:
+      - -e ".[dev]"

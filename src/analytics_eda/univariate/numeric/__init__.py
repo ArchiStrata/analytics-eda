@@ -1,0 +1,2 @@
+from .univariate_numeric_analysis import univariate_numeric_analysis
+from .batch_univariate_numeric_analysis import batch_univariate_numeric_analysis
