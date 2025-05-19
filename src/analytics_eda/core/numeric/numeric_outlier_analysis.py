@@ -18,7 +18,7 @@ from scipy.stats import zscore
 
 from .validate_numeric_named_series import validate_numeric_named_series
 
-def outlier_analysis(
+def numeric_outlier_analysis(
     s: pd.Series,
     report_dir: Path,
     iqr_multiplier: float = 1.5,

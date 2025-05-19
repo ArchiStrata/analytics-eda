@@ -30,7 +30,7 @@ def _save_and_close(fig, path):
     finally:
         plt.close(fig)
 
-def distribution_visualizations(
+def numeric_distribution_visualizations(
     s: pd.Series,
     report_dir: Path,
     transform: str = "raw"

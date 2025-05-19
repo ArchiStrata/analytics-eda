@@ -1,12 +1,12 @@
 import pytest
 import pandas as pd
 from pathlib import Path
-from analytics_eda.core.numeric.outlier_analysis import outlier_analysis
+from analytics_eda.core.numeric.numeric_outlier_analysis import numeric_outlier_analysis
 
 
 def test_empty_series_returns_empty_and_no_files(tmp_path):
     s = pd.Series([], dtype=float, name="nums")
-    result = outlier_analysis(s, tmp_path)
+    result = numeric_outlier_analysis(s, tmp_path)
     assert result == {}
     # No files should be created
     assert not any(tmp_path.iterdir())
@@ -14,20 +14,20 @@ def test_empty_series_returns_empty_and_no_files(tmp_path):
 
 def test_non_series_input_raises_type_error(tmp_path):
     with pytest.raises(TypeError, match="Input must be a pandas Series."):
-        outlier_analysis([1, 2, 3], tmp_path)
+        numeric_outlier_analysis([1, 2, 3], tmp_path)
 
 
 def test_missing_name_raises_value_error(tmp_path):
     s = pd.Series([1, 2, 3])  # name is None
     with pytest.raises(ValueError, match="Series must have a non-empty 'name'"):
-        outlier_analysis(s, tmp_path)
+        numeric_outlier_analysis(s, tmp_path)
 
 
 def test_outlier_analysis_creates_expected_files_and_summary(tmp_path):
     # Use a simple series to force IQR outliers at extremes
     s = pd.Series([1, 2, 3, 4], name="nums")
     # Set iqr_multiplier=0 to flag 1 and 4 as outliers; high z_thresh to disable zscore flags
-    summary = outlier_analysis(s, tmp_path, iqr_multiplier=0, z_thresh=100)
+    summary = numeric_outlier_analysis(s, tmp_path, iqr_multiplier=0, z_thresh=100)
 
     # IQR summary
     iqr = summary['iqr']
