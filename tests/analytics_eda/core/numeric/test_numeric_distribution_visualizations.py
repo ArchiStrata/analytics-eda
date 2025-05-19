@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from analytics_eda.core.numeric.distribution_visualizations import distribution_visualizations
+from analytics_eda.core.numeric.numeric_distribution_visualizations import numeric_distribution_visualizations
 
 @pytest.fixture
 def normal_distribution_series():
@@ -18,7 +18,7 @@ def test_normal_distribution_visualizations_creates_plots(tmp_path, normal_distr
     transform_label = "raw"
     
     # Act
-    viz_paths = distribution_visualizations(normal_distribution_series, report_dir, transform=transform_label)
+    viz_paths = numeric_distribution_visualizations(normal_distribution_series, report_dir, transform=transform_label)
     
     # Assert - correct set of visualization keys
     expected_keys = {"hist_counts", "hist_kde", "boxplot", "ecdf", "qq_plot"}
@@ -47,7 +47,7 @@ def test_distribution_visualizations_empty_series(tmp_path):
     report_dir.mkdir()
     
     # Act
-    viz_paths = distribution_visualizations(empty_series, report_dir)
+    viz_paths = numeric_distribution_visualizations(empty_series, report_dir)
     
     # Assert
     assert viz_paths == {}

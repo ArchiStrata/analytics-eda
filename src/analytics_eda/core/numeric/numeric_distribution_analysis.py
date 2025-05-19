@@ -16,7 +16,7 @@ import pandas as pd
 
 from .descriptive_statistics import descriptive_statistics
 from .normality_assessment import normality_assessment
-from .distribution_visualizations import distribution_visualizations
+from .numeric_distribution_visualizations import numeric_distribution_visualizations
 from .distribution_fit_assessment import distribution_fit_assessment
 from .assess_normality_and_transform import assess_normality_and_transform
 from .validate_numeric_named_series import validate_numeric_named_series
@@ -68,7 +68,7 @@ def numeric_distribution_analysis(
 
     # 5. Normality assessment and raw visualizations
     normality = normality_assessment(s, alpha)
-    raw_visualizations = distribution_visualizations(s, report_dir, transform='raw')
+    raw_visualizations = numeric_distribution_visualizations(s, report_dir, transform='raw')
 
     # 6. Non-linear transformations assessment
     transform_result = assess_normality_and_transform(s, statistics, normality, alpha)
@@ -78,7 +78,7 @@ def numeric_distribution_analysis(
     transform_visualizations = None
     best_transform = transform_result['assessment'].get('best_transform')
     if best_transform is not None and best_transform != "":
-        transform_visualizations = distribution_visualizations(best_series, report_dir, transform=transform_result['assessment']['best_transform'])
+        transform_visualizations = numeric_distribution_visualizations(best_series, report_dir, transform=transform_result['assessment']['best_transform'])
 
     # 7. TODO: Feature Scaling - Normalization, Standardization: Choose appropriate scaling (min–max normalization, Z-score standardization, robust scaling) for downstream algorithms.
 

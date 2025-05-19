@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from ...core import write_json_report, missing_data_analysis, validate_numeric_named_series, numeric_distribution_analysis, outlier_analysis, numeric_inferential_analysis
+from ...core import write_json_report, missing_data_analysis, validate_numeric_named_series, numeric_distribution_analysis, numeric_outlier_analysis, numeric_inferential_analysis
 
 def univariate_numeric_analysis(
     series: pd.Series,
@@ -78,7 +78,7 @@ def univariate_numeric_analysis(
     series = distribution_result['series']
 
     # 4. Outlier Analysis
-    outliers = outlier_analysis(series, save_dir, iqr_multiplier, z_thresh)
+    outliers = numeric_outlier_analysis(series, save_dir, iqr_multiplier, z_thresh)
 
     # 5. Inferential Analysis
     inferential = numeric_inferential_analysis(
