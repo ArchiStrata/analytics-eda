@@ -1,0 +1,3 @@
+from .categorical import univariate_categorical_analysis
+from .numeric import univariate_numeric_analysis
+from .timeseries import univariate_timeseries_analysis

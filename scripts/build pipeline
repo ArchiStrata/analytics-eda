@@ -1,0 +1,7 @@
+# TODO: Setup build pipeline
+
+# pytest
+
+# python -m build
+
+# twine upload dist/\*
