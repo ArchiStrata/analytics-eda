@@ -48,7 +48,8 @@ def bivariate_numeric_categorical_analysis(
         raise KeyError(f"Categorical column '{categorical_col}' not found.")
     if numeric_col not in df.columns:
         raise KeyError(f"Numeric column '{numeric_col}' not found.")
-    if not (is_categorical_dtype(df[categorical_col]) or is_object_dtype(df[categorical_col])):
+    
+    if not (isinstance(df[categorical_col].dtype, pd.CategoricalDtype) or is_object_dtype(df[categorical_col])):
         raise TypeError(f"Column '{categorical_col}' must be categorical or object.")
     if not is_numeric_dtype(df[numeric_col]):
         raise TypeError(f"Column '{numeric_col}' must be numeric.")
