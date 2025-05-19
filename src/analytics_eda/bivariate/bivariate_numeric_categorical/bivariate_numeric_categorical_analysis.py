@@ -26,7 +26,7 @@ def bivariate_numeric_categorical_analysis(
     categorical_col: str,
     report_root: str = 'reports/eda/bivariate/numeric_categorical',
     **kwargs
-) -> dict:
+) -> str:
     """
     Run univariate numeric analysis on segments defined by a categorical column.
 
@@ -36,8 +36,11 @@ def bivariate_numeric_categorical_analysis(
         categorical_col (str): Column to segment by.
         report_root (str): Root directory for saving reports.
         **kwargs: Additional arguments passed to univariate_numeric_analysis (e.g., alpha, iqr_multiplier).
-
+    
     Returns:
+     str: File path to the saved JSON report as written by `write_json_report`.
+
+    Report structure:
         dict: Dictionary with statistical test results and per-segment univariate reports.
     """
     # 1. Validation
@@ -79,4 +82,4 @@ def bivariate_numeric_categorical_analysis(
     report_path = report_dir / f"{numeric_col}_by_{categorical_col}_bivariate_analysis_report.json"
     full_report = write_json_report(full_report, report_path)
 
-    return full_report
+    return report_path
