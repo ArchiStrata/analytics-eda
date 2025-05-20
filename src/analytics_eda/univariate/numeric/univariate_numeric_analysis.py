@@ -54,11 +54,15 @@ def univariate_numeric_analysis(
         Path: File path to the saved JSON report as written by `write_json_report`.
 
     JSON report structure:
-        dict: A dictionary containing:
-            'missing_data': Summary of missing data analysis,
-            'distribution': Summary of distribution analysis,
-            'outliers': Summary of outlier analysis,
-            'inferential': Summary of inferential analysis.
+        {
+            'metadata': { ... } # Report metadata
+            'eda': {
+                'missing_data': Summary of missing data analysis,
+                'distribution': Summary of distribution analysis,
+                'outliers': Summary of outlier analysis,
+                'inferential': Summary of inferential analysis.
+            }
+        }
     """
     # 1. Validate Numeric
     validate_numeric_named_series(series)
@@ -91,14 +95,25 @@ def univariate_numeric_analysis(
     )
 
     # 6. Generate report
-    report = {
+    eda_report = {
         'missing_data': missing_data,
         'distribution': distribution_result['report'],
         'outliers': outliers,
         'inferential': inferential
     }
 
+    full_report = {
+        'metadata': {
+            'version': '0.1.0',
+            'report_name': 'univariate_numeric_analysis',
+            'parameters': {
+                'series': series.name
+            }
+        },
+        'eda': eda_report
+    }
+
     report_path = save_dir / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"
-    write_json_report(report, report_path)
+    write_json_report(full_report, report_path)
 
     return report_path

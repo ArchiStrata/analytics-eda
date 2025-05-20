@@ -61,7 +61,16 @@ def test_integration_creates_report(tmp_path, sample_df):
 
     # 3. Load and verify JSON structure
     loaded = json.loads(report_path.read_text())
-    assert 'statistical_tests' in loaded, "Missing 'statistical_tests' in report"
-    assert 'segments_report' in loaded, "Missing 'segments_report' in report"
+
+    assert 'metadata' in loaded
+    assert 'version' in loaded['metadata']
+    assert 'report_name' in loaded['metadata']
+    assert 'parameters' in loaded['metadata']
+
+    assert 'eda' in loaded
+    eda_report = loaded['eda']
+
+    assert 'statistical_tests' in eda_report, "Missing 'statistical_tests' in report"
+    assert 'segments_report' in eda_report, "Missing 'segments_report' in report"
     # Check that each category appears
-    assert set(loaded['segments_report'].keys()) == {'A', 'B'}
+    assert set(eda_report['segments_report'].keys()) == {'A', 'B'}

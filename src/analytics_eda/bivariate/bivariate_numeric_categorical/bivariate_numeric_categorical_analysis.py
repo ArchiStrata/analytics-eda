@@ -14,7 +14,7 @@
 from pathlib import Path
 
 import pandas as pd
-from pandas.api.types import is_numeric_dtype, is_categorical_dtype, is_object_dtype
+from pandas.api.types import is_numeric_dtype, is_object_dtype
 
 from ...univariate import univariate_numeric_analysis
 from ...core import write_json_report
@@ -41,7 +41,8 @@ def bivariate_numeric_categorical_analysis(
      str: File path to the saved JSON report as written by `write_json_report`.
 
     Report structure:
-        dict: Dictionary with statistical test results and per-segment univariate reports.
+        - metadata # Report metadata
+        - eda report with statistical test results and per-segment univariate reports.
     """
     # 1. Validation
     if categorical_col not in df.columns:
@@ -75,9 +76,21 @@ def bivariate_numeric_categorical_analysis(
         except Exception as e:
             segment_reports[segment_value] = {'error': str(e)}
 
-    full_report = {
+    eda_report = {
         'statistical_tests': statistical_tests,
         'segments_report': segment_reports
+    }
+
+    full_report = {
+        'metadata': {
+            'version': '0.1.0',
+            'report_name': 'bivariate_numeric_categorical_analysis',
+            'parameters': {
+                'numeric_col': numeric_col,
+                'categorical_col': categorical_col
+            }
+        },
+        'eda': eda_report
     }
 
     report_path = report_dir / f"{numeric_col}_by_{categorical_col}_bivariate_analysis_report.json"

@@ -49,15 +49,18 @@ def univariate_categorical_analysis(
 
     JSON report structure:
         {
-            'missing_data': {'total': int, 'missing': int, 'pct_missing': float},
-            'distribution': {...},  # output from categorical_distribution_analysis
-            'outliers': {'rare_categories': List[str]},
-            'inferential': {
-                'goodness_of_fit': {
-                    'chi2_statistic': float,
-                    'p_value': float,
-                    'alpha': float,
-                    'reject_null_uniform': bool
+            'metadata': { ... } # Report metadata
+            'eda': {
+                'missing_data': {'total': int, 'missing': int, 'pct_missing': float},
+                'distribution': {...},  # output from categorical_distribution_analysis
+                'outliers': {'rare_categories': List[str]},
+                'inferential': {
+                    'goodness_of_fit': {
+                        'chi2_statistic': float,
+                        'p_value': float,
+                        'alpha': float,
+                        'reject_null_uniform': bool
+                    }
                 }
             }
         }
@@ -94,14 +97,25 @@ def univariate_categorical_analysis(
     inferential = categorical_inferential_analysis(freq_tbl, total, alpha)
 
     # 6. Generate report
-    report = {
+    eda_report = {
         'missing_data': missing_data,
         'distribution': distribution_result['report'],
         'outliers': outliers,
         'inferential': inferential
     }
 
+    full_report = {
+        'metadata': {
+            'version': '0.1.0',
+            'report_name': 'univariate_categorical_analysis',
+            'parameters': {
+                'series': series.name
+            }
+        },
+        'eda': eda_report
+    }
+
     report_path = save_dir / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"
-    write_json_report(report, report_path)
+    write_json_report(full_report, report_path)
 
     return report_path
