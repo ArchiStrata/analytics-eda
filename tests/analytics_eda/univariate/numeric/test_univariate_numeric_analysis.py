@@ -34,11 +34,20 @@ def test_univariate_numeric_analysis_on_normal_series(tmp_path, normal_15_series
     
     # Assert top-level keys in returned dict
     assert isinstance(result, dict)
+
+    # assert metadata
+    assert 'metadata' in result
+    for key in ("version", "report_name", "parameters"):
+        assert key in result['metadata']
+
+    assert 'eda' in result
+    eda_report = result['eda']
+
     expected_top = {'missing_data', 'distribution', 'outliers', 'inferential'}
-    assert set(result.keys()) == expected_top
+    assert set(eda_report.keys()) == expected_top
     
     # Inspect the distribution sub-report
-    dist = result['distribution']
+    dist = eda_report['distribution']
     expected_dist_keys = {
         'statistics',
         'normality_report',

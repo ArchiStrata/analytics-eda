@@ -46,11 +46,18 @@ def test_success_return_and_file_written(simple_series, tmp_report_root):
 
     # returned structure
     assert isinstance(result, dict)
+
+    # assert metadata
+    assert 'metadata' in result
+    for key in ("version", "report_name", "parameters"):
+        assert key in result['metadata']
+
+    assert 'eda' in result
     for key in ("missing_data", "distribution", "outliers", "inferential"):
-        assert key in result
+        assert key in result['eda']
 
     # outliers should list 'e' only
-    assert result["outliers"]["rare_categories"] == ["c", "e"]
+    assert result["eda"]["outliers"]["rare_categories"] == ["c", "e"]
 
 
 def test_missing_data_counts(simple_series, tmp_report_root):
@@ -70,7 +77,7 @@ def test_missing_data_counts(simple_series, tmp_report_root):
 
     result = load_json(report_file_path)
 
-    md = result["missing_data"]
+    md = result["eda"]["missing_data"]
     assert md["total"] == 10
     assert md["missing"] == 2
     assert pytest.approx(md["pct_missing"], rel=1e-3) == 0.2
@@ -89,8 +96,8 @@ def test_inferential_keys_and_types(simple_series, tmp_report_root):
 
     result = load_json(report_file_path)
 
-    assert "inferential" in result
-    inferential = result["inferential"]
+    assert "inferential" in result["eda"]
+    inferential = result["eda"]["inferential"]
 
     assert "goodness_of_fit" in inferential
     goodness_of_fit = inferential["goodness_of_fit"]

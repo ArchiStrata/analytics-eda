@@ -34,10 +34,11 @@ def test_batch_univariate_numeric_analysis_single_column(tmp_path, df_normal):
     report_file = report_dir / 'norm_univariate_analysis_report.json'
     assert actual_report_file_path == report_file
 
-    summary = json.loads(actual_report_file_path.read_text())
+    result = json.loads(actual_report_file_path.read_text())
 
     # Assert - top‐level mapping
-    assert isinstance(summary, dict)
+    assert isinstance(result, dict)
+    assert 'eda' in result
 
     expected_sections = {'missing_data', 'distribution', 'outliers', 'inferential'}
-    assert set(summary.keys()) == expected_sections
+    assert set(result['eda'].keys()) == expected_sections
