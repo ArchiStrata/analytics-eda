@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Analytics-EDA"
-version = "0.1.14"
+version = "0.1.15"
 description = "A lightweight Python library that streamlines EDA with fast, automated analysis to uncover data issues, validate assumptions, and support modeling decisions."
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.11"
