@@ -76,11 +76,23 @@ def univariate_timeseries_analysis(df: pd.DataFrame,
     visuals = visualize_time_series_structure(df, numeric_col, time_col, report_dir, rolling_window)
 
     # Generate report
-    report = {
+    eda_report = {
         'visuals': visuals
     }
 
-    report_path = report_dir / f"{numeric_col}_univariate_analysis_report.json"
-    write_json_report(report, report_path)
+    full_report = {
+        'metadata': {
+            'version': '0.1.0',
+            'report_name': 'univariate_categorical_analysis',
+            'parameters': {
+                'numeric_col': numeric_col,
+                'time_col': time_col
+            }
+        },
+        'eda': eda_report
+    }
+
+    report_path = report_dir / f"{time_col.replace(' ', '_')}_{numeric_col.replace(' ', '_')}_univariate_analysis_report.json"
+    write_json_report(full_report, report_path)
 
     return report_path

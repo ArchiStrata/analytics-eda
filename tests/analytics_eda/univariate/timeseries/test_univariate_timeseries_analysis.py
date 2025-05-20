@@ -26,7 +26,7 @@ def test_univariate_timeseries_analysis_creates_and_populates_report(tmp_path):
 
     # 5. Assert report_path is exactly where we expect
     expected_dir = report_root / "date_value"
-    expected_path = expected_dir / "value_univariate_analysis_report.json"
+    expected_path = expected_dir / "date_value_univariate_analysis_report.json"
     assert report_path == expected_path, (
         f"Expected report_path {expected_path}, got {report_path}"
     )
@@ -37,9 +37,17 @@ def test_univariate_timeseries_analysis_creates_and_populates_report(tmp_path):
 
     # 7. Assert top‐level report structure
     assert report is not None, "Loaded report is None"
-    assert "visuals" in report, "'visuals' key missing in report"
+
+    # assert metadata
+    assert "metadata" in report
+    for key in ("version", "report_name", "parameters"):
+        assert key in report["metadata"]
+    
+    assert "eda" in report
+
+    assert "visuals" in report["eda"], "'visuals' key missing in report"
 
     # 8. Assert visuals dict is non‐empty
-    visuals = report["visuals"]
+    visuals = report["eda"]["visuals"]
     assert isinstance(visuals, dict), f"'visuals' should be a dict, got {type(visuals)}"
     assert visuals, "Visuals dictionary is empty"
