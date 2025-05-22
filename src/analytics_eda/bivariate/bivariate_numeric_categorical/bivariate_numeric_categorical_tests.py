@@ -96,11 +96,14 @@ def bivariate_numeric_categorical_tests(
     }
 
     # Distribution Overlap
-    grouped_dict = {
-        str(label): group[numeric_col].dropna().values
-        for label, group in df.groupby(categorical_col, observed=True)
-    }
-    results['distribution_overlap'] = compute_overlap_metrics(grouped_dict)
+    try:
+        grouped_dict = {
+            str(label): group[numeric_col].dropna().values
+            for label, group in df.groupby(categorical_col, observed=True)
+        }
+        results['distribution_overlap'] = compute_overlap_metrics(grouped_dict)
+    except Exception as e:
+        results['distribution_overlap'] = {'error': str(e)}
 
     # Homogeneity of variances
 
