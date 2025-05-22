@@ -95,7 +95,7 @@ def missing_data_analysis(
     ax.set_title(
         f"Missing Data for “{series.name}”: "
         f"{missing:,} of {total:,} values "
-        f"({pct_missing * 100}%)",
+        f"({pct_missing * 100:.1f}%)",
         pad=12
     )
     ax.set_xlabel("")
