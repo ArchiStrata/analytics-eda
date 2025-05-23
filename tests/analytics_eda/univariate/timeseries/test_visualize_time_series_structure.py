@@ -15,7 +15,7 @@ def test_visualize_time_series_structure(tmp_path):
     # 3. Call the function
     visuals = visualize_time_series_structure(
         df,
-        value_col='value',
+        numeric_col='value',
         time_col='date',
         report_dir=report_dir,
         rolling_window=6
@@ -72,7 +72,7 @@ def test_non_datetime_time_col_raises_type_error(tmp_path):
     with pytest.raises(TypeError) as excinfo:
         visualize_time_series_structure(
             df,
-            value_col='value',
+            numeric_col='value',
             time_col='date',
             report_dir=report_dir,
             rolling_window=3

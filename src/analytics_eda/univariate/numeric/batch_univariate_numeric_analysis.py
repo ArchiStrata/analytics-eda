@@ -11,13 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
+import uuid
 import pandas as pd
 from .univariate_numeric_analysis import univariate_numeric_analysis
+
+logger = logging.getLogger(__name__)
 
 def batch_univariate_numeric_analysis(
     df: pd.DataFrame,
     columns: list[str],
     report_root: str = 'reports/eda/univariate/numeric',
+    report_log_id = str(uuid.uuid4()),
     **analysis_kwargs
 ) -> dict[str, str]:
     """
@@ -28,6 +33,5 @@ def batch_univariate_numeric_analysis(
     """
     summary = {}
     for col in columns:
-        print(f"\n\n==== Univariate Numeric Analysis for '{col}' ====")
-        summary[col] = univariate_numeric_analysis(df[col], report_root, **analysis_kwargs)
+        summary[col] = univariate_numeric_analysis(df[col], report_root, report_log_id=report_log_id, **analysis_kwargs)
     return summary

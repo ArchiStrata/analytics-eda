@@ -12,14 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from collections.abc import Sequence
+import logging
+import uuid
 import warnings
 import pandas as pd
 from scipy import stats
 
+logger = logging.getLogger(__name__)
+
 def distribution_fit_assessment(
     s: pd.Series,
     alpha: float = 0.05,
-    distributions: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon')
+    distributions: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon'),
+    report_log_id: str = str(uuid.uuid4())
 ) -> dict:
     """
     Assess non-normal data by:
@@ -30,6 +35,7 @@ def distribution_fit_assessment(
         s (pd.Series): The data to assess.
         alpha (float): Significance level for all tests.
         distributions: Names of scipy.stats distributions to fit & test.
+        report_log_id (str): report log id.
 
     Returns:
         dict: {
@@ -38,12 +44,25 @@ def distribution_fit_assessment(
             }
         }
     """
-    print(f"Performing Alternative Assessment on Series [{s.name}]")
+    logger.info(
+        "Starting distribution_fit_assessment",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     # 1. Fit & GOF for each candidate
     alt_fits = {}
     for name in distributions:
-        print(f"Performing alternative fit using [{name}]")
+        logger.debug(
+            "Performing alternative fit",
+            extra={
+                'series_name': s.name,
+                'report_log_id': report_log_id,
+                'distribution_type': name
+            }
+        )
         dist = getattr(stats, name)
 
         # skip known-positive-only if data has non-positives
@@ -62,7 +81,17 @@ def distribution_fit_assessment(
                 warnings.filterwarnings('error')
                 params = dist.fit(s)
         except Exception as e:
-            alt_fits[name] = {'error': str(e)}
+            logger.exception(
+                "distribution_fit_assessment failed", 
+                extra={
+                    'series_name': s.name,
+                    'report_log_id': report_log_id
+                }
+            )
+            alt_fits[name] = {
+                'error': str(e),
+                'report_log_id': report_log_id
+            }
             continue
 
         ks_stat, ks_p = stats.kstest(s, name, params)
@@ -70,6 +99,14 @@ def distribution_fit_assessment(
             'params': params,
             'ks': {'statistic': ks_stat, 'p_value': ks_p, 'reject': ks_p < alpha}
         }
+
+    logger.info(
+        "Completed distribution_fit_assessment",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     return {
         'alternative_fits': alt_fits

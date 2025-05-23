@@ -1,4 +1,5 @@
 import pytest
+import logging
 import numpy as np
 import pandas as pd
 from analytics_eda.bivariate.bivariate_numeric_categorical.bivariate_numeric_categorical_tests import bivariate_numeric_categorical_tests
@@ -34,7 +35,9 @@ def test_single_group_error():
     assert 'error' in result
     assert 'Not enough groups' in result['error']
 
-def test_identical_groups(df_identical):
+def test_identical_groups(caplog, df_identical):
+    caplog.set_level(logging.DEBUG)
+
     result = bivariate_numeric_categorical_tests(df_identical, 'value', 'group')
     # Metadata
     assert result['meta']['n_groups'] == 2
@@ -53,6 +56,19 @@ def test_identical_groups(df_identical):
     assert pytest.approx(es['eta_squared'], abs=0.05) == 0.0
     assert es['omega_squared'] <= 0.0
     assert es['epsilon_squared'] <= 0.0
+
+    # Log assertions
+    start_log = next((r for r in caplog.records if "Starting bivariate_numeric_categorical_tests" in r.message), None)
+    assert start_log is not None
+    assert start_log.numeric_col == 'value'
+    assert start_log.categorical_col == 'group'
+    assert hasattr(start_log, 'report_log_id')
+
+    complete_log = next((r for r in caplog.records if "Completed bivariate_numeric_categorical_tests" in r.message), None)
+    assert complete_log is not None
+    assert complete_log.numeric_col == 'value'
+    assert complete_log.categorical_col == 'group'
+    assert complete_log.report_log_id == start_log.report_log_id  # Correlate logs
 
 def test_separated_groups(df_separated):
     result = bivariate_numeric_categorical_tests(df_separated, 'value', 'group')

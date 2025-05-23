@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pathlib import Path
+import logging
+import uuid
 
 import pandas as pd
 
 from ...core import write_json_report, missing_data_analysis, validate_numeric_named_series, numeric_distribution_analysis, numeric_outlier_analysis, numeric_inferential_analysis
+
+logger = logging.getLogger(__name__)
 
 def univariate_numeric_analysis(
     series: pd.Series,
@@ -26,7 +30,8 @@ def univariate_numeric_analysis(
     popmean: float | None = None,
     popmedian: float | None = None,
     popvariance: float | None = None,
-    bootstrap_samples: int = 1_000
+    bootstrap_samples: int = 1_000,
+    report_log_id = str(uuid.uuid4())
 ) -> Path:
     """
     Conduct a full univariate analysis on a numeric series.
@@ -49,6 +54,7 @@ def univariate_numeric_analysis(
         popmedian (float|None): Hypothesized population median for inferential tests.
         popvariance (float|None): Hypothesized population variance (σ²) for inferential tests.
         bootstrap_samples (int): Number of bootstrap resamples for CI estimation.
+        report_log_id (str): report log id.
     
     Returns:
         Path: File path to the saved JSON report as written by `write_json_report`.
@@ -67,6 +73,14 @@ def univariate_numeric_analysis(
     # 1. Validate Numeric
     validate_numeric_named_series(series)
 
+    logger.info(
+        "Starting univariate_numeric_analysis",
+        extra={
+            'series_name': series.name,
+            'report_log_id': report_log_id
+        }
+    )
+
     # Always work from a copy
     s = series.copy()
 
@@ -75,14 +89,14 @@ def univariate_numeric_analysis(
     save_dir.mkdir(parents=True, exist_ok=True)
 
     # 2. Missing Data Analysis
-    missing_data = missing_data_analysis(s, save_dir)
+    missing_data = missing_data_analysis(s, save_dir, report_log_id=report_log_id)
 
     # 3. Distribution Analysis
-    distribution_result = numeric_distribution_analysis(s, save_dir, alpha=alpha)
+    distribution_result = numeric_distribution_analysis(s, save_dir, alpha=alpha, report_log_id=report_log_id)
     series = distribution_result['series']
 
     # 4. Outlier Analysis
-    outliers = numeric_outlier_analysis(series, save_dir, iqr_multiplier, z_thresh)
+    outliers = numeric_outlier_analysis(series, save_dir, iqr_multiplier, z_thresh, report_log_id=report_log_id)
 
     # 5. Inferential Analysis
     inferential = numeric_inferential_analysis(
@@ -91,7 +105,8 @@ def univariate_numeric_analysis(
         popmean=popmean,
         popmedian=popmedian,
         popvariance=popvariance,
-        bootstrap_samples=bootstrap_samples
+        bootstrap_samples=bootstrap_samples,
+        report_log_id=report_log_id
     )
 
     # 6. Generate report
@@ -115,5 +130,13 @@ def univariate_numeric_analysis(
 
     report_path = save_dir / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"
     write_json_report(full_report, report_path)
+
+    logger.info(
+        "Completed univariate_numeric_analysis",
+        extra={
+            'series_name': series.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     return report_path

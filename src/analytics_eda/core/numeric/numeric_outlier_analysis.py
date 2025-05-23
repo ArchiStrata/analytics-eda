@@ -11,18 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import logging
+import uuid
 from pathlib import Path
 import pandas as pd
 from scipy.stats import zscore
 
 from .validate_numeric_named_series import validate_numeric_named_series
 
+logger = logging.getLogger(__name__)
+
 def numeric_outlier_analysis(
     s: pd.Series,
     report_dir: Path,
     iqr_multiplier: float = 1.5,
-    z_thresh: float = 3.0
+    z_thresh: float = 3.0,
+    report_log_id: str = str(uuid.uuid4())
 ) -> dict:
     """
     Detect outliers using IQR, standard Z-score, and robust modified Z-score (MAD-based).
@@ -35,6 +39,7 @@ def numeric_outlier_analysis(
         report_dir (Path): Directory for saving outlier CSVs.
         iqr_multiplier (float, optional): IQR fence multiplier (default=1.5).
         z_thresh (float, optional): Threshold for both Z-score and modified Z-score (default=3.0).
+        report_log_id (str): report log id.
 
     Raises:
         KeyError: If `column` is not in `df`.
@@ -43,7 +48,13 @@ def numeric_outlier_analysis(
     # 1. Validation & prepare series
     validate_numeric_named_series(s)
 
-    print(f"Analyzing Outliers in Series [{s.name}]")
+    logger.info(
+        "Starting numeric_outlier_analysis",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     total = len(s)
     if total == 0:
@@ -103,5 +114,13 @@ def numeric_outlier_analysis(
             "outliers_file": str(file_robust)
         }
     }
+
+    logger.info(
+        "Completed numeric_outlier_analysis",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     return summary

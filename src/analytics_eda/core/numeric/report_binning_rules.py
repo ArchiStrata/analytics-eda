@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from typing import Any, Dict, Sequence
+import logging
+import uuid
 import math
 import pandas as pd
 import numpy as np
@@ -19,10 +21,13 @@ import numpy as np
 from .validate_numeric_named_series import validate_numeric_named_series
 from ..clean_series import clean_series
 
+logger = logging.getLogger(__name__)
+
 def report_binning_rules(
     series: pd.Series,
     is_discrete: bool,
-    rules: Sequence[str] = ('sturges', 'scott', 'freedman-diaconis', 'doane')
+    rules: Sequence[str] = ('sturges', 'scott', 'freedman-diaconis', 'doane'),
+    report_log_id: str = str(uuid.uuid4())
 ) -> Dict[str, Dict[str, Any]]:
     """
     Generate frequency/binning reports for a numeric Series.
@@ -35,6 +40,7 @@ def report_binning_rules(
         is_discrete (bool): Flag indicating discrete vs. continuous data.
         rules (Sequence[str]): Binning rules to apply when continuous.
             Supported: 'sturges', 'scott', 'freedman-diaconis', 'doane'.
+        report_log_id (str): report log id.
 
     Returns:
         Dict[str, Dict[str, Any]]:
@@ -54,6 +60,14 @@ def report_binning_rules(
     """
     # 1. Validate input
     validate_numeric_named_series(series)
+
+    logger.info(
+        "Starting report_binning_rules",
+        extra={
+            'series_name': series.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     clean = clean_series(series)
 
@@ -75,7 +89,25 @@ def report_binning_rules(
                 'counts': counts.tolist(),
             }
         except Exception as e:
-            report[rule] = {'error': str(e)}
+            logger.exception(
+                "report_binning_rules failed", 
+                extra={
+                    'series_name': series.name,
+                    'report_log_id': report_log_id
+                }
+            )
+            report[rule] = {
+                'error': str(e),
+                'report_log_id': report_log_id
+            }
+
+    logger.info(
+        "Completed report_binning_rules",
+        extra={
+            'series_name': series.name,
+            'report_log_id': report_log_id
+        }
+    )
     return report
 
 def compute_bin_rule(

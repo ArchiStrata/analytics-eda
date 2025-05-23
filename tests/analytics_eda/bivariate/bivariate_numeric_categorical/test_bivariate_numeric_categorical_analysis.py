@@ -39,7 +39,9 @@ def test_invalid_numeric_dtype(sample_df):
         bivariate_numeric_categorical_analysis(df, 'value', 'category')
     assert "must be numeric" in str(exc.value)
 
-def test_integration_creates_report(tmp_path, sample_df):
+def test_integration_creates_report(tmp_path, caplog, sample_df):
+    caplog.set_level("DEBUG")
+
     # Define a temporary report root
     report_root = tmp_path / "reports"
 
@@ -74,3 +76,31 @@ def test_integration_creates_report(tmp_path, sample_df):
     assert 'segments_report' in eda_report, "Missing 'segments_report' in report"
     # Check that each category appears
     assert set(eda_report['segments_report'].keys()) == {'A', 'B'}
+
+    # Logging assertions
+    records = caplog.records
+
+    # a. Start log
+    start_log = next((r for r in records if "Starting bivariate_numeric_categorical_analysis" in r.message), None)
+    assert start_log is not None
+    assert start_log.numeric_col == 'value'
+    assert start_log.categorical_col == 'category'
+    assert start_log.report_root == str(report_root)
+    assert hasattr(start_log, 'report_log_id')
+
+    # b. Segment logs
+    segment_logs = [r for r in records if r.message == "Running univariate analysis for segment"]
+    assert len(segment_logs) == 2  # Expect 2 segments: A and B
+    for r in segment_logs:
+        assert r.numeric_col == 'value'
+        assert r.categorical_col == 'category'
+        assert hasattr(r, 'segment')
+        assert hasattr(r, 'report_log_id')
+
+    # c. Completion log
+    complete_log = next((r for r in records if "Completed bivariate_numeric_categorical_analysis" in r.message), None)
+    assert complete_log is not None
+    assert complete_log.numeric_col == 'value'
+    assert complete_log.categorical_col == 'category'
+    assert complete_log.report_path == str(report_path)
+    assert hasattr(complete_log, 'report_log_id')

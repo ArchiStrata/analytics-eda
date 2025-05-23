@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
+import uuid
 from pathlib import Path
 import pandas as pd
 
@@ -21,10 +23,13 @@ from .distribution_fit_assessment import distribution_fit_assessment
 from .assess_normality_and_transform import assess_normality_and_transform
 from .validate_numeric_named_series import validate_numeric_named_series
 
+logger = logging.getLogger(__name__)
+
 def numeric_distribution_analysis(
     s: pd.Series,
     report_dir: Path,
-    alpha: float = 0.05
+    alpha: float = 0.05,
+    report_log_id: str = str(uuid.uuid4())
 ) -> dict:
     """
     Compute descriptive statistics, assess normality, visualize distribution,
@@ -34,6 +39,7 @@ def numeric_distribution_analysis(
         s (pd.Series): Series containing the data.
         report_dir (Path): Directory for saving plots.
         alpha (float): Significance level for normality tests.
+        report_log_id (str): report log id.
 
     Returns:
         dict: {
@@ -53,39 +59,53 @@ def numeric_distribution_analysis(
         ValueError: from cleaning.
     """
 
-    print(f"Analyzing Distribution in Series [{s.name}]")
-
     # 1. Validate
     validate_numeric_named_series(s)
 
+    logger.info(
+        "Starting numeric_distribution_analysis",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
+
     # 2. Descriptive statistics
-    statistics = descriptive_statistics(s, True)
+    statistics = descriptive_statistics(s, True, report_log_id=report_log_id)
 
     # 3. TODO: Binning analysis
-    # binning_report = report_binning_rules(s, statistics['is_discrete'])
+    # binning_report = report_binning_rules(s, statistics['is_discrete'], report_log_id=report_log_id)
 
     # 4. TODO: Frequency analysis using binning
 
     # 5. Normality assessment and raw visualizations
-    normality = normality_assessment(s, alpha)
-    raw_visualizations = numeric_distribution_visualizations(s, report_dir, transform='raw')
+    normality = normality_assessment(s, alpha, report_log_id=report_log_id)
+    raw_visualizations = numeric_distribution_visualizations(s, report_dir, transform='raw', report_log_id=report_log_id)
 
     # 6. Non-linear transformations assessment
-    transform_result = assess_normality_and_transform(s, statistics, normality, alpha)
+    transform_result = assess_normality_and_transform(s, statistics, normality, alpha, report_log_id=report_log_id)
     best_series = transform_result['series']
 
     # if transformed generate distribution_visualizations
     transform_visualizations = None
     best_transform = transform_result['assessment'].get('best_transform')
     if best_transform is not None and best_transform != "":
-        transform_visualizations = numeric_distribution_visualizations(best_series, report_dir, transform=transform_result['assessment']['best_transform'])
+        transform_visualizations = numeric_distribution_visualizations(best_series, report_dir, transform=transform_result['assessment']['best_transform'], report_log_id=report_log_id)
 
     # 7. TODO: Feature Scaling - Normalization, Standardization: Choose appropriate scaling (min–max normalization, Z-score standardization, robust scaling) for downstream algorithms.
 
     # 8. Fitting theoretical distributions
     alternatives_assessment = {}
     if normality.get('reject_normality', False):
-        alternatives_assessment = distribution_fit_assessment(best_series, alpha)
+        alternatives_assessment = distribution_fit_assessment(best_series, alpha, report_log_id=report_log_id)
+
+    logger.info(
+        "Completed numeric_distribution_analysis",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     return {
         'report': {

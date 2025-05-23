@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pathlib import Path
+import logging
+import uuid
 
 import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_object_dtype
@@ -20,11 +22,14 @@ from ...univariate import univariate_numeric_analysis
 from ...core import write_json_report
 from .bivariate_numeric_categorical_tests import bivariate_numeric_categorical_tests
 
+logger = logging.getLogger(__name__)
+
 def bivariate_numeric_categorical_analysis(
     df: pd.DataFrame,
     numeric_col: str,
     categorical_col: str,
     report_root: str = 'reports/eda/bivariate/numeric_categorical',
+    report_log_id = str(uuid.uuid4()),
     **kwargs
 ) -> str:
     """
@@ -35,6 +40,7 @@ def bivariate_numeric_categorical_analysis(
         numeric_col (str): Numeric column to analyze.
         categorical_col (str): Column to segment by.
         report_root (str): Root directory for saving reports.
+        report_log_id (str): report log id.
         **kwargs: Additional arguments passed to univariate_numeric_analysis (e.g., alpha, iqr_multiplier).
     
     Returns:
@@ -44,7 +50,16 @@ def bivariate_numeric_categorical_analysis(
         - metadata # Report metadata
         - eda report with statistical test results and per-segment univariate reports.
     """
-    # 1. Validation
+    logger.info(
+        "Starting bivariate_numeric_categorical_analysis",
+        extra={
+            'numeric_col': numeric_col,
+            'categorical_col': categorical_col,
+            'report_root': report_root,
+            'report_log_id': report_log_id
+        }
+    )
+
     if categorical_col not in df.columns:
         raise KeyError(f"Categorical column '{categorical_col}' not found.")
     if numeric_col not in df.columns:
@@ -58,23 +73,43 @@ def bivariate_numeric_categorical_analysis(
     report_dir = Path(report_root) / f"{numeric_col}_by_{categorical_col}"
     report_dir.mkdir(parents=True, exist_ok=True)
 
-    statistical_tests = bivariate_numeric_categorical_tests(df, numeric_col, categorical_col)
+    statistical_tests = bivariate_numeric_categorical_tests(df, numeric_col, categorical_col, report_log_id=report_log_id)
 
     segment_reports = {}
     for segment_value, group_df in df.groupby(categorical_col, observed=True):
         segment_name = str(segment_value).replace(" ", "_")
         segment_report_root = report_dir / f"{categorical_col}_{segment_name}"
-        print(f"Running univariate analysis for segment '{segment_value}'...")
+        logger.debug("Running univariate analysis for segment",
+                extra={
+                    'segment': segment_value,
+                    'numeric_col': numeric_col,
+                    'categorical_col': categorical_col,
+                    'report_log_id': report_log_id
+                })
 
         try:
             report = univariate_numeric_analysis(
                 group_df[numeric_col],
                 report_root=segment_report_root,
+                report_log_id=report_log_id,
                 **kwargs
             )
             segment_reports[segment_value] = report
         except Exception as e:
-            segment_reports[segment_value] = {'error': str(e)}
+            # NOTE: If a segment analysis fails we still want to continue with the remaining segements.
+            logger.exception(
+                "univariate_numeric_analysis failed", 
+                extra={
+                    'segment': segment_value,
+                    'numeric_col': numeric_col,
+                    'categorical_col': categorical_col,
+                    'report_log_id': report_log_id
+                }
+            )
+            segment_reports[segment_value] = {
+                'error': str(e),
+                'report_log_id': report_log_id
+            }
 
     eda_report = {
         'statistical_tests': statistical_tests,
@@ -95,5 +130,15 @@ def bivariate_numeric_categorical_analysis(
 
     report_path = report_dir / f"{numeric_col}_by_{categorical_col}_bivariate_analysis_report.json"
     full_report = write_json_report(full_report, report_path)
+
+    logger.info(
+        "Completed bivariate_numeric_categorical_analysis",
+        extra={
+            'numeric_col': numeric_col,
+            'categorical_col': categorical_col,
+            'report_log_id': report_log_id,
+            'report_path': str(report_path)
+        }
+    )
 
     return report_path
