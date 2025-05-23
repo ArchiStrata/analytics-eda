@@ -11,15 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
+import uuid
 from pathlib import Path
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 
+logger = logging.getLogger(__name__)
+
+
 def missing_data_analysis(
         series: pd.Series,
-        report_dir: Path
+        report_dir: Path,
+        report_log_id = str(uuid.uuid4())
     ) -> dict:
     """
     Perform missing data analysis on a pandas Series.
@@ -27,6 +33,7 @@ def missing_data_analysis(
     Args:
         series (pd.Series): Series to analyze.
         report_dir (Path): Directory for saving report files.
+        report_log_id (str): report log id.
 
     Returns:
         dict: {
@@ -36,7 +43,13 @@ def missing_data_analysis(
             'missing_count': str (file path to plot)
         }
     """
-    print(f"Analyzing Missing Data in Series [{series.name}]")
+    logger.info(
+        "Starting missing_data_analysis",
+        extra={
+            'series_name': series.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     # Build counts (and fill NaNs)
     status = series.isna().map({False: "Present", True: "Missing"})
@@ -115,4 +128,12 @@ def missing_data_analysis(
     plt.close(fig)
 
     summary['missing_data_barplot'] = str(missing_data_count_path)
+
+    logger.info(
+        "Completed missing_data_analysis",
+        extra={
+            'series_name': series.name,
+            'report_log_id': report_log_id
+        }
+    )
     return summary

@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
+import uuid
+
 import pandas as pd
 import numpy as np
 
@@ -20,6 +23,8 @@ from .normality_assessment import normality_assessment
 from .validate_numeric_named_series import validate_numeric_named_series
 from .select_normality_transforms import select_normality_transforms
 
+logger = logging.getLogger(__name__)
+
 def assess_normality_and_transform(
     s: pd.Series,
     statistics: dict,
@@ -27,7 +32,8 @@ def assess_normality_and_transform(
     alpha: float = 0.05,
     skew_thresh: float = 1.0,
     cv_thresh: float = 2.0,
-    kurtosis_thresh: float = 1.0
+    kurtosis_thresh: float = 1.0,
+    report_log_id: str = str(uuid.uuid4())
 ) -> dict:
     """
     Decide if a univariate series needs a Non-Linear transform, perform it if so,
@@ -41,6 +47,7 @@ def assess_normality_and_transform(
         skew_thresh (float): Absolute skewness threshold to trigger transform.
         cv_thresh (float): Coefficient of Variation threshold to trigger transform.
         kurtosis_thresh (float): Absolute excess kurtosis threshold to trigger transform.
+        report_log_id (str): report log id.
 
     Returns:
         dict: {
@@ -60,6 +67,13 @@ def assess_normality_and_transform(
     """
     # Validate input
     validate_numeric_named_series(s)
+    logger.info(
+        "Starting assess_normality_and_transform",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     # Determine if transform is warranted
     stats_skew = statistics.get('skewness', 0.0)
@@ -138,9 +152,25 @@ def assess_normality_and_transform(
                     best_series = s_t
 
             except Exception as e:
+                logger.exception(
+                    "assess_normality_and_transform failed", 
+                    extra={
+                        'series_name': s.name,
+                        'report_log_id': report_log_id
+                    }
+                )
                 candidate['error'] = str(e)
+                candidate['report_log_id'] = report_log_id
 
             assessment['candidates'][name] = candidate
+
+    logger.info(
+        "Completed assess_normality_and_transform",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     # Return final report and chosen series
     return {

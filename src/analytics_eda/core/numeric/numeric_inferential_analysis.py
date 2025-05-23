@@ -11,11 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
+import uuid
 import pandas as pd
 from scipy import stats
 import numpy as np
 
 from .validate_numeric_named_series import validate_numeric_named_series
+
+logger = logging.getLogger(__name__)
 
 def numeric_inferential_analysis(
     s: pd.Series,
@@ -23,7 +27,8 @@ def numeric_inferential_analysis(
     popmean: float | None = None,
     popmedian: float | None = None,
     popvariance: float | None = None,
-    bootstrap_samples: int = 1_000
+    bootstrap_samples: int = 1_000,
+    report_log_id: str = str(uuid.uuid4())
 ) -> dict:
     """
     Perform a suite of inferential analyses on a numeric series in a DataFrame.
@@ -49,6 +54,7 @@ def numeric_inferential_analysis(
         popmedian (float|None): Hypothesized population median for tests.
         popvariance (float|None): Hypothesized population variance (σ²) for tests.
         bootstrap_samples (int): Number of resamples for bootstrap CIs.
+        report_log_id (str): report log id.
 
     Returns:
         dict: {
@@ -74,7 +80,13 @@ def numeric_inferential_analysis(
     """
     validate_numeric_named_series(s)
 
-    print(f"Performing Inferential Analysis on Series [{s.name}]")
+    logger.info(
+        "Starting numeric_inferential_analysis",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     # 1. Clean & validate
     s_clean = s.dropna()
@@ -179,5 +191,13 @@ def numeric_inferential_analysis(
         'mean': [float(lower_mean), float(upper_mean)],
         'median': [float(lower_med), float(upper_med)]
     }
+
+    logger.info(
+        "Completed numeric_inferential_analysis",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     return result

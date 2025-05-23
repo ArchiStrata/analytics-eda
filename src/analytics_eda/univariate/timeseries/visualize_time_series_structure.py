@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pathlib import Path
+import logging
+import uuid
 import pandas as pd
 import matplotlib.pyplot as plt
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from statsmodels.tsa.seasonal import STL
 
+logger = logging.getLogger(__name__)
+
 def visualize_time_series_structure(df: pd.DataFrame,
-                                  value_col: str,
+                                  numeric_col: str,
                                   time_col: str,
                                   report_dir: Path,
-                                  rolling_window: int = 12) -> dict:
+                                  rolling_window: int = 12,
+                                  report_log_id = str(uuid.uuid4())) -> dict:
     """
     Visualize Time Series Structure
     ---------------------------------------
@@ -30,7 +35,7 @@ def visualize_time_series_structure(df: pd.DataFrame,
 
     Parameters:
     - df (pd.DataFrame): DataFrame with datetime index or a datetime column.
-    - value_col (str): Name of the numeric series column.
+    - numeric_col (str): Name of the numeric series column.
     - time_col (str): Name of the datetime column (if not already index).
     - report_dir (Path): Directory under which plots are saved.
     - rolling_window (int): Window size for rolling statistics.
@@ -38,6 +43,14 @@ def visualize_time_series_structure(df: pd.DataFrame,
     Returns:
     - visuals (dict): {visual_name: file_path, ...}
     """
+    logger.info(
+        "Starting visualize_time_series_structure",
+        extra={
+            'time_col': time_col,
+            'numeric_col': numeric_col,
+            'report_log_id': report_log_id
+        }
+    )
 
     visuals = {}
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -49,7 +62,7 @@ def visualize_time_series_structure(df: pd.DataFrame,
             raise TypeError(f"'{time_col}' must be datetime64 dtype before structure analysis.")
         ts = ts.set_index(time_col)
     ts = ts.sort_index()
-    series = ts[value_col].dropna()
+    series = ts[numeric_col].dropna()
 
     # 2. Plot raw time series
     raw_path = report_dir / 'raw_line_plot.png'
@@ -57,7 +70,7 @@ def visualize_time_series_structure(df: pd.DataFrame,
     min_time, min_val = series.idxmin(), series.min()
 
     plt.figure(figsize=(12, 5))
-    plt.plot(series.index, series.values, linewidth=2, label=value_col)
+    plt.plot(series.index, series.values, linewidth=2, label=numeric_col)
     plt.scatter([max_time, min_time], [max_val, min_val],
                 color='firebrick', zorder=5)
     plt.annotate(f'Peak: {max_val:.1f}',
@@ -71,9 +84,9 @@ def visualize_time_series_structure(df: pd.DataFrame,
                  arrowprops=dict(arrowstyle='->'),
                  fontsize=9)
     
-    plt.title(f'{value_col} Over Time', fontsize=14, fontweight='bold')
+    plt.title(f'{numeric_col} Over Time', fontsize=14, fontweight='bold')
     plt.xlabel('Date', fontsize=12)
-    plt.ylabel(value_col, fontsize=12)
+    plt.ylabel(numeric_col, fontsize=12)
     plt.grid(True, linestyle='--', alpha=0.4)
     plt.legend(loc='upper left')
     plt.tight_layout()
@@ -106,9 +119,9 @@ def visualize_time_series_structure(df: pd.DataFrame,
                      color='blue', alpha=0.1, label='25–75th Percentile')
 
     # Styling
-    plt.title(f'{value_col} with Rolling Statistics', fontsize=14, fontweight='bold')
+    plt.title(f'{numeric_col} with Rolling Statistics', fontsize=14, fontweight='bold')
     plt.xlabel('Date', fontsize=12)
-    plt.ylabel(value_col, fontsize=12)
+    plt.ylabel(numeric_col, fontsize=12)
     plt.legend(loc='upper left')
     plt.grid(True, linestyle='--', alpha=0.3)
     plt.tight_layout()
@@ -159,6 +172,22 @@ def visualize_time_series_structure(df: pd.DataFrame,
         plt.close(fig)
         visuals['stl_decomposition'] = str(stl_path)
     else:
-        print("[Structure EDA] Skipped STL decomposition (could not infer period)")
+        logger.warning(
+            "visualize_time_series_structure: Skipped STL decomposition (could not infer period)",
+            extra={
+                'time_col': time_col,
+                'numeric_col': numeric_col,
+                'report_log_id': report_log_id
+            }
+        )
+
+    logger.info(
+        "Completed visualize_time_series_structure",
+        extra={
+            'time_col': time_col,
+            'numeric_col': numeric_col,
+            'report_log_id': report_log_id
+        }
+    )
 
     return visuals

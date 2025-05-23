@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import uuid
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -19,11 +21,13 @@ import seaborn as sns
 
 from .validate_categorical_named_series import validate_categorical_named_series
 
+logger = logging.getLogger(__name__)
 
 def categorical_distribution_analysis(
     series: pd.Series,
     save_dir: Path,
-    top_n: int = 10
+    top_n: int = 10,
+    report_log_id = str(uuid.uuid4())
 ) -> dict:
     """
     Analyze a categorical pandas Series and produce a structured report with summary
@@ -38,6 +42,7 @@ def categorical_distribution_analysis(
     top_n : int, optional
         Number of highest-frequency categories to plot. If the series has fewer than
         top_n unique values, top_n is reset to max(1, unique_categories // 2). Default is 10.
+    report_log_id (str): report log id.
 
     Returns
     -------
@@ -61,6 +66,15 @@ def categorical_distribution_analysis(
     """
     # validate input
     validate_categorical_named_series(series)
+
+    logger.info(
+        "Starting categorical_distribution_analysis",
+        extra={
+            'series_name': series.name,
+            'report_log_id': report_log_id
+        }
+    )
+
     save_dir.mkdir(parents=True, exist_ok=True)
 
     total = len(series)
@@ -153,5 +167,13 @@ def categorical_distribution_analysis(
             }
         }
     }
+
+    logger.info(
+        "Completed categorical_distribution_analysis",
+        extra={
+            'series_name': series.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     return {'report': report}

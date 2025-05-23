@@ -1,4 +1,5 @@
 import pytest
+import logging
 import pandas as pd
 from analytics_eda.core.numeric.report_binning_rules import report_binning_rules
 
@@ -75,12 +76,32 @@ def test_scott_insufficient_non_na_raises_error():
     assert "at least two non-NA values" in info["error"]
 
 
-def test_scott_zero_variance_raises_error():
+def test_scott_zero_variance_raises_error(caplog):
+    caplog.set_level(logging.DEBUG)
+
     series = pd.Series([5.0, 5.0], name="nums")
     report = report_binning_rules(series, is_discrete=False, rules=["scott"])
     info = report["scott"]
+
+    # Assert error was captured in the report
     assert "error" in info
     assert "non-zero variance" in info["error"]
+
+    # Extract logs
+    start_log = next((r for r in caplog.records if "Starting report_binning_rules" in r.message), None)
+    assert start_log is not None
+    assert start_log.series_name == "nums"
+    assert hasattr(start_log, "report_log_id")
+
+    error_log = next((r for r in caplog.records if "report_binning_rules failed" in r.message), None)
+    assert error_log is not None
+    assert error_log.series_name == "nums"
+    assert error_log.report_log_id == start_log.report_log_id
+
+    complete_log = next((r for r in caplog.records if "Completed report_binning_rules" in r.message), None)
+    assert complete_log is not None
+    assert complete_log.series_name == "nums"
+    assert complete_log.report_log_id == start_log.report_log_id
 
 
 def test_freedman_insufficient_non_na_raises_error():

@@ -12,17 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import uuid
+
 import pandas as pd
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from scipy.stats import bartlett, f_oneway, kruskal, levene
 
 from .compute_overlap_metrics import compute_overlap_metrics
 
+logger = logging.getLogger(__name__)
+
 def bivariate_numeric_categorical_tests(
         df: pd.DataFrame,
         numeric_col: str,
         categorical_col: str,
-        alpha: float = 0.05) -> dict:
+        alpha: float = 0.05,
+        report_log_id: str = str(uuid.uuid4())) -> dict:
     """
     Perform a comprehensive numeric-vs-categorical bivariate analysis.
 
@@ -51,6 +57,7 @@ def bivariate_numeric_categorical_tests(
         numeric_col: Name of the numeric column to analyze.
         categorical_col: Name of the categorical column defining groups.
         alpha: Significance level for all hypothesis tests (default: 0.05).
+        report_log_id (str): report log id.
 
     Returns:
         A dict with keys:
@@ -75,6 +82,14 @@ def bivariate_numeric_categorical_tests(
 
         If fewer than 2 groups are present, returns {'error': 'Not enough groups…'}.
     """
+    logger.info(
+        "Starting bivariate_numeric_categorical_tests",
+        extra={
+            'numeric_col': numeric_col,
+            'categorical_col': categorical_col,
+            'report_log_id': report_log_id
+        }
+    )
     if numeric_col not in df.columns:
         raise KeyError(f"Numeric column '{numeric_col}' not found.")
     if categorical_col not in df.columns:
@@ -103,7 +118,18 @@ def bivariate_numeric_categorical_tests(
         }
         results['distribution_overlap'] = compute_overlap_metrics(grouped_dict)
     except Exception as e:
-        results['distribution_overlap'] = {'error': str(e)}
+        logger.exception(
+                "bivariate_numeric_categorical_tests failed", 
+                extra={
+                    'numeric_col': numeric_col,
+                    'categorical_col': categorical_col,
+                    'report_log_id': report_log_id
+                }
+            )
+        results['distribution_overlap'] = {
+            'error': str(e),
+            'report_log_id': report_log_id
+        }
 
     # Homogeneity of variances
 
@@ -116,7 +142,18 @@ def bivariate_numeric_categorical_tests(
             'reject': bool(bart_p < alpha)
         }
     except Exception as e:
-        results['bartlett'] = {'error': str(e)}
+        logger.exception(
+                "bivariate_numeric_categorical_tests failed", 
+                extra={
+                    'numeric_col': numeric_col,
+                    'categorical_col': categorical_col,
+                    'report_log_id': report_log_id
+                }
+            )
+        results['bartlett'] = {
+            'error': str(e),
+            'report_log_id': report_log_id
+        }
 
     try:
         lev_stat, lev_p = levene(*grouped)
@@ -126,7 +163,18 @@ def bivariate_numeric_categorical_tests(
             'reject': bool(lev_p < alpha)
         }
     except Exception as e:
-        results['levene'] = {'error': str(e)}
+        logger.exception(
+                "bivariate_numeric_categorical_tests failed", 
+                extra={
+                    'numeric_col': numeric_col,
+                    'categorical_col': categorical_col,
+                    'report_log_id': report_log_id
+                }
+            )
+        results['levene'] = {
+            'error': str(e),
+            'report_log_id': report_log_id
+        }
 
     # ANOVA (parametric)
     try:
@@ -154,9 +202,31 @@ def bivariate_numeric_categorical_tests(
                     'pairs': tukey_df.to_dict(orient='records')
                 }
             except Exception as e:
-                results['tukey_hsd'] = {'error': str(e)}
+                logger.exception(
+                    "bivariate_numeric_categorical_tests failed", 
+                    extra={
+                        'numeric_col': numeric_col,
+                        'categorical_col': categorical_col,
+                        'report_log_id': report_log_id
+                    }
+                )
+                results['tukey_hsd'] = {
+                    'error': str(e),
+                    'report_log_id': report_log_id
+                }
     except Exception as e:
-        results['anova'] = {'error': str(e)}
+        logger.exception(
+            "bivariate_numeric_categorical_tests failed", 
+            extra={
+                'numeric_col': numeric_col,
+                'categorical_col': categorical_col,
+                'report_log_id': report_log_id
+            }
+        )
+        results['anova'] = {
+            'error': str(e),
+            'report_log_id': report_log_id
+        }
 
     # Kruskal-Wallis (non-parametric)
     try:
@@ -167,7 +237,18 @@ def bivariate_numeric_categorical_tests(
             'reject': bool(kruskal_p < alpha)
         }
     except Exception as e:
-        results['kruskal'] = {'error': str(e)}
+        logger.exception(
+            "bivariate_numeric_categorical_tests failed", 
+            extra={
+                'numeric_col': numeric_col,
+                'categorical_col': categorical_col,
+                'report_log_id': report_log_id
+            }
+        )
+        results['kruskal'] = {
+            'error': str(e),
+            'report_log_id': report_log_id
+        }
 
     # Effect Size Estimation
 
@@ -200,5 +281,14 @@ def bivariate_numeric_categorical_tests(
         'omega_squared': omega2,
         'epsilon_squared': eps2
     }
+
+    logger.info(
+        "Completed bivariate_numeric_categorical_tests",
+        extra={
+            'numeric_col': numeric_col,
+            'categorical_col': categorical_col,
+            'report_log_id': report_log_id
+        }
+    )
 
     return results

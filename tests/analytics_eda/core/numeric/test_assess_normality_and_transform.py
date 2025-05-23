@@ -1,4 +1,5 @@
 import pytest
+import logging
 import pandas as pd
 import numpy as np
 from analytics_eda.core.numeric.assess_normality_and_transform import assess_normality_and_transform
@@ -85,7 +86,9 @@ def test_missing_name_raises_value_error():
     with pytest.raises(ValueError, match="Series must have a non-empty 'name'"):
         assess_normality_and_transform(s, statistics={}, normality={})
 
-def test_dagostino_pearson_in_transform_candidates(series_large_skewed, statistics_large_skewed, norm_reject_flag):
+def test_dagostino_pearson_in_transform_candidates(series_large_skewed, statistics_large_skewed, norm_reject_flag, caplog):
+    caplog.set_level(logging.DEBUG)
+
     result = assess_normality_and_transform(
         s=series_large_skewed,
         statistics=statistics_large_skewed,
@@ -102,6 +105,18 @@ def test_dagostino_pearson_in_transform_candidates(series_large_skewed, statisti
     # Because n>=50, shapiro() should NOT run, but dagostino_pearson should
     assert "shapiro" not in norm_t,     "Shapiro should be skipped for n>=50"
     assert "dagostino_pearson" in norm_t, "Expected the D’Agostino–Pearson branch to fire"
+
+    # Log message: Start
+    start_log = next((r for r in caplog.records if "Starting assess_normality_and_transform" in r.message), None)
+    assert start_log is not None
+    assert start_log.series_name == series_large_skewed.name
+    assert hasattr(start_log, 'report_log_id')
+
+    # Log message: Complete
+    complete_log = next((r for r in caplog.records if "Completed assess_normality_and_transform" in r.message), None)
+    assert complete_log is not None
+    assert complete_log.series_name == series_large_skewed.name
+    assert complete_log.report_log_id == start_log.report_log_id  # Correlation check
 
 def test_shapiro_in_transform_candidates(series_small_skewed, statistics_large_skewed, norm_reject_flag):
     result = assess_normality_and_transform(

@@ -11,14 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
+import uuid
 import pandas as pd
 from scipy import stats
 
 from .validate_numeric_named_series import validate_numeric_named_series
 
+logger = logging.getLogger(__name__)
+
 def normality_assessment(
     s: pd.Series,
-    alpha: float = 0.05
+    alpha: float = 0.05,
+    report_log_id: str = str(uuid.uuid4())
 ) -> dict:
     """
     Perform formal normality tests on a numeric Series (NaNs dropped).
@@ -34,6 +39,7 @@ def normality_assessment(
     Args:
         s (pd.Series): Numeric data series.
         alpha (float): Significance level for tests (e.g. 0.05).
+        report_log_id (str): report log id.
 
     Returns:
         dict: {
@@ -47,6 +53,14 @@ def normality_assessment(
         Returns {} if no non-null data.
     """
     validate_numeric_named_series(s)
+
+    logger.info(
+        "Starting normality_assessment",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     s_clean = s.dropna()
     n = len(s_clean)
@@ -106,6 +120,14 @@ def normality_assessment(
         info.get('reject', False)
         for info in result.values()
         if isinstance(info, dict)
+    )
+
+    logger.info(
+        "Completed normality_assessment",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
     )
 
     return result

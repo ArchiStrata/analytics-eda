@@ -11,14 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
+import uuid
 import pandas as pd
 
 from .is_discrete import is_discrete
 from .validate_numeric_named_series import validate_numeric_named_series
 
+logger = logging.getLogger(__name__)
+
 def descriptive_statistics(
     s: pd.Series,
     include_type: bool = False,
+    report_log_id: str = str(uuid.uuid4()),
     **kwargs_for_discrete
 ) -> dict:
     """
@@ -30,6 +35,7 @@ def descriptive_statistics(
     Args:
         s (pd.Series): Input Series.
         include_type (bool): if True, runs `is_discrete` on `s` and adds `'is_discrete'` to the output.
+        report_log_id (str): report log id.
         **kwargs_for_discrete: passed through to `is_discrete`.
 
     Returns:
@@ -44,6 +50,14 @@ def descriptive_statistics(
     """
     # 1. Input validation
     validate_numeric_named_series(s)
+
+    logger.info(
+        "Starting descriptive_statistics",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     # 2. Drop nulls and short-circuit if empty
     s_clean = s.dropna()
@@ -87,5 +101,13 @@ def descriptive_statistics(
 
     if include_type:
         stats['is_discrete'] = is_discrete(s, **kwargs_for_discrete)
+
+    logger.info(
+        "Completed descriptive_statistics",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     return stats

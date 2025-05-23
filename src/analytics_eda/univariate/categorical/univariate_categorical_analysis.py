@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pathlib import Path
+import logging
+import uuid
 import pandas as pd
 
 from ...core import write_json_report, missing_data_analysis, validate_categorical_named_series, categorical_inferential_analysis, categorical_distribution_analysis
+
+logger = logging.getLogger(__name__)
 
 def univariate_categorical_analysis(
     series: pd.Series,
@@ -22,6 +26,7 @@ def univariate_categorical_analysis(
     report_root: str = 'reports/eda/univariate/categorical',
     rare_threshold: float = 0.01,
     alpha: float = 0.05,
+    report_log_id = str(uuid.uuid4())
 ) -> Path:
     """
     Run a full univariate analysis on a named categorical pandas Series and save results.
@@ -43,6 +48,7 @@ def univariate_categorical_analysis(
         rare_threshold (float, optional): Proportion threshold for rare-category detection.
             Defaults to 0.01.
         alpha (float, optional): Significance level for inferential testing. Defaults to 0.05.
+        report_log_id (str): report log id.
 
     Returns:
         Path: File path to the saved JSON report as written by `write_json_report`.
@@ -68,6 +74,14 @@ def univariate_categorical_analysis(
     # 1. Validation
     validate_categorical_named_series(series)
 
+    logger.info(
+        "Starting univariate_categorical_analysis",
+        extra={
+            'series_name': series.name,
+            'report_log_id': report_log_id
+        }
+    )
+
     # Prepare save directory
     save_dir = Path(report_root) / series.name.replace(' ', '_')
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -75,10 +89,10 @@ def univariate_categorical_analysis(
     total = int(len(series))
 
     # 2. Missing Data Analysis
-    missing_data = missing_data_analysis(series, save_dir)
+    missing_data = missing_data_analysis(series, save_dir, report_log_id=report_log_id)
 
     # 3. Distribution Analysis
-    distribution_result = categorical_distribution_analysis(series, save_dir, top_n)
+    distribution_result = categorical_distribution_analysis(series, save_dir, top_n, report_log_id=report_log_id)
     freq_tbl = distribution_result['report']['frequency_report']['frequency_table']
 
     # 4. Outlier Analysis
@@ -117,5 +131,13 @@ def univariate_categorical_analysis(
 
     report_path = save_dir / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"
     write_json_report(full_report, report_path)
+
+    logger.info(
+        "Completed univariate_categorical_analysis",
+        extra={
+            'series_name': series.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     return report_path

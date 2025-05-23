@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pathlib import Path
+import logging
+import uuid
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,6 +22,8 @@ import pandas as pd
 from scipy.stats import probplot
 
 from .validate_numeric_named_series import validate_numeric_named_series
+
+logger = logging.getLogger(__name__)
 
 def _save_and_close(fig, path):
     """
@@ -33,7 +37,8 @@ def _save_and_close(fig, path):
 def numeric_distribution_visualizations(
     s: pd.Series,
     report_dir: Path,
-    transform: str = "raw"
+    transform: str = "raw",
+    report_log_id: str = str(uuid.uuid4())
 ) -> dict:
     """
     Display and save distribution plots for a numeric Series, annotating
@@ -44,12 +49,21 @@ def numeric_distribution_visualizations(
         report_dir (Path): Directory for saving plot files.
         transform (str): Label for the data transformation applied
                          (e.g. "raw", "box-cox", "yeo-johnson").
+        report_log_id (str): report log id.
 
     Returns:
         dict: Mapping from plot type to saved filepath.
     """
     # 1. Input validation
     validate_numeric_named_series(s)
+
+    logger.info(
+        "Starting numeric_distribution_visualizations",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     # 2. Drop nulls and short-circuit if empty
     s_clean = s.dropna()
@@ -234,5 +248,13 @@ def numeric_distribution_visualizations(
     qq_file = report_dir / f"{s_clean.name}_{label}_qq_plot.png"
     _save_and_close(fig, qq_file)
     viz_paths["qq_plot"] = str(qq_file)
+
+    logger.info(
+        "Completed numeric_distribution_visualizations",
+        extra={
+            'series_name': s.name,
+            'report_log_id': report_log_id
+        }
+    )
 
     return viz_paths

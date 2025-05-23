@@ -1,7 +1,9 @@
 import pandas as pd
+import logging
 from analytics_eda.core.numeric.distribution_fit_assessment import distribution_fit_assessment
 
-def test_fit_exception_from_invalid_data():
+def test_fit_exception_from_invalid_data(caplog):
+    caplog.set_level(logging.DEBUG)
     # Series with only NaNs will cause real scipy.stats.<dist>.fit to fail
     series = pd.Series([float('nan'), float('nan')], name="invalid_data")
 
@@ -12,6 +14,30 @@ def test_fit_exception_from_invalid_data():
     assert "error" in result["alternative_fits"]["norm"]
     assert isinstance(result["alternative_fits"]["norm"]["error"], str)
     assert "error" in result["alternative_fits"]["norm"]
+
+    # Assert error was captured for 'norm'
+    assert "norm" in result["alternative_fits"]
+    norm_result = result["alternative_fits"]["norm"]
+    assert "error" in norm_result
+    assert isinstance(norm_result["error"], str)
+
+    # Assert start log exists
+    start_log = next((r for r in caplog.records if "Starting distribution_fit_assessment" in r.message), None)
+    assert start_log is not None
+    assert start_log.series_name == "invalid_data"
+    assert hasattr(start_log, "report_log_id")
+
+    # Assert error log exists and matches
+    error_log = next((r for r in caplog.records if "distribution_fit_assessment failed" in r.message), None)
+    assert error_log is not None
+    assert error_log.series_name == "invalid_data"
+    assert error_log.report_log_id == start_log.report_log_id
+
+    # Assert completion log exists
+    complete_log = next((r for r in caplog.records if "Completed distribution_fit_assessment" in r.message), None)
+    assert complete_log is not None
+    assert complete_log.series_name == "invalid_data"
+    assert complete_log.report_log_id == start_log.report_log_id
 
 
 def test_positive_series_all_fits_successful():
