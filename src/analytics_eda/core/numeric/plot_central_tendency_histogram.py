@@ -8,12 +8,13 @@ from scipy import stats
 from .validate_numeric_named_series import validate_numeric_named_series
 
 def plot_central_tendency_histogram(
-    data: pd.Series,
+    series: pd.Series,
     bins: int = None,
     title: str = "Histogram with Central Tendency",
     xlabel: str = "Value",
     ylabel: str = "Count",
     data_source: str = None,
+    figsize: tuple = (10, 6),
     save_path: str = None,
     file_name: str = None
 ):
@@ -40,7 +41,7 @@ def plot_central_tendency_histogram(
 
     Parameters
     ----------
-    data : pd.Series
+    series : pd.Series
         Numeric dataset to plot. Missing values will be dropped.
     bins : int or sequence, optional
         Number of histogram bins or explicit bin edges. Defaults to Square-Root Choice ceil(sqrt(n)).
@@ -52,6 +53,8 @@ def plot_central_tendency_histogram(
         Label for the y-axis.
     data_source : str, optional
         Text annotation to show the source of the data in the chart.
+    figsize : tuple, default=(10, 6)
+        Width and height of the figure in inches. Useful for layout control.
     save_path : str or Path, optional
         Directory where the plot image will be saved. Created if it doesn't exist.
     file_name : str, optional
@@ -78,65 +81,55 @@ def plot_central_tendency_histogram(
             }
         }
     """
-    validate_numeric_named_series(data)
-    series = data.dropna()
-    n = series.size
+    validate_numeric_named_series(series)
+    series_clean = series.copy().dropna()
+    n = series_clean.size
 
     # Determine bins via Square-Root choice if not specified
     if bins is None:
         bins = math.ceil(math.sqrt(n))
 
     # Compute descriptive statistics
-    mean = series.mean()
-    median = series.median()
-    mode_vals = series.mode().tolist()
-    sem = stats.sem(series)
+    mean = series_clean.mean()
+    median = series_clean.median()
+    mode_vals = series_clean.mode().tolist()
+    sem = stats.sem(series_clean)
     ci_low, ci_high = stats.t.interval(0.95, n - 1, loc=mean, scale=sem)
 
     # Prepare plot
-    fig, ax = plt.subplots()
-    sns.histplot(series, bins=bins, ax=ax)
+    sns.set_palette("colorblind")
+    fig, ax = plt.subplots(figsize=figsize)
+    sns.histplot(series_clean, bins=bins, ax=ax)
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
     # Plot mean and median lines
-    ax.axvline(mean, linestyle='--', label=f"Mean = {mean:.2f}")
-    ax.axvline(median, linestyle='-.', label=f"Median = {median:.2f}")
+    ax.axvline(mean, color='black', linestyle='--', label=f"Mean = {mean:.2f}")
+    ax.axvline(median, color='firebrick', linestyle='-.', label=f"Median = {median:.2f}")
 
     # Plot mode lines for each raw mode value
     for i, mv in enumerate(mode_vals):
         label = "Mode" if len(mode_vals) == 1 else f"Mode {i+1}"
-        ax.axvline(mv, linestyle=':', label=f"{label} = {mv:.2f}")
+        ax.axvline(mv, color='green', linestyle=':', label=f"{label} = {mv:.2f}")
 
-    # Plot confidence interval
-    ax.axvline(ci_low, linestyle=':', alpha=0.7)
-    ax.axvline(ci_high, linestyle=':', alpha=0.7)
-
-    # Stats textbox
-    mode_text = ", ".join(f"{mv:.2f}" for mv in mode_vals)
-    text = (
-        f"n = {n}\n"
-        f"Mean = {mean:.2f}\n"
-        f"Median = {median:.2f}\n"
-        f"Mode(s) = {mode_text}\n"
-        f"95% CI = [{ci_low:.2f}, {ci_high:.2f}]"
-    )
-    ax.text(
-        0.95, 0.95, text,
-        transform=ax.transAxes,
-        va='top', ha='right',
-        bbox=dict(boxstyle='round', facecolor='white', alpha=0.5)
-    )
+    # Shaded 95% Confidence Interval
+    ax.axvspan(ci_low, ci_high, color='gray', alpha=0.2, hatch='//', label="95% CI")
 
     # Optional data source annotation
     if data_source:
-        ax.text(
-            0.05, 0.05, f"Source: {data_source}",
-            transform=ax.transAxes,
-            va='bottom', ha='left',
+        fig.text(
+            0.01, 0.01, f"Source: {data_source}",
+            ha='left', va='bottom',
             fontsize='small', color='gray'
         )
+    
+    # Sample size annotation in bottom-right
+    fig.text(
+        0.99, 0.01, f"n = {n}",
+        ha='right', va='bottom',
+        fontsize='small', color='gray'
+    )
 
     ax.legend()
 

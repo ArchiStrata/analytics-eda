@@ -96,13 +96,14 @@ def test_default_bins_square_root_choice():
     # Ensure descriptive_stats n matches
     assert meta['descriptive_stats']['n'] == 16
 
-def test_override_chart_labels_and_source():
+def test_override_chart_labels_and_source(tmp_path):
     # Prepare data
     data = pd.Series([10, 20, 20, 30, 30, 30], name='numeric_series')
     custom_title = "Custom Histogram Title"
     custom_xlabel = "Custom X"
     custom_ylabel = "Custom Y"
     custom_source = "Custom DataSource"
+    filename = "custom_hist.png"
     
     # Call with overrides
     meta = plot_central_tendency_histogram(
@@ -112,8 +113,8 @@ def test_override_chart_labels_and_source():
         xlabel=custom_xlabel,
         ylabel=custom_ylabel,
         data_source=custom_source,
-        save_path=None,
-        file_name=None
+        save_path=str(tmp_path),
+        file_name=filename
     )
     stats = meta['descriptive_stats']
     chart = meta['chart_metadata']
@@ -123,14 +124,21 @@ def test_override_chart_labels_and_source():
     assert chart['xlabel'] == custom_xlabel
     assert chart['ylabel'] == custom_ylabel
     assert chart['data_source'] == custom_source
+    assert chart['bins'] == 4
     
     # Descriptive stats should still be correct
     assert stats['n'] == 6
     assert stats['mode'] == [30]
     
-    # Bins override
-    assert chart['bins'] == 4
-    assert chart['relative_path'] is None
+    # File exists and is valid PNG
+    saved_path = tmp_path / filename
+    assert saved_path.exists() and saved_path.is_file()
+    assert saved_path.stat().st_size > 0
+    with open(saved_path, 'rb') as f:
+        assert f.read(8) == b'\x89PNG\r\n\x1a\n'
+
+    # Metadata path is a relative path ending with the filename
+    assert os.path.basename(chart['relative_path']) == filename
 
 def test_missing_series_name_raises_error():
     missing_name = pd.Series(dtype=float)
