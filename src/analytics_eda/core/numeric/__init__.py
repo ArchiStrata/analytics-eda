@@ -16,3 +16,4 @@ from .plot_distribution_kde import plot_distribution_kde
 from .plot_cardinality_barchart import plot_cardinality_barchart
 from .plot_distribution_ecdf_gap import plot_distribution_ecdf_gap
 from .plot_distribution_qq_normality import plot_distribution_qq_normality
+from .plot_distribution_ecdf_vs_cdf import plot_distribution_ecdf_vs_cdf

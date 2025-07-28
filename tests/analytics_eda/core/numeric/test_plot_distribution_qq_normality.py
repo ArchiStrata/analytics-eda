@@ -59,8 +59,40 @@ def test_override_and_save(tmp_path):
         file_name=file_name,
         alpha=custom["alpha"]
     )
-    stats = meta["descriptive_stats"]
+
+    desc = meta["descriptive_stats"]
     chart = meta["chart_metadata"]
+
+    # all main metrics should be floats
+    assert isinstance(desc["intercept"], float)
+    assert isinstance(desc["slope"], float)
+    assert 0.0 <= desc["r_squared"] <= 1.0
+    assert isinstance(desc["median_residual"], float)
+    assert isinstance(desc["iqr_residual"], float)
+    assert isinstance(desc["max_abs_residual"], float)
+    assert isinstance(desc["skewness"], float)
+    assert isinstance(desc["kurtosis"], float)
+
+    # normality_tests dict
+    nt = desc["normality_tests"]
+    assert isinstance(nt, dict)
+
+    # for n=30: should have shapiro, dagostino_pearson, anderson but no jarque_bera
+    assert "shapiro" in nt
+    assert "dagostino_pearson" in nt
+    assert "anderson" in nt
+    assert "jarque_bera" not in nt
+
+    # each test entry has a boolean 'reject'
+    for name in ["shapiro", "dagostino_pearson", "anderson"]:
+        entry = nt[name]
+        assert "statistic" in entry
+        # p-value may not exist for Anderson, but 'reject' must
+        assert entry.get("reject") in (True, False)
+
+    # overall flag
+    assert "reject_normality" in nt
+    assert isinstance(nt["reject_normality"], bool)
 
     # chart_metadata overrides
     assert chart["title"] == custom["title"]
