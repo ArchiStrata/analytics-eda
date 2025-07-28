@@ -22,22 +22,19 @@ def plot_central_tendency_histogram(
     Generate a histogram that effectively communicates the central tendency of a numeric variable.
 
     Why:
-        This function helps analysts and data storytellers visualize the distribution of a numeric variable 
-        with key statistical indicators of central tendency: mean, median, mode, and a 95% confidence interval 
-        for the mean. Annotating these statistics directly on the histogram enhances clarity and insight.
+        This function enables analysts and data storytellers to visually communicate the distribution and central tendency of a numeric variable. By directly annotating key statistics—mean, median, mode, and a 95% confidence interval—on the histogram, the chart becomes clearer, more informative, and easier to interpret.
 
     What:
         - Accepts a pandas Series of numeric values.
         - Plots a histogram with annotated vertical lines for mean, median, mode(s), and 95% CI.
         - Optionally saves the figure to disk.
-        - Returns descriptive statistics and metadata useful for reporting or reproducibility.
+        - Returns descriptive statistics and chart metadata for reporting or reproducibility.
 
     How:
-        - Missing values are dropped.
-        - If not specified, the number of bins is determined using the Square-Root Choice rule (ceil(sqrt(n))).
-        - Modes are estimated based on the bin(s) with the highest frequency count.
-        - Mean, median, and 95% CI are calculated and displayed on the plot.
-        - Optional metadata such as chart title, axis labels, and data source are customizable.
+        - Operates on a cleaned copy of the data (missing values dropped).
+        - Uses the Square-Root Choice rule to determine bin count when unspecified. ceil(sqrt(n)).
+        - Computes central tendency statistics and overlays them on the histogram.
+        - Allows customization of chart titles, labels, data source, and export options.
 
     Parameters
     ----------
