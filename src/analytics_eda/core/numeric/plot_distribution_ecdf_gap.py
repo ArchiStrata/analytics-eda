@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from .validate_numeric_named_series import validate_numeric_named_series
 
-def plot_distribution_ecdf(
+def plot_distribution_ecdf_gap(
     series: pd.Series,
     title: str = "ECDF with Gap Analysis",
     xlabel: str = "Value",
@@ -18,7 +18,7 @@ def plot_distribution_ecdf(
     file_name: str = None
 ):
     """
-    Generate an ECDF plot that highlights and quantifies gaps in a numeric distribution.
+    Generate an Empirical Cumulative Distribution Function (ECDF) plot that highlights and quantifies gaps in a numeric distribution.
 
     Why:
         Gaps—intervals with no observations—reveal holes in your data range.  

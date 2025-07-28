@@ -3,12 +3,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from analytics_eda.core.numeric import plot_distribution_ecdf
+from analytics_eda.core.numeric import plot_distribution_ecdf_gap
 
 def test_default_parameters_no_save():
     # Simple two-point series → one gap of size 2
     s = pd.Series([1, 3], name="two_point")
-    meta = plot_distribution_ecdf(s)
+    meta = plot_distribution_ecdf_gap(s)
     stats = meta['descriptive_stats']
     chart = meta['chart_metadata']
 
@@ -45,7 +45,7 @@ def test_override_and_save(tmp_path):
     }
     fname = "ecdf.png"
 
-    meta = plot_distribution_ecdf(
+    meta = plot_distribution_ecdf_gap(
         s,
         title=custom['title'],
         xlabel=custom['xlabel'],
@@ -85,7 +85,7 @@ def test_save_defaults_and_metadata(tmp_path):
     # Save with defaults only
     s = pd.Series([0, 5, 10], name="three_point")
     fname = "out.png"
-    meta = plot_distribution_ecdf(
+    meta = plot_distribution_ecdf_gap(
         s,
         save_path=str(tmp_path),
         file_name=fname
@@ -105,11 +105,11 @@ def test_missing_series_name_raises_error():
     # Series without name should trigger validation error
     s = pd.Series([1, 2, 3])  # name is None
     with pytest.raises(ValueError):
-        plot_distribution_ecdf(s)
+        plot_distribution_ecdf_gap(s)
 
 def test_empty_series_returns_stats_and_defaults():
     empty = pd.Series([], dtype=float, name="empty_series")
-    meta = plot_distribution_ecdf(empty)
+    meta = plot_distribution_ecdf_gap(empty)
     stats = meta['descriptive_stats']
     chart = meta['chart_metadata']
 
