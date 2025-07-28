@@ -13,3 +13,4 @@ from .select_normality_transforms import select_normality_transforms
 from .plot_central_tendency_histogram import plot_central_tendency_histogram
 from .plot_dispersion_boxplot import plot_dispersion_boxplot
 from .plot_distribution_kde import plot_distribution_kde
+from .plot_cardinality_barchart import plot_cardinality_barchart
