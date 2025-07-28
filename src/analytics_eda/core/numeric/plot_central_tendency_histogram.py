@@ -62,11 +62,11 @@ def plot_central_tendency_histogram(
     metadata : dict
         {
             'descriptive_stats': {
-                'n': int,                        # Sample size
-                'mean': float,                   # Arithmetic mean
-                'median': float,                 # 50th percentile
-                'mode': list of float,           # Most frequent value(s)
-                'ci95': (float, float)           # 95% confidence interval for the mean
+                'n': int,                        # see table below
+                'mean': float,
+                'median': float,
+                'mode': list of float,
+                'ci95': (float, float)
             },
             'chart_metadata': {
                 'title': str,
@@ -77,6 +77,16 @@ def plot_central_tendency_histogram(
                 'relative_path': str or None     # Relative path to saved image (if any)
             }
         }
+
+    Key Descriptive Statistics
+    --------------------------
+    | Statistic | What it tells you                                            |
+    |-----------|--------------------------------------------------------------|
+    | `n`       | Sample size – number of observations                         |
+    | `mean`    | Arithmetic average – balance point of the distribution       |
+    | `median`  | 50th percentile – midpoint, robust to outliers               |
+    | `mode`    | Most frequent value(s) – where data piled up                 |
+    | `ci95`    | 95% confidence interval – uncertainty around the sample mean |
     """
     validate_numeric_named_series(series)
     series_clean = series.copy().dropna()
