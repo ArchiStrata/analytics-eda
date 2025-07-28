@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -14,7 +15,10 @@ def plot_cardinality_barchart(
     data_source: str = None,
     figsize: tuple = (8, 6),
     save_path: str = None,
-    file_name: str = None
+    file_name: str = None,
+    max_unique_fraction: float = 0.05,
+    max_unique_values: int = 20,
+    integer_tolerance: float = 1e-8
 ):
     """
     Generate a bar chart that tells the cardinality story of a numeric variable.
@@ -56,6 +60,13 @@ def plot_cardinality_barchart(
         Directory where the plot image will be saved. Created if needed.
     file_name : str, optional
         Filename (with extension) for saving. Requires `save_path`.
+    max_unique_fraction : float
+        Relative threshold of unique values / total rows below which we
+        treat floats as discrete.
+    max_unique_values   : int
+        Absolute cap on number of unique values to still call discrete.
+    integer_tolerance   : float
+        Tolerance for considering float values "whole" (e.g. 1.00000002)
 
     Returns
     -------
@@ -77,6 +88,12 @@ def plot_cardinality_barchart(
     validate_numeric_named_series(series)
     clean = series.copy().dropna()
     nunique = int(clean.nunique())
+    is_discrete = is_discrete_numeric(
+        clean,
+        max_unique_fraction=max_unique_fraction,
+        max_unique_values=max_unique_values,
+        integer_tolerance=integer_tolerance
+    )
 
     # Compute top-k frequencies
     counts = clean.value_counts().head(top_k)
@@ -87,7 +104,9 @@ def plot_cardinality_barchart(
     sns.set_palette("colorblind")
     fig, ax = plt.subplots(figsize=figsize)
     sns.barplot(x=labels, y=values, ax=ax)
-    ax.set_title(title)
+
+    subtitle = "Discrete" if is_discrete else "Continuous"
+    ax.set_title(f"{title}  ({subtitle})")
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
@@ -110,7 +129,8 @@ def plot_cardinality_barchart(
 
     return {
         'descriptive_stats': {
-            'nunique': nunique
+            'nunique': nunique,
+            'is_discrete': is_discrete,
         },
         'chart_metadata': {
             'title': title,
@@ -118,6 +138,55 @@ def plot_cardinality_barchart(
             'ylabel': ylabel,
             'data_source': data_source,
             'top_k': top_k,
+            'max_unique_fraction': max_unique_fraction,
+            'max_unique_values': max_unique_values,
+            'integer_tolerance': integer_tolerance,
             'relative_path': relative_path
         }
     }
+
+def is_discrete_numeric(s,
+        max_unique_fraction: float = 0.05,
+        max_unique_values: int = 20,
+        integer_tolerance: float = 1e-8) -> bool:
+    """
+    Determine whether a numeric pandas Series should be treated as discrete.
+
+    A series is considered discrete if:
+      - It has an integer dtype and either:
+        * The ratio of unique values to non-null entries is below `max_unique_fraction`, or
+        * The total number of unique values is below `max_unique_values`.
+      - It has a float dtype and either:
+        * All values are within `integer_tolerance` of a whole number, or
+        * Its unique-value ratio or count falls below the specified thresholds.
+
+    Parameters
+    ----------
+    s : pd.Series
+        Numeric data to evaluate. NaNs are ignored in all calculations.
+    max_unique_fraction : float, default=0.05
+        Maximum fraction of unique values (unique / total non-null) to still call discrete.
+    max_unique_values : int, default=20
+        Maximum absolute count of unique values to still call discrete.
+    integer_tolerance : float, default=1e-8
+        Tolerance for treating float values as effectively integers (e.g. 3.0000000001).
+
+    Returns
+    -------
+    bool
+        True if the series meets the criteria for discreteness; False otherwise.
+    """
+    # 1. Integer dtype
+    if pd.api.types.is_integer_dtype(s.dtype):
+        return (s.nunique() / len(s)) <= max_unique_fraction \
+            or s.nunique() < max_unique_values
+    # 2. Float dtype
+    if pd.api.types.is_float_dtype(s.dtype):
+        # 2a. effectively all whole numbers?
+        if np.isclose(s % 1, 0, atol=integer_tolerance).all():
+            return True
+        # 2b. low cardinality
+        frac = s.nunique() / len(s)
+        if frac < max_unique_fraction or s.nunique() < max_unique_values:
+            return True
+    return False
