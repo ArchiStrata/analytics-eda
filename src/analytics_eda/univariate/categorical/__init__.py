@@ -1,2 +1,1 @@
 from .univariate_categorical_analysis import univariate_categorical_analysis
-from .batch_univariate_categorical_analysis import batch_univariate_categorical_analysis
