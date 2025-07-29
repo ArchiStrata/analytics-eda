@@ -128,10 +128,11 @@ def plot_central_tendency_histogram(
     ax.axvline(mean, color='black', linestyle='--', label=f"Mean = {mean:.2f}")
     ax.axvline(median, color='firebrick', linestyle='-.', label=f"Median = {median:.2f}")
 
-    # Plot mode lines for each raw mode value
-    for i, mv in enumerate(mode_vals):
-        label = "Mode" if len(mode_vals) == 1 else f"Mode {i+1}"
-        ax.axvline(mv, color='green', linestyle=':', label=f"{label} = {mv:.2f}")
+    # Only plot mode lines if fewer than 4 modes to avoid clutter
+    if len(mode_vals) > 0 and len(mode_vals) < 4:
+        for i, mv in enumerate(mode_vals):
+            label = "Mode" if len(mode_vals) == 1 else f"Mode {i+1}"
+            ax.axvline(mv, color='green', linestyle=':', label=f"{label} = {mv:.2f}")
 
     # Shaded 95% Confidence Interval
     ax.axvspan(ci_low, ci_high, color='gray', alpha=0.2, hatch='//', label="95% CI")
