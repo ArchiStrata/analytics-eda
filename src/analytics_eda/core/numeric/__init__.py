@@ -2,7 +2,7 @@ from .numeric_distribution_analysis import numeric_distribution_analysis
 from .validate_numeric_named_series import validate_numeric_named_series
 from .plot_central_tendency_histogram import plot_central_tendency_histogram
 from .plot_dispersion_boxplot import plot_dispersion_boxplot
-from .plot_distribution_kde import plot_distribution_kde
+from .plot_distribution_shape import plot_distribution_shape
 from .plot_cardinality_barchart import plot_cardinality_barchart
 from .plot_distribution_ecdf_gap import plot_distribution_ecdf_gap
 from .plot_distribution_qq_normality import plot_distribution_qq_normality

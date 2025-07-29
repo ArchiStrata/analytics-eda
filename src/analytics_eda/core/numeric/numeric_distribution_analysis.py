@@ -22,7 +22,7 @@ from .plot_central_tendency_histogram import plot_central_tendency_histogram
 from .plot_dispersion_boxplot       import plot_dispersion_boxplot
 from .plot_distribution_ecdf_gap    import plot_distribution_ecdf_gap
 from .plot_distribution_ecdf_vs_cdf import plot_distribution_ecdf_vs_cdf
-from .plot_distribution_kde         import plot_distribution_kde
+from .plot_distribution_shape         import plot_distribution_shape
 from .plot_distribution_qq_normality import plot_distribution_qq_normality
 
 from .validate_numeric_named_series import validate_numeric_named_series
@@ -37,7 +37,7 @@ def numeric_distribution_analysis(
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_ecdf_gap_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_ecdf_vs_cdf_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_kde_overrides:      Optional[Dict[str, Any]] = None,
+    plot_distribution_shape_overrides:      Optional[Dict[str, Any]] = None,
     plot_distribution_qq_normality_overrides: Optional[Dict[str, Any]] = None,
 ) -> dict:
     """
@@ -67,7 +67,7 @@ def numeric_distribution_analysis(
     }
 
     # Dispersion
-    # TODO: outlier
+    # TODO: extreme outlier
     plot_dispersion_boxplot_meta = call_plot_with_overrides(
         plot_dispersion_boxplot,
         series,
@@ -80,8 +80,6 @@ def numeric_distribution_analysis(
     }
 
     # Shape
-    # TODO: Binning & Frequency analysis
-
     ecdf_gap_meta = call_plot_with_overrides(
         plot_distribution_ecdf_gap,
         series,
@@ -99,10 +97,11 @@ def numeric_distribution_analysis(
         overrides=ecdf_vs_cdf_over,
         save_path=report_path,
     )
-    kde_meta = call_plot_with_overrides(
-        plot_distribution_kde,
+
+    distribution_shape_meta = call_plot_with_overrides(
+        plot_distribution_shape,
         series,
-        overrides=plot_distribution_kde_overrides,
+        overrides=plot_distribution_shape_overrides,
         save_path=report_path,
     )
 
@@ -116,7 +115,7 @@ def numeric_distribution_analysis(
     shape = {
         'plot_distribution_ecdf_gap': ecdf_gap_meta,
         'plot_distribution_ecdf_vs_cdf': ecdf_vs_cdf_meta,
-        'plot_distribution_kde': kde_meta,
+        'plot_distribution_shape': distribution_shape_meta,
         'plot_distribution_qq_normality': qq_meta,
     }
 

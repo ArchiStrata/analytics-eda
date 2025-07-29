@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from typing import Callable, Sequence, Literal, Optional
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -19,20 +20,27 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.signal import find_peaks
 
+from .binning_rules import doane_bins, freedman_diaconis_bins, scott_bins, sturges_bins
 from .validate_numeric_named_series import validate_numeric_named_series
 
-def plot_distribution_kde(
+BinMethod = Literal['sturges', 'scott', 'freedman_diaconis', 'doane']
+
+def plot_distribution_shape(
     series: pd.Series,
-    title: str = "KDE Plot of Distribution Shape",
+    title: str = "Distribution Shape: Histogram with KDE",
     xlabel: str = "Value",
     ylabel: str = "Density",
     data_source: str = None,
     figsize: tuple = (10, 6),
     save_path: str = None,
-    file_name: str = None
+    file_name: str = None,
+    bin_method: Optional[BinMethod] = None,
+    bins: int | Sequence[float] | None = None,
+    hist_alpha: float = 0.4,
+    bw_adjust: float = 1.0
 ):
     """
-    Generate a KDE plot that effectively communicates the shape of a numeric distribution.
+    Generate a histogram overlaid with a KDE to communicate the shape of a numeric distribution.
 
     Why:
         Understanding a distribution’s shape—its skewness, tail‐weight, and number of peaks—reveals 
@@ -73,6 +81,14 @@ def plot_distribution_kde(
         Directory to save the image. Created if necessary.
     file_name : str, optional
         Filename (with extension) for saving. Requires `save_path`.
+    bin_method: str | None = None
+        The statistical binning rule used for dynamically setting bins based on the data.
+    bins : int or sequence of floats
+        Number of histogram bins, or the bin edges.
+    hist_alpha : float
+        Transparency level for the histogram bars.
+    bw_adjust : float
+        Bandwidth adjustment factor for KDE (relative to default).
 
     Returns
     -------
@@ -114,32 +130,39 @@ def plot_distribution_kde(
     data = series.copy().dropna()
     n = data.size
 
-    # --- EARLY RETURN FOR EMPTY SERIES ---
+    # Early exit for empty data
     if n == 0:
-        empty_stats = {
-            'n': 0,
-            'skewness': np.nan,
-            'kurtosis': np.nan,
-            'modes_count': 0,
-            'quartile_skew': np.nan,
-            'pct_10': np.nan,
-            'pct_25': np.nan,
-            'pct_50': np.nan,
-            'pct_75': np.nan,
-            'pct_90': np.nan
-        }
+        empty_stats = dict(
+            n=0, skewness=np.nan, kurtosis=np.nan, modes_count=0,
+            quartile_skew=np.nan, pct_10=np.nan, pct_25=np.nan,
+            pct_50=np.nan, pct_75=np.nan, pct_90=np.nan
+        )
         return {
             'descriptive_stats': empty_stats,
-            'chart_metadata': {
-                'title': title,
-                'xlabel': xlabel,
-                'ylabel': ylabel,
-                'data_source': data_source,
-                'relative_path': None
-            }
+            'chart_metadata': dict(
+                title=title, xlabel=xlabel, ylabel=ylabel,
+                data_source=data_source, relative_path=None
+            )
         }
 
-    # Compute percentiles and robust skew
+    # dynamically pick bins if requested
+    if bin_method:
+        methods: dict[BinMethod, Callable[[pd.Series], int]] = {
+            'sturges': sturges_bins,
+            'scott': scott_bins,
+            'freedman_diaconis': freedman_diaconis_bins,
+            'doane': doane_bins
+        }
+        try:
+            bins = methods[bin_method](data)
+        except KeyError as exc:
+            raise ValueError(f"Unknown bin_method: {bin_method!r}. "
+                             f"Choose from {list(methods)}.") from exc
+    elif bins is None:
+        # default fallback  
+        bins = 30
+
+    # Compute percentiles and robust quartile skew
     q1, q2, q3 = data.quantile([0.25, 0.50, 0.75])
     pct_10, pct_90 = data.quantile([0.10, 0.90])
     iqr = q3 - q1
@@ -147,10 +170,11 @@ def plot_distribution_kde(
 
     # Compute skewness & kurtosis
     skewness = data.skew()
-    kurt = data.kurtosis()
+    kurtosis = data.kurtosis()
 
-    # KDE estimate on grid
+    # KDE estimate with adjustable bandwidth
     kde = stats.gaussian_kde(data)
+    kde.set_bandwidth(bw_method=kde.factor * bw_adjust)
     grid = np.linspace(data.min(), data.max(), 512)
     density = kde(grid)
 
@@ -159,34 +183,40 @@ def plot_distribution_kde(
     modes_count = len(peaks)
     mode_locations = grid[peaks].tolist()
 
-    # Plot
+    # Plot setup
     sns.set_palette("colorblind")
     fig, ax = plt.subplots(figsize=figsize)
-    ax.plot(grid, density, lw=2, label="KDE")
-    ax.fill_between(grid, density, alpha=0.2)
 
-    # Shade and label tails
-    ax.fill_between(grid, density, where=(grid < pct_10),
-                    color='gray', alpha=0.3, label="Bottom 10%")
-    ax.fill_between(grid, density, where=(grid > pct_90),
-                    color='gray', alpha=0.3, label="Top 10%")
+    # Histogram (normalized to density)
+    ax.hist(data, bins=bins, density=True,
+            alpha=hist_alpha, label="Histogram")
+
+    # KDE line
+    ax.plot(grid, density, lw=2, label="KDE")
+
+    # Shade tails
+    ax.fill_between(grid, density,
+                    where=(grid < pct_10), alpha=0.3,
+                    label="Bottom 10%")
+    ax.fill_between(grid, density,
+                    where=(grid > pct_90), alpha=0.3,
+                    label="Top 10%")
 
     # Quartile & median lines
     ax.axvline(q1, linestyle='--', label=f"Q1 = {q1:.2f}")
-    ax.axvline(q2, linestyle='-',  label=f"Median = {q2:.2f}")
+    ax.axvline(q2, linestyle='-', label=f"Median = {q2:.2f}")
     ax.axvline(q3, linestyle='--', label=f"Q3 = {q3:.2f}")
 
-    # Mode markers and annotations
+    # Mode markers
     if modes_count:
-        ax.plot(mode_locations, kde(mode_locations), 'o',
-                color='green', label=f"{modes_count} mode(s)")
-        for loc in mode_locations:
-            height = kde(loc)
-            ax.text(loc, height,
-                    f"{loc:.2f}",
+        heights = density[peaks]
+        ax.scatter(mode_locations, heights,
+                   color='green', marker='o',
+                   label=f"{modes_count} mode(s)")
+        for x_loc, y_loc in zip(mode_locations, heights):
+            ax.text(x_loc, y_loc, f"{x_loc:.2f}",
                     ha='left', va='bottom',
                     fontsize='x-small', color='green')
-
     # Finalize axes
     ax.set_title(title)
     ax.set_xlabel(xlabel)
@@ -196,7 +226,7 @@ def plot_distribution_kde(
     stats_text = (
         f"n = {n}\n"
         f"Skewness = {skewness:.2f}\n"
-        f"Kurtosis = {kurt:.2f}\n"
+        f"Kurtosis = {kurtosis:.2f}\n"
         f"Quartile skew = {quartile_skew:.2f}"
     )
     ax.text(0.98, 0.98, stats_text,
@@ -208,19 +238,14 @@ def plot_distribution_kde(
         fig.text(0.01, 0.01, f"Source: {data_source}",
                  ha='left', va='bottom', fontsize='small', color='gray')
 
-    # Reorder legend entries: KDE, Quartile lines, Tails, Modes
+    # Legend ordering
     handles, labels = ax.get_legend_handles_labels()
-    desired_order = [
-        "KDE",
-        f"Q1 = {q1:.2f}",
-        f"Median = {q2:.2f}",
-        f"Q3 = {q3:.2f}",
-        "Bottom 10%",
-        "Top 10%",
-        f"{modes_count} mode(s)"
-    ]
-    # Keep only those present, in the desired order
-    ordered = [(h, l) for key in desired_order for h, l in zip(handles, labels) if l == key]
+    order = ["Histogram", "KDE",
+             f"Q1 = {q1:.2f}", f"Median = {q2:.2f}", f"Q3 = {q3:.2f}",
+             "Bottom 10%", "Top 10%",
+             f"{modes_count} mode(s)"]
+    ordered = [(h, l) for key in order
+               for h, l in zip(handles, labels) if l == key]
     if ordered:
         h_ord, l_ord = zip(*ordered)
         ax.legend(h_ord, l_ord)
@@ -239,7 +264,7 @@ def plot_distribution_kde(
         'descriptive_stats': {
             'n': n,
             'skewness': skewness,
-            'kurtosis': kurt,
+            'kurtosis': kurtosis,
             'modes_count': modes_count,
             'quartile_skew': quartile_skew,
             'pct_10': pct_10,
