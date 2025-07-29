@@ -20,8 +20,7 @@ def test_batch_univariate_numeric_analysis_single_column(tmp_path, df_normal):
     result = batch_univariate_numeric_analysis(
         df_normal,
         columns=['norm'],
-        report_root=str(report_root),
-        alpha=0.05
+        report_root=str(report_root)
     )
 
     assert "norm" in result
@@ -40,5 +39,5 @@ def test_batch_univariate_numeric_analysis_single_column(tmp_path, df_normal):
     assert isinstance(result, dict)
     assert 'eda' in result
 
-    expected_sections = {'missing_data', 'distribution', 'outliers', 'inferential'}
+    expected_sections = {'missing_data', 'distribution'}
     assert set(result['eda'].keys()) == expected_sections

@@ -17,20 +17,13 @@ import uuid
 
 import pandas as pd
 
-from ...core import write_json_report, missing_data_analysis, validate_numeric_named_series, numeric_distribution_analysis, numeric_outlier_analysis, numeric_inferential_analysis
+from ...core import write_json_report, missing_data_analysis, validate_numeric_named_series, numeric_distribution_analysis, plot_cardinality_barchart
 
 logger = logging.getLogger(__name__)
 
 def univariate_numeric_analysis(
     series: pd.Series,
     report_root: str = 'reports/eda/univariate/numeric',
-    iqr_multiplier: float = 1.5,
-    z_thresh: float = 3.0,
-    alpha: float = 0.05,
-    popmean: float | None = None,
-    popmedian: float | None = None,
-    popvariance: float | None = None,
-    bootstrap_samples: int = 1_000,
     report_log_id = str(uuid.uuid4())
 ) -> Path:
     """
@@ -39,21 +32,13 @@ def univariate_numeric_analysis(
     Steps:
       1. Validate numeric series.
       2. Missing data analysis (counts, percentage, plot).
-      3. Distribution analysis (descriptive stats, normality tests, visualizations).
-      4. Outlier analysis (IQR, Z-score, robust Z-score with CSV exports).
-      5. Inferential analysis (confidence intervals, goodness-of-fit, variance tests, effect size, bootstrap inference).
-      6. Aggregation and saving of all results into a single JSON report.
+      3. Cardinality analysis.
+      4. Distribution analysis (descriptive stats, normality tests, visualizations).
+      5. Aggregation and saving of all results into a single JSON report.
 
     Args:
         series (pd.Series): Series to analyze.
         report_root (str): Base directory where report files will be saved.
-        iqr_multiplier (float): IQR multiplier for outlier detection.
-        z_thresh (float): Z-score threshold for outlier detection.
-        alpha (float): Significance level for inferential tests and confidence intervals.
-        popmean (float|None): Hypothesized population mean for inferential tests.
-        popmedian (float|None): Hypothesized population median for inferential tests.
-        popvariance (float|None): Hypothesized population variance (σ²) for inferential tests.
-        bootstrap_samples (int): Number of bootstrap resamples for CI estimation.
         report_log_id (str): report log id.
     
     Returns:
@@ -65,8 +50,6 @@ def univariate_numeric_analysis(
             'eda': {
                 'missing_data': Summary of missing data analysis,
                 'distribution': Summary of distribution analysis,
-                'outliers': Summary of outlier analysis,
-                'inferential': Summary of inferential analysis.
             }
         }
     """
@@ -82,44 +65,35 @@ def univariate_numeric_analysis(
     )
 
     # Always work from a copy
-    s = series.copy()
+    series_copy = series.copy()
 
     # Prepare directory
-    save_dir = Path(report_root) / series.name.replace(' ', '_')
+    save_dir = Path(report_root) / series_copy.name.replace(' ', '_')
     save_dir.mkdir(parents=True, exist_ok=True)
 
     # 2. Missing Data Analysis
-    missing_data = missing_data_analysis(s, save_dir, report_log_id=report_log_id)
+    missing_data = missing_data_analysis(series_copy, save_dir, report_log_id=report_log_id)
+
+    # TODO: plot_cardinality_barchart
+    # plot_cardinality_barchart_meta = plot_cardinality_barchart(series_copy, )
+    cardinality = {
+        'plot_cardinality_barchart': None
+    }
 
     # 3. Distribution Analysis
-    distribution_result = numeric_distribution_analysis(s, save_dir, alpha=alpha, report_log_id=report_log_id)
-    series = distribution_result['series']
+    distribution_result = numeric_distribution_analysis(series_copy, save_dir, report_log_id=report_log_id)
 
-    # 4. Outlier Analysis
-    outliers = numeric_outlier_analysis(series, save_dir, iqr_multiplier, z_thresh, report_log_id=report_log_id)
-
-    # 5. Inferential Analysis
-    inferential = numeric_inferential_analysis(
-        series,
-        alpha=alpha,
-        popmean=popmean,
-        popmedian=popmedian,
-        popvariance=popvariance,
-        bootstrap_samples=bootstrap_samples,
-        report_log_id=report_log_id
-    )
+    # 5. TODO: Inferential Analysis
 
     # 6. Generate report
     eda_report = {
         'missing_data': missing_data,
-        'distribution': distribution_result['report'],
-        'outliers': outliers,
-        'inferential': inferential
+        'distribution': distribution_result['report']
     }
 
     full_report = {
         'metadata': {
-            'version': '0.1.0',
+            'version': '1.0.0',
             'report_name': 'univariate_numeric_analysis',
             'parameters': {
                 'series': series.name

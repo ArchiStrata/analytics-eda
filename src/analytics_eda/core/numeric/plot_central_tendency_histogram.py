@@ -143,7 +143,7 @@ def plot_central_tendency_histogram(
             ha='left', va='bottom',
             fontsize='small', color='gray'
         )
-    
+
     # Sample size annotation in bottom-right
     fig.text(
         0.99, 0.01, f"n = {n}",

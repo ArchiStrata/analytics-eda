@@ -87,6 +87,7 @@ def plot_cardinality_barchart(
         {
             'descriptive_stats': {
                 'nunique': int   # number of distinct values
+                'is_discrete': bool
             },
             'chart_metadata': {
                 'title': str,

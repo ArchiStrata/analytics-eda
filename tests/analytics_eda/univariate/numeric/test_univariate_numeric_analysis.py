@@ -20,8 +20,7 @@ def test_univariate_numeric_analysis_on_normal_series(tmp_path, normal_15_series
     # Act
     actual_report_file = univariate_numeric_analysis(
         normal_15_series,
-        report_root=str(report_root),
-        alpha=0.05
+        report_root=str(report_root)
     )
 
     # Assert JSON report file was written and matches the result
@@ -43,16 +42,15 @@ def test_univariate_numeric_analysis_on_normal_series(tmp_path, normal_15_series
     assert 'eda' in result
     eda_report = result['eda']
 
-    expected_top = {'missing_data', 'distribution', 'outliers', 'inferential'}
+    expected_top = {'missing_data', 'distribution'}
     assert set(eda_report.keys()) == expected_top
     
     # Inspect the distribution sub-report
     dist = eda_report['distribution']
     expected_dist_keys = {
-        'statistics',
-        'normality_report',
-        'transformation_report',
-        'distribution_fit_report'
+        'dispersion',
+        'central_tendency',
+        'shape'
     }
     assert set(dist.keys()) == expected_dist_keys
 
