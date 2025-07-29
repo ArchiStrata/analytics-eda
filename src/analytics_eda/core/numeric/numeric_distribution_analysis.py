@@ -67,7 +67,6 @@ def numeric_distribution_analysis(
     }
 
     # Dispersion
-    # TODO: extreme outlier
     plot_dispersion_boxplot_meta = call_plot_with_overrides(
         plot_dispersion_boxplot,
         series,

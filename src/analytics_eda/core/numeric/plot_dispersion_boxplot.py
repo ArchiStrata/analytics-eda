@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -24,11 +25,12 @@ def plot_dispersion_boxplot(
     ylabel: str = "Value",
     data_source: str = None,
     figsize: tuple = (8, 6),
+    std_outlier_multiplier: float = 4.0,
     save_path: str = None,
     file_name: str = None
 ):
     """
-    Generate a boxplot that effectively communicates the dispersion of a numeric variable.
+    Generate a boxplot with a violin that effectively communicates the dispersion of a numeric variable.
 
     Why:
         Understanding the spread of a dataset is essential for identifying variability, outliers, and patterns 
@@ -59,6 +61,8 @@ def plot_dispersion_boxplot(
         Text annotation to show the source of the data in the chart.
     figsize : tuple, default=(8, 6)
         Width and height of the figure in inches.
+    std_outlier_multiplier : float, default=4.0
+        How many σ away from the mean to flag extremes.
     save_path : str or Path, optional
         Directory where the plot image will be saved. Created if it doesn't exist.
     file_name : str, optional
@@ -70,6 +74,7 @@ def plot_dispersion_boxplot(
         {
             'descriptive_stats': {
                 'n': int,           # see table below
+                'mean': float,
                 'std': float,
                 'var': float,
                 'min': float,
@@ -80,13 +85,17 @@ def plot_dispersion_boxplot(
                 'pct_10': float,
                 'pct_25': float,
                 'pct_75': float,
-                'pct_90': float
+                'pct_90': float,
+                'iqr': float,
+                'extreme_lower_count': int,
+                'extreme_upper_count': int
             },
             'chart_metadata': {
                 'title': str,
                 'ylabel': str,
                 'data_source': str or None,
-                'relative_path': str or None
+                'relative_path': str or None,
+                'std_outlier_multiplier': float
             }
         }
 
@@ -105,10 +114,42 @@ def plot_dispersion_boxplot(
     | `pct_25`  | 25th percentile (Q1): first quartile                 |
     | `pct_75`  | 75th percentile (Q3): third quartile                 |
     | `pct_90`  | 90th percentile: upper‐tail threshold                |
+    | `iqr`     | Interquartile range (IQR)  measures how “wide” the central half of your data is, ignoring the lowest 25 % and highest 25 %. |
     """
     validate_numeric_named_series(series)
     series_clean = series.copy().dropna()
     n = series_clean.size
+
+    # Early return on empty series
+    if n == 0:
+        empty_stats = {
+            'n': 0,
+            'mean': np.nan,
+            'std': np.nan,
+            'var': np.nan,
+            'min': np.nan,
+            'max': np.nan,
+            'range': np.nan,
+            'mad': np.nan,
+            'cv': np.nan,
+            'pct_10': np.nan,
+            'pct_25': np.nan,
+            'pct_75': np.nan,
+            'pct_90': np.nan,
+            'iqr': np.nan,
+            'extreme_lower_count': 0,
+            'extreme_upper_count': 0
+        }
+        return {
+            'descriptive_stats': empty_stats,
+            'chart_metadata': {
+                'title': title,
+                'ylabel': ylabel,
+                'data_source': data_source,
+                'relative_path': None,
+                'std_outlier_multiplier': std_outlier_multiplier
+            }
+        }
 
     # Compute dispersion statistics
     std = series_clean.std()
@@ -123,15 +164,79 @@ def plot_dispersion_boxplot(
     pct_25 = series_clean.quantile(0.25)
     pct_75 = series_clean.quantile(0.75)
     pct_90 = series_clean.quantile(0.90)
+    iqr = pct_75 - pct_25
 
-    # Prepare plot
+    # Extreme bounds
+    lower_bound = mean - std_outlier_multiplier * std
+    upper_bound = mean + std_outlier_multiplier * std
+    lower_outliers = series_clean[series_clean < lower_bound]
+    upper_outliers = series_clean[series_clean > upper_bound]
+    n_lower = lower_outliers.size
+    n_upper = upper_outliers.size
+
+    # Plot setup
     sns.set_palette("colorblind")
+    palette = sns.color_palette("colorblind")
     fig, ax = plt.subplots(figsize=figsize)
-    sns.boxplot(y=series_clean, ax=ax)
+
+    # 1) Thin violin silhouette (behind box)
+    parts = ax.violinplot(
+        series_clean,
+        vert=True,
+        positions=[0],
+        widths=0.8,
+        showmeans=False,
+        showmedians=False,
+        showextrema=False
+    )
+    for pc in parts['bodies']:
+        pc.set_facecolor(palette[0])
+        pc.set_edgecolor(palette[0])
+        pc.set_alpha(0.15)
+        pc.set_linewidth(0.8)
+        pc.set_zorder(1)
+
+    # 2) Boxplot on top
+    sns.boxplot(
+        y=series_clean,
+        ax=ax,
+        linewidth=1.2,
+        zorder=2,
+        color='white',  # keep box fill white for contrast
+        fliersize=0    # hide default fliers since we annotate extremes manually
+    )
     ax.set_title(title)
     ax.set_ylabel(ylabel)
 
-    # Stats textbox
+    # Mean dot (uses palette[1], free of other annotations)
+    ax.scatter(
+        [0], [mean],
+        color=palette[1],
+        marker='o',
+        s=60,
+        zorder=4,
+        label=f"Mean = {mean:.2f}"
+    )
+
+    # Annotate extreme‐bound lines
+    ax.axhline(lower_bound, color=palette[2], linestyle='--',
+               label=f"Lower {std_outlier_multiplier}σ = {lower_bound:.2f} ({n_lower})")
+    ax.axhline(upper_bound, color=palette[3], linestyle='--',
+               label=f"Upper {std_outlier_multiplier}σ = {upper_bound:.2f} ({n_upper})")
+
+    # Highlight extreme points
+    if n_lower:
+        ax.scatter([0]*n_lower, lower_outliers, color=palette[2], zorder=3)
+    if n_upper:
+        ax.scatter([0]*n_upper, upper_outliers, color=palette[3], zorder=3)
+
+    # Annotate 10th/90th percentile lines
+    ax.axhline(pct_10, color='purple', linestyle=':', label=f"10th pct = {pct_10:.2f}")
+    ax.axhline(pct_90, color='purple', linestyle=':', label=f"90th pct = {pct_90:.2f}")
+
+    ax.legend(loc="upper left", fontsize="small", frameon=False)
+
+    # Dispersion stats textbox
     text = (
         f"Std Dev = {std:.2f}\n"
         f"Variance = {var:.2f}\n"
@@ -139,8 +244,7 @@ def plot_dispersion_boxplot(
         f"Range = {range_val:.2f}\n"
         f"MAD = {mad:.2f}\n"
         f"CV = {cv:.2f}\n"
-        f"10th = {pct_10:.2f}, 25th = {pct_25:.2f}\n"
-        f"75th = {pct_75:.2f}, 90th = {pct_90:.2f}"
+        f"IQR = {iqr:.2f}"
     )
 
     ax.text(
@@ -177,6 +281,7 @@ def plot_dispersion_boxplot(
     return {
         'descriptive_stats': {
             'n': n,
+            'mean': mean,
             'std': std,
             'var': var,
             'min': min_val,
@@ -187,12 +292,16 @@ def plot_dispersion_boxplot(
             'pct_10': pct_10,
             'pct_25': pct_25,
             'pct_75': pct_75,
-            'pct_90': pct_90
+            'pct_90': pct_90,
+            'iqr': iqr,
+            'extreme_lower_count': n_lower,
+            'extreme_upper_count': n_upper
         },
         'chart_metadata': {
             'title': title,
             'ylabel': ylabel,
             'data_source': data_source,
-            'relative_path': relative_path
+            'relative_path': relative_path,
+            'std_outlier_multiplier': std_outlier_multiplier,
         }
     }

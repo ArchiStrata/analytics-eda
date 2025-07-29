@@ -172,3 +172,89 @@ def test_empty_series_returns_stats_and_defaults_dispersion():
     assert chart['ylabel'] == "Value"
     assert chart['data_source'] is None
     assert chart['relative_path'] is None
+
+def test_override_and_save_extreme_bounds(tmp_path):
+    # Construct a series with clear upper and lower extremes
+    data = [-10, 0, 1, 2, 100]
+    series = pd.Series(data, name="x")
+
+    # Override parameters: use a small multiplier to flag both tails
+    overrides = {
+        "std_outlier_multiplier": 0.3,
+        "title": "Custom Dispersion",
+        "ylabel": "Units",
+        "data_source": "UnitTest",
+        "file_name": "dispersion.png"
+    }
+
+    meta = plot_dispersion_boxplot(
+        series,
+        **overrides,
+        save_path=str(tmp_path)
+    )
+    desc  = meta["descriptive_stats"]
+    chart = meta["chart_metadata"]
+
+    # Basic counts
+    assert desc["n"] == len(data)
+    # With multiplier=0.3, lower bound ≈ mean−0.3σ flags 4 values, upper bound flags 1 value
+    assert desc["extreme_lower_count"] == 4
+    assert desc["extreme_upper_count"] == 1
+
+    # Chart metadata
+    assert chart["title"]       == overrides["title"]
+    assert chart["ylabel"]      == overrides["ylabel"]
+    assert chart["data_source"] == overrides["data_source"]
+    assert pytest.approx(chart["std_outlier_multiplier"]) == overrides["std_outlier_multiplier"]
+
+    # File saved correctly
+    saved = tmp_path / overrides["file_name"]
+    assert saved.exists() and saved.stat().st_size > 0
+    with open(saved, "rb") as f:
+        header = f.read(8)
+    assert header == b'\x89PNG\r\n\x1a\n'
+
+    # relative_path ends with the file name
+    assert os.path.basename(chart["relative_path"]) == overrides["file_name"]
+
+
+def test_violin_silhouette_and_save(tmp_path):
+    # Prepare a series with some outliers
+    rng = np.random.default_rng(0)
+    data = np.concatenate([rng.normal(loc=0, scale=1, size=100), [5, -5]])
+    series = pd.Series(data, name="x")
+
+    # Override parameters and enable saving
+    overrides = {
+        "std_outlier_multiplier": 2.0,
+        "title": "Violin Dispersion Test",
+        "ylabel": "Units",
+        "data_source": "UnitTest",
+        "file_name": "violin_dispersion.png"
+    }
+    meta = plot_dispersion_boxplot(
+        series,
+        **overrides,
+        save_path=str(tmp_path)
+    )
+    desc  = meta["descriptive_stats"]
+    chart = meta["chart_metadata"]
+
+    # Descriptive stats metadata
+    assert desc["n"] == len(series)
+    assert "iqr" in desc and isinstance(desc["iqr"], float)
+    assert desc["extreme_lower_count"] >= 1
+    assert desc["extreme_upper_count"] >= 1
+
+    # Chart metadata overrides
+    assert chart["title"]       == overrides["title"]
+    assert chart["ylabel"]      == overrides["ylabel"]
+    assert chart["data_source"] == overrides["data_source"]
+    assert pytest.approx(chart["std_outlier_multiplier"]) == overrides["std_outlier_multiplier"]
+
+    # Verify file was saved as a non-empty PNG
+    saved = tmp_path / overrides["file_name"]
+    assert saved.exists() and saved.stat().st_size > 0
+    with open(saved, "rb") as f:
+        header = f.read(8)
+    assert header == b'\x89PNG\r\n\x1a\n'
