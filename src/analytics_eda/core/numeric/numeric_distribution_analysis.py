@@ -100,9 +100,11 @@ def numeric_distribution_analysis(
     for dist in distribution_names:
         # start with a fresh copy of any user‐overrides
         ecdf_vs_cdf_over = (plot_distribution_ecdf_vs_cdf_overrides or {}).copy()
+        qq_fit_over = (plot_distribution_qq_fit_overrides or {}).copy()
 
         # force the distribution_name to the current dist
         ecdf_vs_cdf_over['distribution_name'] = dist
+        qq_fit_over['distribution_name'] = dist
 
         if 'title' in ecdf_vs_cdf_over and ecdf_vs_cdf_over['title']:
             ecdf_vs_cdf_over['title'] = f"{ecdf_vs_cdf_over['title']} ({dist})"
@@ -120,7 +122,7 @@ def numeric_distribution_analysis(
         qq_meta = call_plot_with_overrides(
             plot_distribution_qq_fit,
             series,
-            overrides=plot_distribution_qq_fit_overrides,
+            overrides=qq_fit_over,
             save_path=report_path,
         )
 

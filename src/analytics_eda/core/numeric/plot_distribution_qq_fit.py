@@ -129,7 +129,8 @@ def plot_distribution_qq_fit(
             'iqr_residual': np.nan,
             'max_abs_residual': np.nan,
             'skewness': np.nan,
-            'kurtosis': np.nan
+            'kurtosis': np.nan,
+            'min': np.nan
         }
         return {
             'descriptive_stats': empty_stats,
@@ -271,7 +272,8 @@ def plot_distribution_qq_fit(
             'iqr_residual': iqr_residual,
             'max_abs_residual': max_abs_residual,
             'skewness': skewness,
-            'kurtosis': kurtosis
+            'kurtosis': kurtosis,
+            'min': data.min() # return min to support selecting transforms
         },
         'tests': tests,
         'chart_metadata': {
