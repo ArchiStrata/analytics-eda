@@ -3,6 +3,8 @@ import pytest
 import numpy as np
 import pandas as pd
 from analytics_eda.core.numeric.numeric_distribution_analysis import numeric_distribution_analysis
+from analytics_eda.core.numeric.evaluate_transforms import evaluate_transforms
+
 
 def make_float_series(data, name="x"):
     # ensure float dtype and proper name
@@ -158,3 +160,49 @@ def test_numeric_distribution_analysis_basic_structure(
 
     # 5) By default no transforms
     assert "transforms" not in shape
+
+@pytest.mark.parametrize(
+    "dist_name, rng_func, support_adjust",
+    [
+        ("norm",    lambda r: r.normal(size=100),      lambda x: x),
+        ("lognorm", lambda r: r.lognormal(size=100),   lambda x: np.abs(x) + 1e-6),
+        ("gamma",   lambda r: r.gamma(shape=2.0, size=100), lambda x: np.abs(x) + 1e-6),
+        ("expon",   lambda r: r.exponential(size=100), lambda x: np.abs(x)),
+    ]
+)
+def test_numeric_distribution_analysis_with_transforms(dist_name, rng_func, support_adjust, tmp_path):
+    rng = np.random.default_rng(0)
+    raw = rng_func(rng)
+    raw = support_adjust(raw).astype(float)
+    series = pd.Series(raw, name=dist_name)
+
+    # Run analysis *with* transforms enabled
+    result = numeric_distribution_analysis(
+        series,
+        report_path=tmp_path,
+        evaluate_transforms_fn=evaluate_transforms
+    )
+    report = result["report"]
+    shape  = report["shape"]
+
+    # transforms key should now be present
+    assert "transforms" in shape
+
+    transforms = shape["transforms"]
+    # by design, select_transforms always includes at least these two
+    expected_base = {"yeo-johnson", "arcsinh"}
+    assert expected_base.issubset(transforms.keys())
+
+    # each transform entry should itself be a full analysis dict
+    # with at least the top‐level "report" key
+    for name, meta in transforms.items():
+        assert isinstance(meta, dict), f"{name!r} meta must be a dict"
+        assert "report" in meta,      f"{name!r} entry missing 'report'"
+
+        # check that we saved a histogram under each transform's folder
+        # i.e. <tmp_path>/<transform>/Histogram with Central Tendency.png
+        hist_path = tmp_path / name / "Histogram with Central Tendency.png"
+        assert hist_path.exists(), f"{hist_path} missing for transform {name!r}"
+        # and likewise a CDF plot for the fitted norm under that folder
+        cdf_path = tmp_path / name / f"ECDF vs. Theoretical CDF (norm).png"
+        assert cdf_path.exists(), f"{cdf_path} missing for transform {name!r}"
