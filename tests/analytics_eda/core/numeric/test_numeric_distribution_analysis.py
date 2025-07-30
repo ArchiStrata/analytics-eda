@@ -46,6 +46,11 @@ def test_norm_default_parameters_save(tmp_path):
     assert isinstance(desc["mode"], list)
     assert isinstance(desc["ci95"], tuple)
 
+    # Shape section contains all specified distributions
+    shape = result["report"]["shape"]
+    assert set(shape.keys()) == {"plot_distribution_ecdf_gap", "plot_distribution_shape", "norm", "lognorm", "gamma", "expon"}
+
+
 def test_norm_override_parameters_save(tmp_path):
     rng = np.random.default_rng(1)
     data = rng.normal(size=50)
@@ -87,3 +92,120 @@ def test_norm_override_parameters_save(tmp_path):
     assert isinstance(desc["median"], float)
     assert isinstance(desc["mode"], list)
     assert isinstance(desc["ci95"], tuple)
+
+def test_lognorm_default_parameters_save(tmp_path):
+    rng = np.random.default_rng(0)
+    data = rng.lognormal(size=100)
+    series = make_float_series(data)
+
+    result = numeric_distribution_analysis(series, report_path=tmp_path)
+
+    # Central‐tendency plot metadata
+    hist_meta = result["report"]["central_tendency"]["plot_central_tendency_histogram"]
+    chart = hist_meta["chart_metadata"]
+    desc  = hist_meta["descriptive_stats"]
+
+    # The default file_name comes from the default title
+    expected_file = "Histogram with Central Tendency.png"
+    saved_path = tmp_path / expected_file
+
+    # File is saved correctly
+    assert saved_path.exists()
+    assert os.path.basename(chart["relative_path"]) == expected_file
+
+    # Chart metadata defaults
+    assert chart["title"]      == "Histogram with Central Tendency"
+    assert chart["xlabel"]     == "Value"
+    assert chart["ylabel"]     == "Count"
+    assert chart["data_source"] is None
+    assert isinstance(chart["bins"], int)
+
+    # Descriptive stats present and correct length
+    assert desc["n"] == 100
+    assert isinstance(desc["mean"], float)
+    assert isinstance(desc["median"], float)
+    assert isinstance(desc["mode"], list)
+    assert isinstance(desc["ci95"], tuple)
+
+    # Shape section should include all the default distributions
+    shape = result["report"]["shape"]
+    assert set(shape.keys()) == {"plot_distribution_ecdf_gap", "plot_distribution_shape", "norm", "lognorm", "gamma", "expon"}
+
+def test_gamma_default_parameters_save(tmp_path):
+    rng = np.random.default_rng(0)
+    # generate gamma‐distributed data
+    data = rng.gamma(shape=2.0, scale=1.0, size=100)
+    series = make_float_series(data)
+
+    result = numeric_distribution_analysis(series, report_path=tmp_path)
+
+    # Central‐tendency plot metadata
+    hist_meta = result["report"]["central_tendency"]["plot_central_tendency_histogram"]
+    chart = hist_meta["chart_metadata"]
+    desc  = hist_meta["descriptive_stats"]
+
+    # The default file_name comes from the default title
+    expected_file = "Histogram with Central Tendency.png"
+    saved_path = tmp_path / expected_file
+
+    # File is saved correctly
+    assert saved_path.exists()
+    assert os.path.basename(chart["relative_path"]) == expected_file
+
+    # Chart metadata defaults
+    assert chart["title"]      == "Histogram with Central Tendency"
+    assert chart["xlabel"]     == "Value"
+    assert chart["ylabel"]     == "Count"
+    assert chart["data_source"] is None
+    assert isinstance(chart["bins"], int)
+
+    # Descriptive stats present
+    assert desc["n"] == 100
+    assert isinstance(desc["mean"], float)
+    assert isinstance(desc["median"], float)
+    assert isinstance(desc["mode"], list)
+    assert isinstance(desc["ci95"], tuple)
+
+    # Shape section should include all default distributions
+    shape = result["report"]["shape"]
+    assert set(shape.keys()) == {"plot_distribution_ecdf_gap", "plot_distribution_shape", "norm", "lognorm", "gamma", "expon"}
+
+
+def test_expon_default_parameters_save(tmp_path):
+    rng = np.random.default_rng(0)
+    # generate exponential‐distributed data
+    data = rng.exponential(size=100)
+    series = make_float_series(data)
+
+    result = numeric_distribution_analysis(series, report_path=tmp_path)
+
+    # Central‐tendency plot metadata
+    hist_meta = result["report"]["central_tendency"]["plot_central_tendency_histogram"]
+    chart = hist_meta["chart_metadata"]
+    desc  = hist_meta["descriptive_stats"]
+
+    # The default file_name comes from the default title
+    expected_file = "Histogram with Central Tendency.png"
+    saved_path = tmp_path / expected_file
+
+    # File is saved correctly
+    assert saved_path.exists()
+    assert os.path.basename(chart["relative_path"]) == expected_file
+
+    # Chart metadata defaults
+    assert chart["title"]      == "Histogram with Central Tendency"
+    assert chart["xlabel"]     == "Value"
+    assert chart["ylabel"]     == "Count"
+    assert chart["data_source"] is None
+    assert isinstance(chart["bins"], int)
+
+    # Descriptive stats present
+    assert desc["n"] == 100
+    assert isinstance(desc["mean"], float)
+    assert isinstance(desc["median"], float)
+    assert isinstance(desc["mode"], list)
+    assert isinstance(desc["ci95"], tuple)
+
+    # Shape section should include all default distributions
+    shape = result["report"]["shape"]
+    assert set(shape.keys()) == {"plot_distribution_ecdf_gap", "plot_distribution_shape", "norm", "lognorm", "gamma", "expon"}

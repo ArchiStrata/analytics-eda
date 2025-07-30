@@ -15,7 +15,7 @@ import logging
 import uuid
 from pathlib import Path
 import inspect
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Any, Callable, Sequence
 import pandas as pd
 
 from .plot_central_tendency_histogram import plot_central_tendency_histogram
@@ -33,6 +33,7 @@ def numeric_distribution_analysis(
     series: pd.Series,
     report_path: Path,
     report_log_id: str = str(uuid.uuid4()),
+    distribution_names: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon'),
     plot_central_tendency_histogram_overrides: Optional[Dict[str, Any]] = None,
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_ecdf_gap_overrides: Optional[Dict[str, Any]] = None,
@@ -79,44 +80,57 @@ def numeric_distribution_analysis(
     }
 
     # Shape
-    ecdf_gap_meta = call_plot_with_overrides(
+    shape = {}
+
+    shape['plot_distribution_ecdf_gap'] = call_plot_with_overrides(
         plot_distribution_ecdf_gap,
         series,
         overrides=plot_distribution_ecdf_gap_overrides,
         save_path=report_path,
     )
 
-    # ensure default distribution_name for ECDF vs CDF
-    ecdf_vs_cdf_over = plot_distribution_ecdf_vs_cdf_overrides.copy() if plot_distribution_ecdf_vs_cdf_overrides else {}
-    ecdf_vs_cdf_over.setdefault('distribution_name', 'norm')
-
-    ecdf_vs_cdf_meta = call_plot_with_overrides(
-        plot_distribution_ecdf_vs_cdf,
-        series,
-        overrides=ecdf_vs_cdf_over,
-        save_path=report_path,
-    )
-
-    distribution_shape_meta = call_plot_with_overrides(
+    shape['plot_distribution_shape'] = call_plot_with_overrides(
         plot_distribution_shape,
         series,
         overrides=plot_distribution_shape_overrides,
         save_path=report_path,
     )
 
-    qq_meta = call_plot_with_overrides(
-        plot_distribution_qq_normality,
-        series,
-        overrides=plot_distribution_qq_normality_overrides,
-        save_path=report_path,
-    )
+    # Shape by distribution
+    for dist in distribution_names:
+        # start with a fresh copy of any user‐overrides
+        ecdf_vs_cdf_over = (plot_distribution_ecdf_vs_cdf_overrides or {}).copy()
 
-    shape = {
-        'plot_distribution_ecdf_gap': ecdf_gap_meta,
-        'plot_distribution_ecdf_vs_cdf': ecdf_vs_cdf_meta,
-        'plot_distribution_shape': distribution_shape_meta,
-        'plot_distribution_qq_normality': qq_meta,
-    }
+        # force the distribution_name to the current dist
+        ecdf_vs_cdf_over['distribution_name'] = dist
+
+        if 'title' in ecdf_vs_cdf_over and ecdf_vs_cdf_over['title']:
+            ecdf_vs_cdf_over['title'] = f"{ecdf_vs_cdf_over['title']} ({dist})"
+        else:
+            ecdf_vs_cdf_over['title'] = f"ECDF vs. Theoretical CDF ({dist})"
+
+        ecdf_vs_cdf_meta = call_plot_with_overrides(
+            plot_distribution_ecdf_vs_cdf,
+            series,
+            overrides=ecdf_vs_cdf_over,
+            save_path=report_path,
+        )
+
+        # Q–Q, only for families you support (e.g. normal)
+        # TODO: support other distribution types
+        qq_meta = None
+        if dist == 'norm':
+            qq_meta = call_plot_with_overrides(
+                plot_distribution_qq_normality,
+                series,
+                overrides=plot_distribution_qq_normality_overrides,
+                save_path=report_path,
+            )
+
+        shape[dist] = {
+            'ecdf_vs_cdf': ecdf_vs_cdf_meta,
+            **({'qq_normality': qq_meta} if qq_meta else {})
+        }
 
     logger.info(
         "Completed numeric_distribution_analysis",
