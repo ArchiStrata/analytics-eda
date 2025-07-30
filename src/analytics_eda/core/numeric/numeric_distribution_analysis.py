@@ -23,7 +23,7 @@ from .plot_dispersion_boxplot       import plot_dispersion_boxplot
 from .plot_distribution_ecdf_gap    import plot_distribution_ecdf_gap
 from .plot_distribution_ecdf_vs_cdf import plot_distribution_ecdf_vs_cdf
 from .plot_distribution_shape         import plot_distribution_shape
-from .plot_distribution_qq_normality import plot_distribution_qq_normality
+from .plot_distribution_qq_fit import plot_distribution_qq_fit
 
 from .validate_numeric_named_series import validate_numeric_named_series
 
@@ -39,7 +39,7 @@ def numeric_distribution_analysis(
     plot_distribution_ecdf_gap_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_ecdf_vs_cdf_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_shape_overrides:      Optional[Dict[str, Any]] = None,
-    plot_distribution_qq_normality_overrides: Optional[Dict[str, Any]] = None,
+    plot_distribution_qq_fit_overrides: Optional[Dict[str, Any]] = None,
 ) -> dict:
     """
     Compute descriptive statistics, assess normality, visualize distribution,
@@ -96,7 +96,7 @@ def numeric_distribution_analysis(
         save_path=report_path,
     )
 
-    # Shape by distribution
+    # Analyze shape by distribution type
     for dist in distribution_names:
         # start with a fresh copy of any user‐overrides
         ecdf_vs_cdf_over = (plot_distribution_ecdf_vs_cdf_overrides or {}).copy()
@@ -116,20 +116,17 @@ def numeric_distribution_analysis(
             save_path=report_path,
         )
 
-        # Q–Q, only for families you support (e.g. normal)
-        # TODO: support other distribution types
-        qq_meta = None
-        if dist == 'norm':
-            qq_meta = call_plot_with_overrides(
-                plot_distribution_qq_normality,
-                series,
-                overrides=plot_distribution_qq_normality_overrides,
-                save_path=report_path,
-            )
+        # Q–Q fit
+        qq_meta = call_plot_with_overrides(
+            plot_distribution_qq_fit,
+            series,
+            overrides=plot_distribution_qq_fit_overrides,
+            save_path=report_path,
+        )
 
         shape[dist] = {
             'ecdf_vs_cdf': ecdf_vs_cdf_meta,
-            **({'qq_normality': qq_meta} if qq_meta else {})
+            'qq_fit': qq_meta
         }
 
     logger.info(

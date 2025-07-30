@@ -166,7 +166,9 @@ def plot_distribution_ecdf_vs_cdf(
         crit = ad.critical_values[idx]
         tests['anderson'] = {
             'statistic': float(ad.statistic),
-            'critical_value': float(crit),
+            'critical_value': float(crit),                     # the one matched to α
+            'critical_values': list(map(float, ad.critical_values)),  # full array
+            'significance_levels': list(map(float, ad.significance_level)),  # in percent
             'reject': bool(ad.statistic > crit)
         }
 
