@@ -32,7 +32,7 @@ def evaluate_transforms(
     plot_dispersion_boxplot_overrides=None,
     plot_distribution_ecdf_gap_overrides=None,
     plot_distribution_ecdf_vs_cdf_overrides=None,
-    plot_distribution_shape_overrides=None,
+    plot_distribution_density_overrides=None,
     plot_distribution_qq_fit_overrides=None,
 ) -> Dict[str, Any]:
     """
@@ -79,7 +79,7 @@ def evaluate_transforms(
             plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
             plot_distribution_ecdf_gap_overrides=plot_distribution_ecdf_gap_overrides,
             plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,
-            plot_distribution_shape_overrides=plot_distribution_shape_overrides,
+            plot_distribution_density_overrides=plot_distribution_density_overrides,
             plot_distribution_qq_fit_overrides=plot_distribution_qq_fit_overrides,
         )
 

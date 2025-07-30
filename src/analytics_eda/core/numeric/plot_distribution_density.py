@@ -25,9 +25,9 @@ from .validate_numeric_named_series import validate_numeric_named_series
 
 BinMethod = Literal['sturges', 'scott', 'freedman_diaconis', 'doane']
 
-def plot_distribution_shape(
+def plot_distribution_density(
     series: pd.Series,
-    title: str = "Distribution Shape: Histogram with KDE",
+    title: str = "Distribution Density: Histogram with KDE",
     xlabel: str = "Value",
     ylabel: str = "Density",
     data_source: str = None,

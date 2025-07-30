@@ -20,7 +20,7 @@ def test_norm_default_parameters_save(tmp_path):
     series = make_float_series(data)
 
     result = numeric_distribution_analysis(series, report_path=tmp_path)
-    hist_meta = result["report"]["central_tendency"]["plot_central_tendency_histogram"]
+    hist_meta = result["report"]["central_tendency"]["histogram"]
     chart = hist_meta["chart_metadata"]
     desc  = hist_meta["descriptive_stats"]
 
@@ -48,7 +48,10 @@ def test_norm_default_parameters_save(tmp_path):
 
     # Shape section contains all specified distributions
     shape = result["report"]["shape"]
-    assert set(shape.keys()) == {"plot_distribution_ecdf_gap", "plot_distribution_shape", "norm", "lognorm", "gamma", "expon"}
+    assert set(shape.keys()) == {"ecdf_gap", "density", "distribution_fits"}
+
+    distribution_fits = shape["distribution_fits"]
+    assert set(distribution_fits.keys()) == {"norm", "lognorm", "gamma", "expon"}
 
 
 def test_norm_override_parameters_save(tmp_path):
@@ -70,7 +73,7 @@ def test_norm_override_parameters_save(tmp_path):
         report_path=tmp_path,
         plot_central_tendency_histogram_overrides=overrides
     )
-    hist_meta = result["report"]["central_tendency"]["plot_central_tendency_histogram"]
+    hist_meta = result["report"]["central_tendency"]["histogram"]
     chart = hist_meta["chart_metadata"]
     desc  = hist_meta["descriptive_stats"]
 
@@ -101,7 +104,7 @@ def test_lognorm_default_parameters_save(tmp_path):
     result = numeric_distribution_analysis(series, report_path=tmp_path)
 
     # Central‐tendency plot metadata
-    hist_meta = result["report"]["central_tendency"]["plot_central_tendency_histogram"]
+    hist_meta = result["report"]["central_tendency"]["histogram"]
     chart = hist_meta["chart_metadata"]
     desc  = hist_meta["descriptive_stats"]
 
@@ -129,7 +132,10 @@ def test_lognorm_default_parameters_save(tmp_path):
 
     # Shape section should include all the default distributions
     shape = result["report"]["shape"]
-    assert set(shape.keys()) == {"plot_distribution_ecdf_gap", "plot_distribution_shape", "norm", "lognorm", "gamma", "expon"}
+    assert set(shape.keys()) == {"ecdf_gap", "density", "distribution_fits"}
+
+    distribution_fits = shape["distribution_fits"]
+    assert set(distribution_fits.keys()) == {"norm", "lognorm", "gamma", "expon"}
 
 def test_gamma_default_parameters_save(tmp_path):
     rng = np.random.default_rng(0)
@@ -140,7 +146,7 @@ def test_gamma_default_parameters_save(tmp_path):
     result = numeric_distribution_analysis(series, report_path=tmp_path)
 
     # Central‐tendency plot metadata
-    hist_meta = result["report"]["central_tendency"]["plot_central_tendency_histogram"]
+    hist_meta = result["report"]["central_tendency"]["histogram"]
     chart = hist_meta["chart_metadata"]
     desc  = hist_meta["descriptive_stats"]
 
@@ -166,9 +172,12 @@ def test_gamma_default_parameters_save(tmp_path):
     assert isinstance(desc["mode"], list)
     assert isinstance(desc["ci95"], tuple)
 
-    # Shape section should include all default distributions
+    # Shape section contains all specified distributions
     shape = result["report"]["shape"]
-    assert set(shape.keys()) == {"plot_distribution_ecdf_gap", "plot_distribution_shape", "norm", "lognorm", "gamma", "expon"}
+    assert set(shape.keys()) == {"ecdf_gap", "density", "distribution_fits"}
+
+    distribution_fits = shape["distribution_fits"]
+    assert set(distribution_fits.keys()) == {"norm", "lognorm", "gamma", "expon"}
 
 
 def test_expon_default_parameters_save(tmp_path):
@@ -180,7 +189,7 @@ def test_expon_default_parameters_save(tmp_path):
     result = numeric_distribution_analysis(series, report_path=tmp_path)
 
     # Central‐tendency plot metadata
-    hist_meta = result["report"]["central_tendency"]["plot_central_tendency_histogram"]
+    hist_meta = result["report"]["central_tendency"]["histogram"]
     chart = hist_meta["chart_metadata"]
     desc  = hist_meta["descriptive_stats"]
 
@@ -208,4 +217,7 @@ def test_expon_default_parameters_save(tmp_path):
 
     # Shape section should include all default distributions
     shape = result["report"]["shape"]
-    assert set(shape.keys()) == {"plot_distribution_ecdf_gap", "plot_distribution_shape", "norm", "lognorm", "gamma", "expon"}
+    assert set(shape.keys()) == {"ecdf_gap", "density", "distribution_fits"}
+
+    distribution_fits = shape["distribution_fits"]
+    assert set(distribution_fits.keys()) == {"norm", "lognorm", "gamma", "expon"}

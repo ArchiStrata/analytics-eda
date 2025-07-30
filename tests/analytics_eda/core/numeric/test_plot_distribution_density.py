@@ -3,13 +3,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from analytics_eda.core.numeric import plot_distribution_shape
+from analytics_eda.core.numeric import plot_distribution_density
 from analytics_eda.core.numeric.binning_rules import sturges_bins, scott_bins, freedman_diaconis_bins, doane_bins
 
 def test_default_parameters_no_save():
     # simple unimodal series
     series = pd.Series([1, 2, 2, 3, 4], name="test_series")
-    meta = plot_distribution_shape(series)
+    meta = plot_distribution_density(series)
     stats = meta['descriptive_stats']
     chart = meta['chart_metadata']
 
@@ -30,7 +30,7 @@ def test_default_parameters_no_save():
         }[p]))
 
     # Chart metadata defaults
-    assert chart['title'] == "Distribution Shape: Histogram with KDE"
+    assert chart['title'] == "Distribution Density: Histogram with KDE"
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "Density"
     assert chart['data_source'] is None
@@ -45,7 +45,7 @@ def test_override_and_save(tmp_path):
     custom_source = "UnitTest"
     filename      = "shape.png"
 
-    meta = plot_distribution_shape(
+    meta = plot_distribution_density(
         series,
         title=custom_title,
         xlabel=custom_xlabel,
@@ -78,7 +78,7 @@ def test_save_defaults_and_metadata(tmp_path):
     series = pd.Series(range(10), name="nums")
     filename = "out.png"
 
-    meta = plot_distribution_shape(
+    meta = plot_distribution_density(
         series,
         save_path=str(tmp_path),
         file_name=filename
@@ -86,7 +86,7 @@ def test_save_defaults_and_metadata(tmp_path):
     chart = meta['chart_metadata']
 
     # Defaults preserved
-    assert chart['title'] == "Distribution Shape: Histogram with KDE"
+    assert chart['title'] == "Distribution Density: Histogram with KDE"
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "Density"
     assert chart['data_source'] is None
@@ -100,11 +100,11 @@ def test_missing_series_name_raises_error():
     # Series without a name should trigger validation error
     unnamed = pd.Series([1,2,3])
     with pytest.raises(ValueError):
-        plot_distribution_shape(unnamed)
+        plot_distribution_density(unnamed)
 
 def test_empty_series_returns_stats_and_defaults():
     empty = pd.Series([], dtype=float, name="empty")
-    meta = plot_distribution_shape(empty)
+    meta = plot_distribution_density(empty)
     stats = meta['descriptive_stats']
     chart = meta['chart_metadata']
 
@@ -120,11 +120,11 @@ def test_empty_series_returns_stats_and_defaults():
     # Defaults for chart metadata
     assert chart['relative_path'] is None
     assert chart['data_source'] is None
-    assert chart['title'] == "Distribution Shape: Histogram with KDE"
+    assert chart['title'] == "Distribution Density: Histogram with KDE"
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "Density"
 
-def test_plot_distribution_kde_with_sturges_method(tmp_path):
+def test_plot_distribution_density_with_sturges_method(tmp_path):
     """
     Verify that `plot_distribution_kde` respects the 'sturges' bin_method by
     comparing its output to explicitly passing the computed Sturges bin count.
@@ -138,7 +138,7 @@ def test_plot_distribution_kde_with_sturges_method(tmp_path):
     expected_k = sturges_bins(series)
 
     # Call with bin_method='sturges'
-    meta1 = plot_distribution_shape(
+    meta1 = plot_distribution_density(
         series,
         bin_method='sturges',
         save_path=str(tmp_path),
@@ -146,7 +146,7 @@ def test_plot_distribution_kde_with_sturges_method(tmp_path):
     )
 
     # Call with explicit bins=expected_k
-    meta2 = plot_distribution_shape(
+    meta2 = plot_distribution_density(
         series,
         bins=expected_k,
         save_path=str(tmp_path),
@@ -171,7 +171,7 @@ def test_plot_distribution_kde_with_sturges_method(tmp_path):
     assert os.path.basename(meta1['chart_metadata']['relative_path']) == filename1
     assert os.path.basename(meta2['chart_metadata']['relative_path']) == filename2
 
-def test_plot_distribution_kde_with_scott_method(tmp_path):
+def test_plot_distribution_density__with_scott_method(tmp_path):
     """
     Verify that `plot_distribution_kde` respects the 'scott' bin_method by
     comparing its output against explicitly passing the computed Scott bin count.
@@ -185,7 +185,7 @@ def test_plot_distribution_kde_with_scott_method(tmp_path):
     expected_k = scott_bins(series)
 
     # Call with bin_method='scott'
-    meta_method = plot_distribution_shape(
+    meta_method = plot_distribution_density(
         series,
         bin_method='scott',
         save_path=str(tmp_path),
@@ -193,7 +193,7 @@ def test_plot_distribution_kde_with_scott_method(tmp_path):
     )
 
     # Call with explicit bins
-    meta_explicit = plot_distribution_shape(
+    meta_explicit = plot_distribution_density(
         series,
         bins=expected_k,
         save_path=str(tmp_path),
@@ -220,7 +220,7 @@ def test_plot_distribution_kde_with_scott_method(tmp_path):
     assert rel1 == filename_method
     assert rel2 == filename_explicit
 
-def test_plot_distribution_kde_with_fd_method(tmp_path):
+def test_plot_distribution_density_with_fd_method(tmp_path):
     """
     Verify that `plot_distribution_kde` respects the 'freedman_diaconis' bin_method by
     comparing its output against explicitly passing the computed FD bin count.
@@ -234,7 +234,7 @@ def test_plot_distribution_kde_with_fd_method(tmp_path):
     expected_k = freedman_diaconis_bins(series)
 
     # Call with bin_method='freedman_diaconis'
-    meta_method = plot_distribution_shape(
+    meta_method = plot_distribution_density(
         series,
         bin_method='freedman_diaconis',
         save_path=str(tmp_path),
@@ -242,7 +242,7 @@ def test_plot_distribution_kde_with_fd_method(tmp_path):
     )
 
     # Call with explicit bins
-    meta_explicit = plot_distribution_shape(
+    meta_explicit = plot_distribution_density(
         series,
         bins=expected_k,
         save_path=str(tmp_path),
@@ -269,7 +269,7 @@ def test_plot_distribution_kde_with_fd_method(tmp_path):
     assert rel1 == filename_method
     assert rel2 == filename_explicit
 
-def test_plot_distribution_kde_with_doane_method(tmp_path):
+def test_plot_distribution_density_with_doane_method(tmp_path):
     """
     Verify that `plot_distribution_kde` respects the 'doane' bin_method by
     comparing its output against explicitly passing the computed Doane bin count.
@@ -283,7 +283,7 @@ def test_plot_distribution_kde_with_doane_method(tmp_path):
     expected_k = doane_bins(series)
 
     # Call with bin_method='doane'
-    meta_method = plot_distribution_shape(
+    meta_method = plot_distribution_density(
         series,
         bin_method='doane',
         save_path=str(tmp_path),
@@ -291,7 +291,7 @@ def test_plot_distribution_kde_with_doane_method(tmp_path):
     )
 
     # Call with explicit bins
-    meta_explicit = plot_distribution_shape(
+    meta_explicit = plot_distribution_density(
         series,
         bins=expected_k,
         save_path=str(tmp_path),

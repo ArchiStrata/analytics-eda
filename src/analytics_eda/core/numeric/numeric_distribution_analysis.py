@@ -22,7 +22,7 @@ from .plot_central_tendency_histogram import plot_central_tendency_histogram
 from .plot_dispersion_boxplot       import plot_dispersion_boxplot
 from .plot_distribution_ecdf_gap    import plot_distribution_ecdf_gap
 from .plot_distribution_ecdf_vs_cdf import plot_distribution_ecdf_vs_cdf
-from .plot_distribution_shape         import plot_distribution_shape
+from .plot_distribution_density         import plot_distribution_density
 from .plot_distribution_qq_fit import plot_distribution_qq_fit
 
 from .validate_numeric_named_series import validate_numeric_named_series
@@ -38,7 +38,7 @@ def numeric_distribution_analysis(
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_ecdf_gap_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_ecdf_vs_cdf_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_shape_overrides:      Optional[Dict[str, Any]] = None,
+    plot_distribution_density_overrides:      Optional[Dict[str, Any]] = None,
     plot_distribution_qq_fit_overrides: Optional[Dict[str, Any]] = None,
 ) -> dict:
     """
@@ -64,7 +64,7 @@ def numeric_distribution_analysis(
     )
 
     central_tendency = {
-        'plot_central_tendency_histogram': plot_central_tendency_histogram_meta,
+        'histogram': plot_central_tendency_histogram_meta,
     }
 
     # Dispersion
@@ -76,27 +76,28 @@ def numeric_distribution_analysis(
     )
 
     dispersion = {
-        'plot_dispersion_boxplot': plot_dispersion_boxplot_meta,
+        'boxplot': plot_dispersion_boxplot_meta,
     }
 
     # Shape
     shape = {}
 
-    shape['plot_distribution_ecdf_gap'] = call_plot_with_overrides(
+    shape['ecdf_gap'] = call_plot_with_overrides(
         plot_distribution_ecdf_gap,
         series,
         overrides=plot_distribution_ecdf_gap_overrides,
         save_path=report_path,
     )
 
-    shape['plot_distribution_shape'] = call_plot_with_overrides(
-        plot_distribution_shape,
+    shape['density'] = call_plot_with_overrides(
+        plot_distribution_density,
         series,
-        overrides=plot_distribution_shape_overrides,
+        overrides=plot_distribution_density_overrides,
         save_path=report_path,
     )
 
     # Analyze shape by distribution type
+    distribution_fits = {}
     for dist in distribution_names:
         # start with a fresh copy of any user‐overrides
         ecdf_vs_cdf_over = (plot_distribution_ecdf_vs_cdf_overrides or {}).copy()
@@ -126,10 +127,13 @@ def numeric_distribution_analysis(
             save_path=report_path,
         )
 
-        shape[dist] = {
+        distribution_fits[dist] = {
             'ecdf_vs_cdf': ecdf_vs_cdf_meta,
-            'qq_fit': qq_meta
+            'qq': qq_meta
         }
+    
+    shape['distribution_fits'] = distribution_fits
+
 
     logger.info(
         "Completed numeric_distribution_analysis",
