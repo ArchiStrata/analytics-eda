@@ -34,20 +34,21 @@ def plot_distribution_ecdf_vs_cdf(
     file_name: str = None
 ) -> dict:
     """
-    Generate an ECDF vs. theoretical CDF plot and KS-test for any SciPy continuous distribution.
+    Generate an ECDF vs. theoretical CDF plot with goodness-of-fit tests (KS, AD, CvM).
 
     Why:
         Visualize the fit of data to a theoretical distribution by showing
-        the empirical CDF against the fitted CDF, and quantify with a KS statistic.
+        the empirical CDF against the fitted CDF, and quantify with formal tests.
 
     What:
-        - Validates data and distribution support.
-        - Fits distribution parameters (shape, loc, scale).
+        - Fits parameters for 'norm', 'lognorm', 'gamma', or 'expon'.
         - Computes ECDF and theoretical CDF.
-        - Runs a one-sample KS test with fitted parameters.
-        - Plots ECDF (step) and theoretical CDF (dashed).
-        - Annotates maximum vertical gap (D statistic) on the plot.
-        - Returns descriptive stats and chart metadata.
+        - Runs:
+            • Kolmogorov–Smirnov for all distributions.
+            • Anderson–Darling for 'norm' and 'expon'.
+            • Cramér–von Mises for all distributions.
+        - Annotates ECDF, CDF, max gap (KS D) and includes a stats textbox.
+        - Returns descriptive stats, test results, and chart metadata.
 
     Parameters
     ----------
@@ -72,11 +73,25 @@ def plot_distribution_ecdf_vs_cdf(
             'descriptive_stats': {
                 'n': int,
                 'distribution': str,
-                'params': tuple,
-                'ks_statistic': float,
-                'ks_p_value': float,
-                'ks_reject': bool
+                'params': tuple
             },
+            'tests': {
+               'ks': {
+                    'statistic': float,
+                    'p_value': float,
+                    'reject': bool
+               },
+               'anderson': {
+                    'statistic': float,
+                    'critical_value': float,
+                    'reject': bool
+               },
+               'cvm': {
+                    'statistic': float,
+                    'p_value': float,
+                    'reject': bool
+               }
+            }
             'chart_metadata': {
                 'title': str,
                 'xlabel': str,
@@ -96,20 +111,37 @@ def plot_distribution_ecdf_vs_cdf(
     data = series.copy().dropna().astype(float)
     n = data.size
 
-    # empty check
+    default_metadata = {
+            'descriptive_stats': {'n': n},
+            'tests': {},
+            'chart_metadata': {
+                'title': title or f"ECDF vs. Theoretical CDF ({distribution_name})",
+                'xlabel': xlabel,
+                'ylabel': ylabel,
+                'distribution': distribution_name,
+                'alpha': alpha,
+                'data_source': data_source,
+                'relative_path': None
+            }
+        }
+
+    # Empty series
     if n == 0:
-        return {'descriptive_stats': {'error': 'empty series'}}
+        return default_metadata
 
     # support checks
     mn = data.min()
     if distribution_name in ('lognorm', 'gamma') and mn <= 0:
-        return {'descriptive_stats': {'error': 'requires positive data'}}
+        default_metadata['descriptive_stats']['error'] = 'requires positive data'
+        return default_metadata
     if distribution_name == 'expon' and mn < 0:
-        return {'descriptive_stats': {'error': 'requires non-negative data'}}
+        default_metadata['descriptive_stats']['error'] = 'requires non-negative data'
+        return default_metadata
 
     # fit distribution
     dist = getattr(stats, distribution_name)
     params = dist.fit(data)
+    params_float = tuple(float(np.round(p, 3)) for p in params)
 
     # compute ECDF
     x = np.sort(data)
@@ -118,31 +150,51 @@ def plot_distribution_ecdf_vs_cdf(
     # theoretical CDF
     cdf_theo = dist.cdf(x, *params)
 
-    # KS test with fitted parameters
-    D, p = stats.kstest(data, distribution_name, args=params)
-    reject = bool(p < alpha)
+    # Tests
+    tests = {}
 
-    # plotting
+    # 1. KS
+    D, p_ks = stats.kstest(data, distribution_name, args=params)
+    tests['ks'] = {'statistic': float(D), 'p_value': float(p_ks), 'reject': bool(p_ks < alpha)}
+
+    # 2. Anderson–Darling (only norm & expon)
+    if distribution_name in ('norm','expon'):
+        ad = stats.anderson(data, dist=distribution_name)
+        # find critical for alpha
+        levels = np.array(ad.significance_level)/100.0
+        idx = np.argmin(np.abs(levels - alpha))
+        crit = ad.critical_values[idx]
+        tests['anderson'] = {
+            'statistic': float(ad.statistic),
+            'critical_value': float(crit),
+            'reject': bool(ad.statistic > crit)
+        }
+
+    # 3. Cramér–von Mises
+    cvm_res = stats.cramervonmises(data, distribution_name, args=params)
+    tests['cvm'] = {
+        'statistic': float(cvm_res.statistic),
+        'p_value': float(cvm_res.pvalue),
+        'reject': bool(cvm_res.pvalue < alpha)
+    }
+
+    # Plot
     sns.set_style("whitegrid")
     fig, ax = plt.subplots(figsize=figsize)
     ax.step(x, ecdf, where='post', label='Empirical CDF')
-    ax.plot(x, cdf_theo, linestyle='--', label=f"{distribution_name} CDF")
+    ax.plot(x, cdf_theo, '--', label=f"{distribution_name} CDF")
 
-    # annotate max vertical gap
-    idx = np.argmax(np.abs(ecdf - cdf_theo))
-    ax.vlines(
-        x[idx],
-        cdf_theo[idx],
-        ecdf[idx],
-        color='red',
-        lw=1.5,
-        label=f"D = {D:.3f}"
-    )
+    # Max gap line
+    idx_gap = np.argmax(np.abs(ecdf - cdf_theo))
+    ax.vlines(x[idx_gap], cdf_theo[idx_gap], ecdf[idx_gap], color='red', linewidth=1.5,
+              label=f"KS D = {D:.3f}")
 
-    # labels & title
-    ax.set_title(title)
+    # Title with distribution appended
+    full_title = (title + f" ({distribution_name})") if title else f"ECDF vs. Theoretical CDF ({distribution_name})"
+    ax.set_title(full_title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+    ax.legend()
 
     # data source
     if data_source:
@@ -150,24 +202,20 @@ def plot_distribution_ecdf_vs_cdf(
                  ha='left', va='bottom',
                  fontsize='small', color='gray')
 
-    # stats textbox
-    stats_text = (
-        f"n = {n}\n"
-        f"dist = {distribution_name}\n"
-        f"params = {tuple(np.round(params, 3))}\n"
-        f"KS stat = {D:.3f}\n"
-        f"p-value = {p:.3f}\n"
-        f"reject = {reject}"
-    )
-    ax.text(
-        0.98, 0.02, stats_text,
-        transform=ax.transAxes,
-        ha='right', va='bottom',
-        fontsize='small',
-        bbox=dict(boxstyle='round', facecolor='white', alpha=0.5)
-    )
-
-    ax.legend()
+    # Stats textbox
+    lines = [
+        f"n = {n}",
+        f"params = {params_float}",
+    ]
+    # Append each test summary
+    for name, info in tests.items():
+        if name == 'anderson':
+            lines.append(f"AD stat = {info['statistic']:.3f}, crit = {info['critical_value']:.3f}, reject = {info['reject']}")
+        else:
+            lines.append(f"{name.upper()} stat = {info['statistic']:.3f}, p = {info['p_value']:.3f}, reject = {info['reject']}")
+    stats_text = "\n".join(lines)
+    ax.text(0.98, 0.02, stats_text, transform=ax.transAxes, ha="right", va="bottom",
+            fontsize="small", bbox=dict(boxstyle="round", facecolor="white", alpha=0.5))
 
     # optional save
     rel_path = None
@@ -181,13 +229,11 @@ def plot_distribution_ecdf_vs_cdf(
         'descriptive_stats': {
             'n': n,
             'distribution': distribution_name,
-            'params': params,
-            'ks_statistic': D,
-            'ks_p_value': p,
-            'ks_reject': reject
+            'params': params_float
         },
+        'tests': tests,
         'chart_metadata': {
-            'title': title,
+            'title': full_title,
             'xlabel': xlabel,
             'ylabel': ylabel,
             'data_source': data_source,
