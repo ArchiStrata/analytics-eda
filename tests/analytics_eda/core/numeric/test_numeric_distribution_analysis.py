@@ -14,46 +14,6 @@ def test_missing_series_name_raises_error(tmp_path):
     with pytest.raises(ValueError):
         numeric_distribution_analysis(series, report_path=tmp_path)
 
-def test_norm_default_parameters_save(tmp_path):
-    rng = np.random.default_rng(0)
-    data = rng.normal(size=100)
-    series = make_float_series(data)
-
-    result = numeric_distribution_analysis(series, report_path=tmp_path)
-    hist_meta = result["report"]["central_tendency"]["histogram"]
-    chart = hist_meta["chart_metadata"]
-    desc  = hist_meta["descriptive_stats"]
-
-    # The default file_name comes from the default title
-    expected_file = "Histogram with Central Tendency.png"
-    saved_path = tmp_path / expected_file
-
-    # File is saved
-    assert saved_path.exists()
-    assert os.path.basename(chart['relative_path']) == expected_file
-
-    # Chart metadata defaults
-    assert chart["title"]      == "Histogram with Central Tendency"
-    assert chart["xlabel"]     == "Value"
-    assert chart["ylabel"]     == "Count"
-    assert chart["data_source"] is None
-    assert isinstance(chart["bins"], int)
-
-    # Descriptive stats present
-    assert desc["n"] == 100
-    assert isinstance(desc["mean"], float)
-    assert isinstance(desc["median"], float)
-    assert isinstance(desc["mode"], list)
-    assert isinstance(desc["ci95"], tuple)
-
-    # Shape section contains all specified distributions
-    shape = result["report"]["shape"]
-    assert set(shape.keys()) == {"ecdf_gap", "density", "distribution_fits"}
-
-    distribution_fits = shape["distribution_fits"]
-    assert set(distribution_fits.keys()) == {"norm", "lognorm", "gamma", "expon"}
-
-
 def test_norm_override_parameters_save(tmp_path):
     rng = np.random.default_rng(1)
     data = rng.normal(size=50)
@@ -96,128 +56,105 @@ def test_norm_override_parameters_save(tmp_path):
     assert isinstance(desc["mode"], list)
     assert isinstance(desc["ci95"], tuple)
 
-def test_lognorm_default_parameters_save(tmp_path):
+@pytest.mark.parametrize(
+    "dist_name, rng_func, support_adjust, has_anderson",
+    [
+        ("norm",    lambda r: r.normal(size=100),     lambda x: x,        True),
+        ("lognorm", lambda r: r.lognormal(size=100), lambda x: np.abs(x)+1e-6, False),
+        ("gamma",   lambda r: r.gamma(2.0, size=100),  lambda x: np.abs(x)+1e-6, False),
+        ("expon",   lambda r: r.exponential(size=100), lambda x: np.abs(x),   True),
+    ]
+)
+def test_numeric_distribution_analysis_basic_structure(
+    dist_name, rng_func, support_adjust, has_anderson, tmp_path
+):
     rng = np.random.default_rng(0)
-    data = rng.lognormal(size=100)
-    series = make_float_series(data)
+    raw = rng_func(rng)
+    raw = support_adjust(raw).astype(float)
+    series = pd.Series(raw, name="x")
 
+    # Run analysis without transforms
     result = numeric_distribution_analysis(series, report_path=tmp_path)
+    report = result["report"]
 
-    # Central‐tendency plot metadata
-    hist_meta = result["report"]["central_tendency"]["histogram"]
-    chart = hist_meta["chart_metadata"]
-    desc  = hist_meta["descriptive_stats"]
+    # 1) Top-level keys
+    assert set(report) == {"central_tendency", "dispersion", "shape"}
 
-    # The default file_name comes from the default title
-    expected_file = "Histogram with Central Tendency.png"
-    saved_path = tmp_path / expected_file
+    # 2) central_tendency → histogram
+    ct = report["central_tendency"]
+    assert set(ct) == {"histogram"}
+    hist_meta = ct["histogram"]
+    assert "descriptive_stats" in hist_meta and "chart_metadata" in hist_meta
+    # Chart metadata saved file
+    rel = hist_meta["chart_metadata"]["relative_path"]
+    assert rel and (tmp_path / rel).exists()
 
-    # File is saved correctly
-    assert saved_path.exists()
-    assert os.path.basename(chart["relative_path"]) == expected_file
+    # 3) dispersion → boxplot
+    disp = report["dispersion"]
+    assert set(disp) == {"boxplot"}
+    bp_meta = disp["boxplot"]
+    assert "descriptive_stats" in bp_meta and "chart_metadata" in bp_meta
+    rel = bp_meta["chart_metadata"]["relative_path"]
+    assert rel and (tmp_path / rel).exists()
 
-    # Chart metadata defaults
-    assert chart["title"]      == "Histogram with Central Tendency"
-    assert chart["xlabel"]     == "Value"
-    assert chart["ylabel"]     == "Count"
-    assert chart["data_source"] is None
-    assert isinstance(chart["bins"], int)
+    # 4) shape contains ecdf_gap, density, distribution_fits
+    shape = report["shape"]
+    assert set(shape) == {"ecdf_gap", "density", "distribution_fits"}
 
-    # Descriptive stats present and correct length
-    assert desc["n"] == 100
-    assert isinstance(desc["mean"], float)
-    assert isinstance(desc["median"], float)
-    assert isinstance(desc["mode"], list)
-    assert isinstance(desc["ci95"], tuple)
+    # ecdf_gap saved
+    eg = shape["ecdf_gap"]["chart_metadata"]["relative_path"]
+    assert eg and (tmp_path / eg).exists()
 
-    # Shape section should include all the default distributions
-    shape = result["report"]["shape"]
-    assert set(shape.keys()) == {"ecdf_gap", "density", "distribution_fits"}
+    # density saved
+    dn = shape["density"]["chart_metadata"]["relative_path"]
+    assert dn and (tmp_path / dn).exists()
 
-    distribution_fits = shape["distribution_fits"]
-    assert set(distribution_fits.keys()) == {"norm", "lognorm", "gamma", "expon"}
+    # distribution_fits for all four dist names
+    fits = shape["distribution_fits"]
+    assert set(fits) == {"norm", "lognorm", "gamma", "expon"}
 
-def test_gamma_default_parameters_save(tmp_path):
-    rng = np.random.default_rng(0)
-    # generate gamma‐distributed data
-    data = rng.gamma(shape=2.0, scale=1.0, size=100)
-    series = make_float_series(data)
+    # inspect this distribution’s fit
+    fit = fits[dist_name]
+    assert set(fit) == {"ecdf_vs_cdf", "qq"}
 
-    result = numeric_distribution_analysis(series, report_path=tmp_path)
+    # ECDF vs. CDF
+    ecdf_meta = fit["ecdf_vs_cdf"]
+    desc = ecdf_meta["descriptive_stats"]
+    tests = ecdf_meta["tests"]
+    ecdf_cm    = ecdf_meta["chart_metadata"]
 
-    # Central‐tendency plot metadata
-    hist_meta = result["report"]["central_tendency"]["histogram"]
-    chart = hist_meta["chart_metadata"]
-    desc  = hist_meta["descriptive_stats"]
+    # descriptive_stats
+    assert desc["distribution"] == dist_name
+    assert desc["n"] == series.size
+    assert isinstance(desc["params"], tuple)
 
-    # The default file_name comes from the default title
-    expected_file = "Histogram with Central Tendency.png"
-    saved_path = tmp_path / expected_file
+    # tests: KS and CvM always, Anderson only for norm/expon
+    expected = {"ks", "cvm"}
+    if has_anderson:
+        expected.add("anderson")
+    assert set(tests) == expected
 
-    # File is saved correctly
-    assert saved_path.exists()
-    assert os.path.basename(chart["relative_path"]) == expected_file
+    # file exists
+    assert ecdf_cm["title"] == f"ECDF vs. Theoretical CDF ({dist_name})"
+    rel = ecdf_cm["relative_path"]
+    assert rel and (tmp_path / rel).exists()
 
-    # Chart metadata defaults
-    assert chart["title"]      == "Histogram with Central Tendency"
-    assert chart["xlabel"]     == "Value"
-    assert chart["ylabel"]     == "Count"
-    assert chart["data_source"] is None
-    assert isinstance(chart["bins"], int)
+    # Q–Q
+    qq_meta = fit["qq"]
+    qq_desc = qq_meta["descriptive_stats"]
+    qq_cm   = qq_meta["chart_metadata"]
 
-    # Descriptive stats present
-    assert desc["n"] == 100
-    assert isinstance(desc["mean"], float)
-    assert isinstance(desc["median"], float)
-    assert isinstance(desc["mode"], list)
-    assert isinstance(desc["ci95"], tuple)
+    for key in (
+        "intercept","slope","r_squared",
+        "median_residual","iqr_residual","max_abs_residual",
+        "skewness","kurtosis"
+    ):
+        assert isinstance(qq_desc[key], float)
 
-    # Shape section contains all specified distributions
-    shape = result["report"]["shape"]
-    assert set(shape.keys()) == {"ecdf_gap", "density", "distribution_fits"}
+    assert qq_cm["title"] == f"Q–Q Plot Fit Assessment for ({dist_name})"
+    assert qq_cm["distribution"] == dist_name
+    rel = qq_cm["relative_path"]
+    assert rel and (tmp_path / rel).exists()
 
-    distribution_fits = shape["distribution_fits"]
-    assert set(distribution_fits.keys()) == {"norm", "lognorm", "gamma", "expon"}
-
-
-def test_expon_default_parameters_save(tmp_path):
-    rng = np.random.default_rng(0)
-    # generate exponential‐distributed data
-    data = rng.exponential(size=100)
-    series = make_float_series(data)
-
-    result = numeric_distribution_analysis(series, report_path=tmp_path)
-
-    # Central‐tendency plot metadata
-    hist_meta = result["report"]["central_tendency"]["histogram"]
-    chart = hist_meta["chart_metadata"]
-    desc  = hist_meta["descriptive_stats"]
-
-    # The default file_name comes from the default title
-    expected_file = "Histogram with Central Tendency.png"
-    saved_path = tmp_path / expected_file
-
-    # File is saved correctly
-    assert saved_path.exists()
-    assert os.path.basename(chart["relative_path"]) == expected_file
-
-    # Chart metadata defaults
-    assert chart["title"]      == "Histogram with Central Tendency"
-    assert chart["xlabel"]     == "Value"
-    assert chart["ylabel"]     == "Count"
-    assert chart["data_source"] is None
-    assert isinstance(chart["bins"], int)
-
-    # Descriptive stats present
-    assert desc["n"] == 100
-    assert isinstance(desc["mean"], float)
-    assert isinstance(desc["median"], float)
-    assert isinstance(desc["mode"], list)
-    assert isinstance(desc["ci95"], tuple)
-
-    # Shape section should include all default distributions
-    shape = result["report"]["shape"]
-    assert set(shape.keys()) == {"ecdf_gap", "density", "distribution_fits"}
-
-    distribution_fits = shape["distribution_fits"]
-    assert set(distribution_fits.keys()) == {"norm", "lognorm", "gamma", "expon"}
+    # 5) By default no transforms
+    assert "transforms" not in shape

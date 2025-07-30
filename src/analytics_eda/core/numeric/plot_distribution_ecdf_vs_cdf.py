@@ -56,7 +56,8 @@ def plot_distribution_ecdf_vs_cdf(
         Numeric data to analyze; NaNs dropped.
     distribution_name : Literal['norm', 'lognorm', 'gamma', 'expon']
         Name of SciPy distribution (e.g. 'norm', 'lognorm', 'gamma', 'expon').
-    title : str
+    title : str, default="ECDF vs. Theoretical CDF (distribution_name)"
+        Base title; the distribution name will be appended.
     xlabel : str
     ylabel : str
     data_source : str, optional
@@ -110,12 +111,13 @@ def plot_distribution_ecdf_vs_cdf(
     validate_numeric_named_series(series)
     data = series.copy().dropna().astype(float)
     n = data.size
+    full_title = f"{title} ({distribution_name})"
 
     default_metadata = {
             'descriptive_stats': {'n': n},
             'tests': {},
             'chart_metadata': {
-                'title': title or f"ECDF vs. Theoretical CDF ({distribution_name})",
+                'title': full_title,
                 'xlabel': xlabel,
                 'ylabel': ylabel,
                 'distribution': distribution_name,
@@ -191,8 +193,7 @@ def plot_distribution_ecdf_vs_cdf(
     ax.vlines(x[idx_gap], cdf_theo[idx_gap], ecdf[idx_gap], color='red', linewidth=1.5,
               label=f"KS D = {D:.3f}")
 
-    # Title with distribution appended
-    full_title = (title + f" ({distribution_name})") if title else f"ECDF vs. Theoretical CDF ({distribution_name})"
+    # Title
     ax.set_title(full_title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)

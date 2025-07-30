@@ -89,7 +89,8 @@ def plot_distribution_qq_fit(
                 'iqr_residual': float,
                 'max_abs_residual': float,
                 'skewness': float,
-                'kurtosis': float
+                'kurtosis': float,
+                'min': float
             },
             'tests': {
                 # only present if distribution_name == 'norm'

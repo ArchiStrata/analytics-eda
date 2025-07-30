@@ -34,6 +34,12 @@ def numeric_distribution_analysis(
     report_path: Path,
     report_log_id: str = str(uuid.uuid4()),
     distribution_names: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon'),
+    evaluate_transforms_fn: Optional[
+        Callable[
+            [pd.Series, dict, dict, Path],
+            dict
+        ]
+    ] = None,
     plot_central_tendency_histogram_overrides: Optional[Dict[str, Any]] = None,
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_ecdf_gap_overrides: Optional[Dict[str, Any]] = None,
@@ -43,7 +49,11 @@ def numeric_distribution_analysis(
 ) -> dict:
     """
     Compute descriptive statistics, assess normality, visualize distribution,
-    and determine if transformation is needed before fitting alternatives. Drops NAs.
+    and (optionally) evaluate a suite of variance-stabilizing transforms.
+    
+    Why:
+        Gives a complete univariate EDA: central tendency, dispersion, shape,
+        plus—if requested— evaluates transforms to improve normality.
     """
     validate_numeric_named_series(series)
 
@@ -96,21 +106,13 @@ def numeric_distribution_analysis(
         save_path=report_path,
     )
 
-    # Analyze shape by distribution type
+    # Fit each theoretical distribution
     distribution_fits = {}
     for dist in distribution_names:
-        # start with a fresh copy of any user‐overrides
-        ecdf_vs_cdf_over = (plot_distribution_ecdf_vs_cdf_overrides or {}).copy()
-        qq_fit_over = (plot_distribution_qq_fit_overrides or {}).copy()
-
         # force the distribution_name to the current dist
+        ecdf_vs_cdf_over = (plot_distribution_ecdf_vs_cdf_overrides or {}).copy()
         ecdf_vs_cdf_over['distribution_name'] = dist
-        qq_fit_over['distribution_name'] = dist
-
-        if 'title' in ecdf_vs_cdf_over and ecdf_vs_cdf_over['title']:
-            ecdf_vs_cdf_over['title'] = f"{ecdf_vs_cdf_over['title']} ({dist})"
-        else:
-            ecdf_vs_cdf_over['title'] = f"ECDF vs. Theoretical CDF ({dist})"
+        ecdf_vs_cdf_over['file_name'] = f"ECDF vs. Theoretical CDF ({dist}).png"
 
         ecdf_vs_cdf_meta = call_plot_with_overrides(
             plot_distribution_ecdf_vs_cdf,
@@ -120,6 +122,10 @@ def numeric_distribution_analysis(
         )
 
         # Q–Q fit
+        qq_fit_over = (plot_distribution_qq_fit_overrides or {}).copy()
+        qq_fit_over['distribution_name'] = dist
+        qq_fit_over['file_name'] = f"Q–Q Plot Fit Assessment for ({dist}).png"
+
         qq_meta = call_plot_with_overrides(
             plot_distribution_qq_fit,
             series,
@@ -134,6 +140,27 @@ def numeric_distribution_analysis(
     
     shape['distribution_fits'] = distribution_fits
 
+    # optionally evaluate transforms on the 'norm' residuals
+    if evaluate_transforms_fn and 'norm' in distribution_fits:
+        norm_qq = distribution_fits['norm']['qq']
+        stats   = norm_qq['descriptive_stats']
+        tests   = norm_qq.get('tests', {})
+        transforms_meta = evaluate_transforms_fn(
+            series=series,
+            statistics=stats,
+            normality_tests=tests,
+            report_path=report_path,
+            report_log_id=report_log_id,
+            distribution_names=distribution_names,
+            plot_central_tendency_histogram_overrides=plot_central_tendency_histogram_overrides,
+            plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
+            plot_distribution_ecdf_gap_overrides=plot_distribution_ecdf_gap_overrides,
+            plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,
+            plot_distribution_density_overrides=plot_distribution_density_overrides,
+            plot_distribution_qq_fit_overrides=plot_distribution_qq_fit_overrides,
+        )
+        # expose only the inner mapping of name → analysis
+        shape['transforms'] = transforms_meta.get('transforms', {})
 
     logger.info(
         "Completed numeric_distribution_analysis",
