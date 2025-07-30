@@ -30,7 +30,9 @@ def plot_dispersion_boxplot(
     file_name: str = None
 ):
     """
-    Generate a boxplot with a violin that effectively communicates the dispersion of a numeric variable.
+    Generate a notched boxplot (with violin silhouette) that effectively communicates
+    the dispersion of a numeric variable, flagging extreme values and returning
+    key statistics including a 95% CI around the median.
 
     Why:
         Understanding the spread of a dataset is essential for identifying variability, outliers, and patterns 
@@ -87,6 +89,7 @@ def plot_dispersion_boxplot(
                 'pct_75': float,
                 'pct_90': float,
                 'iqr': float,
+                'median_ci': tuple(float, float),
                 'extreme_lower_count': int,
                 'extreme_upper_count': int
             },
@@ -138,7 +141,8 @@ def plot_dispersion_boxplot(
             'pct_90': np.nan,
             'iqr': np.nan,
             'extreme_lower_count': 0,
-            'extreme_upper_count': 0
+            'extreme_upper_count': 0,
+            'median_ci': (np.nan, np.nan)
         }
         return {
             'descriptive_stats': empty_stats,
@@ -165,6 +169,18 @@ def plot_dispersion_boxplot(
     pct_75 = series_clean.quantile(0.75)
     pct_90 = series_clean.quantile(0.90)
     iqr = pct_75 - pct_25
+
+    # median & its 95% CI (approx via binomial quantile)
+    # For median p=0.5, z=1.96, se=0.5/sqrt(n)
+    se_med = 0.5 / np.sqrt(n)
+    delta = 1.96 * se_med
+    lower_q = max(0, (0.5 - delta) * 100)
+    upper_q = min(100, (0.5 + delta) * 100)
+    med = float(series_clean.median())
+    med_ci = (
+        float(series_clean.quantile(lower_q/100.0)),
+        float(series_clean.quantile(upper_q/100.0))
+    )
 
     # Extreme bounds
     lower_bound = mean - std_outlier_multiplier * std
@@ -196,15 +212,21 @@ def plot_dispersion_boxplot(
         pc.set_linewidth(0.8)
         pc.set_zorder(1)
 
-    # 2) Boxplot on top
-    sns.boxplot(
-        y=series_clean,
-        ax=ax,
-        linewidth=1.2,
-        zorder=2,
-        color='white',  # keep box fill white for contrast
-        fliersize=0    # hide default fliers since we annotate extremes manually
+    # 2) notched boxplot behind
+    ax.boxplot(
+        series_clean,
+        positions=[0],
+        widths=0.4,
+        notch=True,
+        patch_artist=True,
+        showcaps=True,
+        boxprops=dict(facecolor='white', linewidth=1.2),
+        whiskerprops=dict(linewidth=1),
+        medianprops=dict(linewidth=1.5, color=palette[1]),
+        flierprops=dict(marker='o', markersize=0),  # hide default fliers
+        zorder=2
     )
+
     ax.set_title(title)
     ax.set_ylabel(ylabel)
 
@@ -244,7 +266,9 @@ def plot_dispersion_boxplot(
         f"Range = {range_val:.2f}\n"
         f"MAD = {mad:.2f}\n"
         f"CV = {cv:.2f}\n"
-        f"IQR = {iqr:.2f}"
+        f"IQR = {iqr:.2f}\n"
+        f"Median = {med:.2f}\n"
+        f"Median 95% CI = ({med_ci[0]:.2f}, {med_ci[1]:.2f})"
     )
 
     ax.text(
@@ -294,6 +318,7 @@ def plot_dispersion_boxplot(
             'pct_75': pct_75,
             'pct_90': pct_90,
             'iqr': iqr,
+            'median_ci': med_ci,
             'extreme_lower_count': n_lower,
             'extreme_upper_count': n_upper
         },
