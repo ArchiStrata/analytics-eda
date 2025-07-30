@@ -48,12 +48,36 @@ def numeric_distribution_analysis(
     plot_distribution_qq_fit_overrides: Optional[Dict[str, Any]] = None,
 ) -> dict:
     """
-    Compute descriptive statistics, assess normality, visualize distribution,
-    and (optionally) evaluate a suite of variance-stabilizing transforms.
-    
+    Compute descriptive statistics, assess fit to common distributions, visualize
+    distribution shape, and (optionally) evaluate variance-stabilizing transforms.
+
     Why:
-        Gives a complete univariate EDA: central tendency, dispersion, shape,
-        plus—if requested— evaluates transforms to improve normality.
+        Provides a one-stop univariate EDA: 
+        - central tendency and dispersion,
+        - shape & tail characteristics,
+        - formal goodness-of-fit to theoretical distributions,
+        and—if requested—transform suggestions to improve normality.
+
+    What:
+        • Central-tendency histogram via `plot_central_tendency_histogram`
+        • Dispersion boxplot via `plot_dispersion_boxplot`
+        • ECDF gap analysis via `plot_distribution_ecdf_gap`
+        • Density (histogram + KDE) via `plot_distribution_density`
+        • ECDF vs. theoretical CDF for each in `distribution_names` via `plot_distribution_ecdf_vs_cdf`
+        • Q–Q plot vs. each distribution via `plot_distribution_qq_fit`
+        • Optional transform evaluation via `evaluate_transforms_fn`
+
+    How:
+        1. Validate and clean data (`validate_numeric_named_series`).
+        2. Call each `plot_*` function with `call_plot_with_overrides`, saving results under `report_path`.
+        3. Loop over `distribution_names`, fitting and plotting:
+           - ECDF vs. CDF (`plot_distribution_ecdf_vs_cdf`)
+           - Q–Q fit (`plot_distribution_qq_fit`)
+        4. If `evaluate_transforms_fn` is provided, extract the 'norm' Q–Q stats/tests
+           and invoke it to generate per-transform analyses.
+        5. Return a nested dict with three top‐level keys:
+           `'central_tendency'`, `'dispersion'`, and `'shape'`, each containing
+           plot metadata and descriptive statistics.
     """
     validate_numeric_named_series(series)
 
