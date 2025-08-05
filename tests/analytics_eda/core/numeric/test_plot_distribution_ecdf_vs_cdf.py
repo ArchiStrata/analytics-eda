@@ -24,7 +24,7 @@ def test_empty_series_returns_default_metadata():
     # chart metadata defaults
     cm = res["chart_metadata"]
     assert cm["distribution"] == "norm"
-    assert cm["relative_path"] is None
+    assert cm["file_name"] is None
 
 @pytest.mark.parametrize("dist", ["lognorm", "gamma"])
 def test_requires_positive_data_error(dist):
@@ -75,15 +75,15 @@ def test_all_distributions_and_save(dist_name, rng_func, has_ad, tmp_path):
     assert saved.exists() and saved.stat().st_size > 0
     # PNG signature
     assert saved.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
-    assert os.path.basename(cm["relative_path"]) == file_name
+    assert os.path.basename(cm["file_name"]) == file_name
 
     # chart metadata defaults
     assert cm["distribution"] == dist_name
     assert cm["alpha"] == 0.05
-    assert cm["title"] == f"ECDF vs. Theoretical CDF ({dist_name})"
+    assert cm["title"] == f"ECDF vs. Theoretical CDF of {series.name} ({dist_name})"
     assert cm["xlabel"] == "Value"
     assert cm["ylabel"] == "CDF"
-    assert os.path.basename(cm['relative_path']) == file_name
+    assert os.path.basename(cm['file_name']) == file_name
 
     # descriptive_stats
     assert ds["n"] == 150

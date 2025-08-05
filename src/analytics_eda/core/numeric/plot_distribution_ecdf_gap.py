@@ -18,10 +18,14 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from .validate_numeric_named_series import validate_numeric_named_series
+from ..utils.build_chart_title import build_chart_title
 
 def plot_distribution_ecdf_gap(
     series: pd.Series,
-    title: str = "ECDF with Gap Analysis",
+    title_template: str = "ECDF Gap Analysis of {name}{modifiers}",
+    name: str = None,
+    filter_desc: str = None,
+    transform_desc: str = None,
     xlabel: str = "Value",
     ylabel: str = "ECDF",
     data_source: str = None,
@@ -102,7 +106,7 @@ def plot_distribution_ecdf_gap(
                 'ylabel': str,
                 'data_source': str or None,
                 'threshold': float or None,
-                'relative_path': str or None
+                'file_name': str or None
             }
         }
 
@@ -123,6 +127,13 @@ def plot_distribution_ecdf_gap(
     n = clean.size
     unique_vals = clean.unique()
     n_unique = unique_vals.size
+
+    title = build_chart_title(
+                    name=name, series=series,
+                    filter_desc=filter_desc,
+                    transform_desc=transform_desc,
+                    title_template=title_template
+                )
 
     # Compute gaps
     if n_unique >= 2:
@@ -200,12 +211,10 @@ def plot_distribution_ecdf_gap(
     ax.legend()
 
     # Optional save
-    rel_path = None
     if save_path and file_name:
         os.makedirs(save_path, exist_ok=True)
         abs_path = os.path.join(save_path, file_name)
         fig.savefig(abs_path, bbox_inches='tight')
-        rel_path = os.path.relpath(abs_path)
 
     return {
         'descriptive_stats': {
@@ -227,6 +236,6 @@ def plot_distribution_ecdf_gap(
             'ylabel': ylabel,
             'data_source': data_source,
             'threshold': threshold,
-            'relative_path': rel_path
+            'file_name': file_name
         }
     }

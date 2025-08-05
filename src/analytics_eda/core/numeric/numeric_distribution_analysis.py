@@ -90,10 +90,16 @@ def numeric_distribution_analysis(
     )
 
     # Central Tendency
+    central_tendency_hist_over = (plot_central_tendency_histogram_overrides or {}).copy()
+    if not central_tendency_hist_over.get('file_name'):
+        central_tendency_hist_over['file_name'] = (
+            f"Distribution of {series.name} (overview): Central Tendency.png"
+    )
+
     plot_central_tendency_histogram_meta = call_plot_with_overrides(
         plot_central_tendency_histogram,
         series,
-        overrides=plot_central_tendency_histogram_overrides,
+        overrides=central_tendency_hist_over,
         save_path=report_path,
     )
 
@@ -102,10 +108,16 @@ def numeric_distribution_analysis(
     }
 
     # Dispersion
+    dispersion_over = (plot_dispersion_boxplot_overrides or {}).copy()
+    if not dispersion_over.get('file_name'):
+        dispersion_over['file_name'] = (
+            f"Dispersion of {series.name} (overview) (IQR & Outliers).png"
+    )
+
     plot_dispersion_boxplot_meta = call_plot_with_overrides(
         plot_dispersion_boxplot,
         series,
-        overrides=plot_dispersion_boxplot_overrides,
+        overrides=dispersion_over,
         save_path=report_path,
     )
 
@@ -116,17 +128,37 @@ def numeric_distribution_analysis(
     # Shape
     shape = {}
 
+    # ECDF gap plot
+    ecdf_gap_over = (plot_distribution_ecdf_gap_overrides or {}).copy()
+
+    # only set a default file_name if none was provided
+    if not ecdf_gap_over.get('file_name'):
+        ecdf_gap_over['file_name'] = (
+            f"ECDF Gap Analysis of {series.name}.png"
+        )
+
+    # call the plotting helper with the overrides dict
     shape['ecdf_gap'] = call_plot_with_overrides(
         plot_distribution_ecdf_gap,
         series,
-        overrides=plot_distribution_ecdf_gap_overrides,
+        overrides=ecdf_gap_over,
         save_path=report_path,
     )
 
+    # prepare overrides for density plot
+    density_over = (plot_distribution_density_overrides or {}).copy()
+
+    # only set a default file_name if none was provided
+    if not density_over.get('file_name'):
+        density_over['file_name'] = (
+            f"Distribution Density of {series.name}.png"
+        )
+
+    # call the plotting helper with the overrides dict
     shape['density'] = call_plot_with_overrides(
         plot_distribution_density,
         series,
-        overrides=plot_distribution_density_overrides,
+        overrides=density_over,
         save_path=report_path,
     )
 
@@ -242,12 +274,7 @@ def call_plot_with_overrides(
             raise KeyError(f"'{key}' is not a valid parameter for {plot_func.__name__}")
         plot_kwargs[key] = val
 
-    # 5. default file_name from title (if applicable)
-    title = plot_kwargs.get("title")
-    if file_name is None:
-        file_name = f"{title}.png" if title else None
-
-    # 6. call the plot function
+    # 5. call the plot function
     return plot_func(
         series,
         **plot_kwargs,

@@ -18,12 +18,17 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy import stats
 
+from ..utils.build_chart_title import build_chart_title
 from .validate_numeric_named_series import validate_numeric_named_series
+
 
 def plot_central_tendency_histogram(
     series: pd.Series,
     bins: int = None,
-    title: str = "Histogram with Central Tendency",
+    title_template: str = "Distribution of {name}{modifiers}: Central Tendency",
+    name: str = None,
+    filter_desc: str = None,
+    transform_desc: str = None,
     xlabel: str = "Value",
     ylabel: str = "Count",
     data_source: str = None,
@@ -55,8 +60,12 @@ def plot_central_tendency_histogram(
         Numeric dataset to plot. Missing values will be dropped.
     bins : int or sequence, optional
         Number of histogram bins or explicit bin edges. Defaults to Square-Root Choice ceil(sqrt(n)).
-    title : str, default="Histogram with Central Tendency"
-        Title displayed at the top of the chart.
+    title_template: A Python format-string with placeholders:
+      - {name}:        series name or label
+      - {modifiers}:   combined filter/transform text, empty if none
+    name:                Optional override for series.name
+    filter_desc:         e.g. "filtered by New York"
+    transform_desc:      e.g. "log-transformed"
     xlabel : str, default="Value"
         Label for the x-axis.
     ylabel : str, default="Count"
@@ -87,7 +96,7 @@ def plot_central_tendency_histogram(
                 'ylabel': str,
                 'data_source': str or None,
                 'bins': int or sequence,
-                'relative_path': str or None     # Relative path to saved image (if any)
+                'file_name': str or None
             }
         }
 
@@ -112,9 +121,20 @@ def plot_central_tendency_histogram(
     # Compute descriptive statistics
     mean = series_clean.mean()
     median = series_clean.median()
+
+    # TODO: enhance mode
     mode_vals = series_clean.mode().tolist()
     sem = stats.sem(series_clean)
     ci_low, ci_high = stats.t.interval(0.95, n - 1, loc=mean, scale=sem)
+
+    # Build chart title
+    title = build_chart_title(
+        name=name,
+        series=series,
+        filter_desc=filter_desc,
+        transform_desc=transform_desc,
+        title_template=title_template
+    )
 
     # Prepare plot
     sns.set_palette("colorblind")
@@ -155,14 +175,12 @@ def plot_central_tendency_histogram(
     ax.legend()
 
     # Optional save
-    relative_path = None
     if save_path and file_name:
         os.makedirs(save_path, exist_ok=True)
         abs_path = os.path.join(save_path, file_name)
         fig.savefig(abs_path, bbox_inches='tight')
-        relative_path = os.path.relpath(abs_path)
 
-    # Return split metadata
+    # Return metadata
     return {
         'descriptive_stats': {
             'n': n,
@@ -177,6 +195,6 @@ def plot_central_tendency_histogram(
             'ylabel': ylabel,
             'data_source': data_source,
             'bins': bins,
-            'relative_path': relative_path
+            'file_name': file_name
         }
     }

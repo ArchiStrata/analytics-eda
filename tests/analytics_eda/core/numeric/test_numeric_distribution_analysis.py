@@ -22,7 +22,8 @@ def test_norm_override_parameters_save(tmp_path):
     series = make_float_series(data)
 
     overrides = {
-        "title": "Custom Hist",
+        "name": "Custom",
+        "filter_desc": "filtered by New York",
         "xlabel": "Custom X",
         "ylabel": "Custom Y",
         "data_source": "UnitTest",
@@ -42,10 +43,10 @@ def test_norm_override_parameters_save(tmp_path):
     # File is saved under override name
     saved_path = tmp_path / "custom_hist.png"
     assert saved_path.exists()
-    assert os.path.basename(chart['relative_path']) == "custom_hist.png"
+    assert chart['file_name'] == "custom_hist.png"
 
     # Chart metadata matches overrides
-    assert chart["title"]       == overrides["title"]
+    assert chart["title"]       == "Distribution of Custom (filtered by New York): Central Tendency"
     assert chart["xlabel"]      == overrides["xlabel"]
     assert chart["ylabel"]      == overrides["ylabel"]
     assert chart["data_source"] == overrides["data_source"]
@@ -88,7 +89,7 @@ def test_numeric_distribution_analysis_basic_structure(
     hist_meta = ct["histogram"]
     assert "descriptive_stats" in hist_meta and "chart_metadata" in hist_meta
     # Chart metadata saved file
-    rel = hist_meta["chart_metadata"]["relative_path"]
+    rel = hist_meta["chart_metadata"]["file_name"]
     assert rel and (tmp_path / rel).exists()
 
     # 3) dispersion → boxplot
@@ -96,7 +97,7 @@ def test_numeric_distribution_analysis_basic_structure(
     assert set(disp) == {"boxplot"}
     bp_meta = disp["boxplot"]
     assert "descriptive_stats" in bp_meta and "chart_metadata" in bp_meta
-    rel = bp_meta["chart_metadata"]["relative_path"]
+    rel = bp_meta["chart_metadata"]["file_name"]
     assert rel and (tmp_path / rel).exists()
 
     # 4) shape contains ecdf_gap, density, distribution_fits
@@ -104,11 +105,11 @@ def test_numeric_distribution_analysis_basic_structure(
     assert set(shape) == {"ecdf_gap", "density", "distribution_fits"}
 
     # ecdf_gap saved
-    eg = shape["ecdf_gap"]["chart_metadata"]["relative_path"]
+    eg = shape["ecdf_gap"]["chart_metadata"]["file_name"]
     assert eg and (tmp_path / eg).exists()
 
     # density saved
-    dn = shape["density"]["chart_metadata"]["relative_path"]
+    dn = shape["density"]["chart_metadata"]["file_name"]
     assert dn and (tmp_path / dn).exists()
 
     # distribution_fits for all four dist names
@@ -137,8 +138,8 @@ def test_numeric_distribution_analysis_basic_structure(
     assert set(tests) == expected
 
     # file exists
-    assert ecdf_cm["title"] == f"ECDF vs. Theoretical CDF ({dist_name})"
-    rel = ecdf_cm["relative_path"]
+    assert ecdf_cm["title"] == f"ECDF vs. Theoretical CDF of {series.name} ({dist_name})"
+    rel = ecdf_cm["file_name"]
     assert rel and (tmp_path / rel).exists()
 
     # Q–Q
@@ -153,9 +154,9 @@ def test_numeric_distribution_analysis_basic_structure(
     ):
         assert isinstance(qq_desc[key], float)
 
-    assert qq_cm["title"] == f"Q–Q Plot Fit Assessment for ({dist_name})"
+    assert qq_cm["title"] == f"Q–Q Plot Fit Assessment of {series.name} ({dist_name})"
     assert qq_cm["distribution"] == dist_name
-    rel = qq_cm["relative_path"]
+    rel = qq_cm["file_name"]
     assert rel and (tmp_path / rel).exists()
 
     # 5) By default no transforms
@@ -194,15 +195,22 @@ def test_numeric_distribution_analysis_with_transforms(dist_name, rng_func, supp
     assert expected_base.issubset(transforms.keys())
 
     # each transform entry should itself be a full analysis dict
-    # with at least the top‐level "report" key
-    for name, meta in transforms.items():
-        assert isinstance(meta, dict), f"{name!r} meta must be a dict"
-        assert "report" in meta,      f"{name!r} entry missing 'report'"
+    for transform_name, transform_meta in transforms.items():
+        assert isinstance(transform_meta, dict), f"{transform_name!r} meta must be a dict"
+        report_t = transform_meta.get("report")
+        assert report_t is not None, f"{transform_name!r} entry missing 'report'"
 
-        # check that we saved a histogram under each transform's folder
-        # i.e. <tmp_path>/<transform>/Histogram with Central Tendency.png
-        hist_path = tmp_path / name / "Histogram with Central Tendency.png"
-        assert hist_path.exists(), f"{hist_path} missing for transform {name!r}"
-        # and likewise a CDF plot for the fitted norm under that folder
-        cdf_path = tmp_path / name / f"ECDF vs. Theoretical CDF (norm).png"
-        assert cdf_path.exists(), f"{cdf_path} missing for transform {name!r}"
+        # 1) central_tendency → histogram
+        hist_meta = report_t["central_tendency"]["histogram"]
+        rel = hist_meta["chart_metadata"]["file_name"]
+        assert rel, f"No file_name for histogram in transform {transform_name!r}"
+        assert (tmp_path / transform_name / rel).exists(), \
+            f"{tmp_path/transform_name/rel} missing for transform {transform_name!r}"
+
+        # 2) shape → distribution_fits → norm → ecdf_vs_cdf
+        ecdf_meta = report_t["shape"]["distribution_fits"]["norm"]["ecdf_vs_cdf"]
+        rel = ecdf_meta["chart_metadata"]["file_name"]
+        assert rel, f"No file_name for ECDF vs CDF in transform {transform_name!r}"
+        assert (tmp_path / transform_name / rel).exists(), \
+            f"{tmp_path/transform_name/rel} missing for transform {transform_name!r}"
+

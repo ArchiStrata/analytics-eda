@@ -20,11 +20,15 @@ import matplotlib.pyplot as plt
 from scipy import stats
 
 from .validate_numeric_named_series import validate_numeric_named_series
+from ..utils.build_chart_title import build_chart_title
 
 def plot_distribution_ecdf_vs_cdf(
     series: pd.Series,
     distribution_name: Literal['norm', 'lognorm', 'gamma', 'expon'],
-    title: str = "ECDF vs. Theoretical CDF",
+    title_template: str = "ECDF vs. Theoretical CDF of {name}{modifiers}",
+    name: str = None,
+    filter_desc: str = None,
+    transform_desc: str = None,
     xlabel: str = "Value",
     ylabel: str = "CDF",
     data_source: str = None,
@@ -56,8 +60,12 @@ def plot_distribution_ecdf_vs_cdf(
         Numeric data to analyze; NaNs dropped.
     distribution_name : Literal['norm', 'lognorm', 'gamma', 'expon']
         Name of SciPy distribution (e.g. 'norm', 'lognorm', 'gamma', 'expon').
-    title : str, default="ECDF vs. Theoretical CDF (distribution_name)"
-        Base title; the distribution name will be appended.
+    title_template: A Python format-string with placeholders:
+      - {name}:        series name or label
+      - {modifiers}:   combined filter/transform text, empty if none
+    name:                Optional override for series.name
+    filter_desc:         e.g. "filtered by New York"
+    transform_desc:      e.g. "log-transformed"
     xlabel : str
     ylabel : str
     data_source : str, optional
@@ -100,7 +108,7 @@ def plot_distribution_ecdf_vs_cdf(
                 'data_source': str or None,
                 'distribution': str,
                 'alpha': float,
-                'relative_path': str or None
+                'file_name': str or None
             }
         }
     """
@@ -111,6 +119,13 @@ def plot_distribution_ecdf_vs_cdf(
     validate_numeric_named_series(series)
     data = series.copy().dropna().astype(float)
     n = data.size
+
+    title = build_chart_title(
+                    name=name, series=series,
+                    filter_desc=filter_desc,
+                    transform_desc=transform_desc,
+                    title_template=title_template
+                )
     full_title = f"{title} ({distribution_name})"
 
     default_metadata = {
@@ -123,7 +138,7 @@ def plot_distribution_ecdf_vs_cdf(
                 'distribution': distribution_name,
                 'alpha': alpha,
                 'data_source': data_source,
-                'relative_path': None
+                'file_name': None
             }
         }
 
@@ -221,12 +236,10 @@ def plot_distribution_ecdf_vs_cdf(
             fontsize="small", bbox=dict(boxstyle="round", facecolor="white", alpha=0.5))
 
     # optional save
-    rel_path = None
     if save_path and file_name:
         os.makedirs(save_path, exist_ok=True)
         abs_path = os.path.join(save_path, file_name)
         fig.savefig(abs_path, bbox_inches='tight')
-        rel_path = os.path.relpath(abs_path)
 
     return {
         'descriptive_stats': {
@@ -242,6 +255,6 @@ def plot_distribution_ecdf_vs_cdf(
             'data_source': data_source,
             'distribution': distribution_name,
             'alpha': alpha,
-            'relative_path': rel_path
+            'file_name': file_name
         }
     }

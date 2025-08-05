@@ -22,12 +22,16 @@ from scipy.signal import find_peaks
 
 from .binning_rules import doane_bins, freedman_diaconis_bins, scott_bins, sturges_bins
 from .validate_numeric_named_series import validate_numeric_named_series
+from ..utils.build_chart_title import build_chart_title
 
 BinMethod = Literal['sturges', 'scott', 'freedman_diaconis', 'doane']
 
 def plot_distribution_density(
     series: pd.Series,
-    title: str = "Distribution Density: Histogram with KDE",
+    title_template: str = "Distribution Density of {name}{modifiers}",
+    name: str = None,
+    filter_desc: str = None,
+    transform_desc: str = None,
     xlabel: str = "Value",
     ylabel: str = "Density",
     data_source: str = None,
@@ -67,8 +71,12 @@ def plot_distribution_density(
     ----------
     series : pd.Series
         Numeric dataset to plot. Missing values will be dropped.
-    title : str, default="KDE Plot of Distribution Shape"
-        Chart title.
+    title_template: A Python format-string with placeholders:
+      - {name}:        series name or label
+      - {modifiers}:   combined filter/transform text, empty if none
+    name:                Optional override for series.name
+    filter_desc:         e.g. "filtered by New York"
+    transform_desc:      e.g. "log-transformed"
     xlabel : str, default="Value"
         Label for the x-axis.
     ylabel : str, default="Density"
@@ -111,7 +119,7 @@ def plot_distribution_density(
                 'xlabel': str,
                 'ylabel': str,
                 'data_source': str or None,
-                'relative_path': str or None
+                'file_name': str or None
             }
         }
 
@@ -130,6 +138,13 @@ def plot_distribution_density(
     data = series.copy().dropna()
     n = data.size
 
+    title = build_chart_title(
+                    name=name, series=series,
+                    filter_desc=filter_desc,
+                    transform_desc=transform_desc,
+                    title_template=title_template
+                )
+
     # Early exit for empty data
     if n == 0:
         empty_stats = dict(
@@ -141,7 +156,7 @@ def plot_distribution_density(
             'descriptive_stats': empty_stats,
             'chart_metadata': dict(
                 title=title, xlabel=xlabel, ylabel=ylabel,
-                data_source=data_source, relative_path=None
+                data_source=data_source, file_name=None
             )
         }
 
@@ -253,12 +268,10 @@ def plot_distribution_density(
         ax.legend(handles, labels)
 
     # Optional save
-    rel_path = None
     if save_path and file_name:
         os.makedirs(save_path, exist_ok=True)
         abs_path = os.path.join(save_path, file_name)
         fig.savefig(abs_path, bbox_inches='tight')
-        rel_path = os.path.relpath(abs_path)
 
     return {
         'descriptive_stats': {
@@ -278,6 +291,6 @@ def plot_distribution_density(
             'xlabel': xlabel,
             'ylabel': ylabel,
             'data_source': data_source,
-            'relative_path': rel_path
+            'file_name': file_name
         }
     }

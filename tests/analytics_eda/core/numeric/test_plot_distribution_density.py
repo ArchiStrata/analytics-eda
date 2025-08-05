@@ -30,11 +30,11 @@ def test_default_parameters_no_save():
         }[p]))
 
     # Chart metadata defaults
-    assert chart['title'] == "Distribution Density: Histogram with KDE"
+    assert chart['title'] == f"Distribution Density of {series.name}"
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "Density"
     assert chart['data_source'] is None
-    assert chart['relative_path'] is None
+    assert chart['file_name'] is None
 
 def test_override_and_save(tmp_path):
     # multimodal series
@@ -47,7 +47,7 @@ def test_override_and_save(tmp_path):
 
     meta = plot_distribution_density(
         series,
-        title=custom_title,
+        title_template=custom_title,
         xlabel=custom_xlabel,
         ylabel=custom_ylabel,
         data_source=custom_source,
@@ -72,7 +72,7 @@ def test_override_and_save(tmp_path):
     assert saved.exists() and saved.stat().st_size > 0
     with open(saved, 'rb') as f:
         assert f.read(8) == b'\x89PNG\r\n\x1a\n'
-    assert os.path.basename(chart['relative_path']) == filename
+    assert os.path.basename(chart['file_name']) == filename
 
 def test_save_defaults_and_metadata(tmp_path):
     series = pd.Series(range(10), name="nums")
@@ -86,7 +86,7 @@ def test_save_defaults_and_metadata(tmp_path):
     chart = meta['chart_metadata']
 
     # Defaults preserved
-    assert chart['title'] == "Distribution Density: Histogram with KDE"
+    assert chart['title'] == f"Distribution Density of {series.name}"
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "Density"
     assert chart['data_source'] is None
@@ -118,9 +118,9 @@ def test_empty_series_returns_stats_and_defaults():
         assert np.isnan(stats[p])
 
     # Defaults for chart metadata
-    assert chart['relative_path'] is None
+    assert chart['file_name'] is None
     assert chart['data_source'] is None
-    assert chart['title'] == "Distribution Density: Histogram with KDE"
+    assert chart['title'] == f"Distribution Density of {empty.name}"
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "Density"
 
@@ -167,9 +167,9 @@ def test_plot_distribution_density_with_sturges_method(tmp_path):
             sig = f.read(8)
         assert sig == b'\x89PNG\r\n\x1a\n'
 
-    # Ensure relative_path in metadata matches filenames
-    assert os.path.basename(meta1['chart_metadata']['relative_path']) == filename1
-    assert os.path.basename(meta2['chart_metadata']['relative_path']) == filename2
+    # Ensure file_name in metadata matches filenames
+    assert os.path.basename(meta1['chart_metadata']['file_name']) == filename1
+    assert os.path.basename(meta2['chart_metadata']['file_name']) == filename2
 
 def test_plot_distribution_density__with_scott_method(tmp_path):
     """
@@ -214,9 +214,9 @@ def test_plot_distribution_density__with_scott_method(tmp_path):
             signature = f.read(8)
         assert signature == b'\x89PNG\r\n\x1a\n', "Invalid PNG file signature"
 
-    # Check relative_path metadata
-    rel1 = os.path.basename(meta_method['chart_metadata']['relative_path'])
-    rel2 = os.path.basename(meta_explicit['chart_metadata']['relative_path'])
+    # Check file_name metadata
+    rel1 = os.path.basename(meta_method['chart_metadata']['file_name'])
+    rel2 = os.path.basename(meta_explicit['chart_metadata']['file_name'])
     assert rel1 == filename_method
     assert rel2 == filename_explicit
 
@@ -263,9 +263,9 @@ def test_plot_distribution_density_with_fd_method(tmp_path):
             sig = f.read(8)
         assert sig == b'\x89PNG\r\n\x1a\n', "Invalid PNG file signature"
 
-    # Confirm relative_path metadata matches filenames
-    rel1 = os.path.basename(meta_method['chart_metadata']['relative_path'])
-    rel2 = os.path.basename(meta_explicit['chart_metadata']['relative_path'])
+    # Confirm file_name metadata matches filenames
+    rel1 = os.path.basename(meta_method['chart_metadata']['file_name'])
+    rel2 = os.path.basename(meta_explicit['chart_metadata']['file_name'])
     assert rel1 == filename_method
     assert rel2 == filename_explicit
 
@@ -312,8 +312,8 @@ def test_plot_distribution_density_with_doane_method(tmp_path):
             signature = f.read(8)
         assert signature == b'\x89PNG\r\n\x1a\n', "Invalid PNG file signature"
 
-    # Confirm relative_path metadata matches filenames
-    rel1 = os.path.basename(meta_method['chart_metadata']['relative_path'])
-    rel2 = os.path.basename(meta_explicit['chart_metadata']['relative_path'])
+    # Confirm file_name metadata matches filenames
+    rel1 = os.path.basename(meta_method['chart_metadata']['file_name'])
+    rel2 = os.path.basename(meta_explicit['chart_metadata']['file_name'])
     assert rel1 == filename_method
     assert rel2 == filename_explicit

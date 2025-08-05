@@ -30,11 +30,11 @@ def test_default_parameters_no_save():
     assert "reject_normality" in nt
 
     # chart_metadata defaults
-    assert chart["title"] == "Q–Q Plot Fit Assessment for (norm)"
+    assert chart["title"] == f"Q–Q Plot Fit Assessment of {series.name} (norm)"
     assert chart["xlabel"] == "Theoretical Quantiles"
     assert chart["ylabel"] == "Sample Quantiles"
     assert chart["data_source"] is None
-    assert chart["relative_path"] is None
+    assert chart["file_name"] is None
     assert pytest.approx(chart["alpha"]) == 0.05
 
 def test_override_and_save(tmp_path):
@@ -51,7 +51,7 @@ def test_override_and_save(tmp_path):
     meta = plot_distribution_qq_fit(
         series,
         distribution_name='norm',
-        title=custom["title"],
+        title_template=custom["title"],
         xlabel=custom["xlabel"],
         ylabel=custom["ylabel"],
         data_source=custom["data_source"],
@@ -106,7 +106,7 @@ def test_override_and_save(tmp_path):
     with open(saved, "rb") as f:
         sig = f.read(8)
     assert sig == b'\x89PNG\r\n\x1a\n'
-    assert os.path.basename(chart["relative_path"]) == file_name
+    assert os.path.basename(chart["file_name"]) == file_name
 
 def test_missing_series_name_raises_error():
     unnamed = pd.Series([0, 1, 2, 3])
@@ -132,12 +132,12 @@ def test_empty_series_returns_stats_and_defaults():
     assert meta["tests"] == {}
 
     # chart_metadata defaults with alpha and path
-    assert chart["title"] == "Q–Q Plot Fit Assessment for (norm)"
+    assert chart["title"] == f"Q–Q Plot Fit Assessment of {empty.name} (norm)"
     assert chart["xlabel"] == "Theoretical Quantiles"
     assert chart["ylabel"] == "Sample Quantiles"
     assert chart["data_source"] is None
     assert pytest.approx(chart["alpha"]) == 0.05
-    assert chart["relative_path"] is None
+    assert chart["file_name"] is None
 
 
 @pytest.mark.parametrize(
@@ -189,10 +189,10 @@ def test_plot_distribution_qq_fit_all_distributions(dist_name, rng_func, expecte
     saved = outdir / file_name
     assert saved.exists() and saved.stat().st_size > 0
     assert saved.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
-    assert os.path.basename(cm["relative_path"]) == file_name
+    assert os.path.basename(cm["file_name"]) == file_name
 
     # -- chart metadata --
-    assert cm["title"] == f"Q–Q Plot Fit Assessment for ({dist_name})"
+    assert cm["title"] == f"Q–Q Plot Fit Assessment of {series.name} ({dist_name})"
     assert cm["xlabel"] == "Theoretical Quantiles"
     assert cm["ylabel"] == "Sample Quantiles"
     assert cm["data_source"] is None

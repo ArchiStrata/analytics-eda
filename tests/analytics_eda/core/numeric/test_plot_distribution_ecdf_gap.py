@@ -26,12 +26,12 @@ def test_default_parameters_no_save():
     assert stats['max_gap_loc'] == 2.0
 
     # Chart metadata defaults
-    assert chart['title'] == "ECDF with Gap Analysis"
+    assert chart['title'] == f"ECDF Gap Analysis of {s.name}"
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "ECDF"
     assert chart['data_source'] is None
     assert chart['threshold'] is None
-    assert chart['relative_path'] is None
+    assert chart['file_name'] is None
 
 def test_override_and_save(tmp_path):
     # Same two-point data, override labels, threshold, and save
@@ -47,7 +47,7 @@ def test_override_and_save(tmp_path):
 
     meta = plot_distribution_ecdf_gap(
         s,
-        title=custom['title'],
+        title_template=custom['title'],
         xlabel=custom['xlabel'],
         ylabel=custom['ylabel'],
         data_source=custom['data_source'],
@@ -78,8 +78,8 @@ def test_override_and_save(tmp_path):
         sig = f.read(8)
     assert sig == b'\x89PNG\r\n\x1a\n'
 
-    # relative_path ends with filename
-    assert os.path.basename(chart['relative_path']) == fname
+    # file_name ends with filename
+    assert os.path.basename(chart['file_name']) == fname
 
 def test_save_defaults_and_metadata(tmp_path):
     # Save with defaults only
@@ -97,9 +97,9 @@ def test_save_defaults_and_metadata(tmp_path):
     assert saved.exists()
 
     # Metadata for defaults
-    assert chart['title'] == "ECDF with Gap Analysis"
+    assert chart['title'] == f"ECDF Gap Analysis of {s.name}"
     assert chart['threshold'] is None
-    assert os.path.basename(chart['relative_path']) == fname
+    assert os.path.basename(chart['file_name']) == fname
 
 def test_missing_series_name_raises_error():
     # Series without name should trigger validation error
@@ -123,7 +123,7 @@ def test_empty_series_returns_stats_and_defaults():
     assert stats['n_gaps_above_thr'] == 0 or stats['n_gaps_above_thr'] is None
 
     # Chart metadata defaults
-    assert chart['relative_path'] is None
+    assert chart['file_name'] is None
     assert chart['threshold'] is None
     assert chart['data_source'] is None
-    assert chart['title'] == "ECDF with Gap Analysis"
+    assert chart['title'] == f"ECDF Gap Analysis of {empty.name}"

@@ -15,12 +15,12 @@ def test_default_parameters_no_save():
     assert stats['nunique'] == 5
 
     # chart_metadata defaults
-    assert chart['title'] == "Value Counts (Top k) for Cardinality"
+    assert chart['title'] == f"Value Counts (Top 10) of {series.name} for Cardinality"
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "Count"
     assert chart['data_source'] is None
     assert chart['top_k'] == 10
-    assert chart['relative_path'] is None
+    assert chart['file_name'] is None
 
 def test_override_and_save(tmp_path):
     # series with known values
@@ -35,7 +35,7 @@ def test_override_and_save(tmp_path):
     meta = plot_cardinality_barchart(
         series,
         top_k=top_k,
-        title=custom_title,
+        title_template=custom_title,
         xlabel=custom_xlabel,
         ylabel=custom_ylabel,
         data_source=custom_source,
@@ -61,8 +61,8 @@ def test_override_and_save(tmp_path):
     with open(saved, 'rb') as f:
         sig = f.read(8)
     assert sig == b'\x89PNG\r\n\x1a\n'
-    # relative_path ends with filename
-    assert os.path.basename(chart['relative_path']) == filename
+    # file_name ends with filename
+    assert os.path.basename(chart['file_name']) == filename
 
 def test_save_defaults_and_metadata(tmp_path):
     series = pd.Series(range(5), name="range")
@@ -75,7 +75,7 @@ def test_save_defaults_and_metadata(tmp_path):
     chart = meta['chart_metadata']
 
     # defaults preserved
-    assert chart['title']   == "Value Counts (Top k) for Cardinality"
+    assert chart['title']   == f"Value Counts (Top 10) of {series.name} for Cardinality"
     assert chart['xlabel']  == "Value"
     assert chart['ylabel']  == "Count"
     assert chart['data_source'] is None
@@ -102,9 +102,9 @@ def test_empty_series_returns_stats_and_defaults():
     assert stats['nunique'] == 0
 
     # default chart metadata, no save
-    assert chart['relative_path'] is None
+    assert chart['file_name'] is None
     assert chart['data_source'] is None
-    assert chart['title'] == "Value Counts (Top k) for Cardinality"
+    assert chart['title'] == f"Value Counts (Top 10) of {empty.name} for Cardinality"
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "Count"
     assert chart['top_k'] == 10
@@ -136,7 +136,7 @@ def test_override_max_unique_fraction(tmp_path):
     assert stats['is_discrete'] is True
     saved = tmp_path / "frac.png"
     assert saved.exists()
-    assert os.path.basename(chart['relative_path']) == "frac.png"
+    assert os.path.basename(chart['file_name']) == "frac.png"
 
 def test_override_max_unique_values(tmp_path):
     # 25 unique ints, default fraction fails but override max_unique_values=30 -> discrete
@@ -153,7 +153,7 @@ def test_override_max_unique_values(tmp_path):
     assert stats['is_discrete'] is True
     saved = tmp_path / "uniq.png"
     assert saved.exists()
-    assert os.path.basename(chart['relative_path']) == "uniq.png"
+    assert os.path.basename(chart['file_name']) == "uniq.png"
 
 def test_integer_tolerance_paths_for_high_cardinality_floats(tmp_path):
     # Create a float series slightly off whole numbers,
@@ -187,7 +187,7 @@ def test_integer_tolerance_paths_for_high_cardinality_floats(tmp_path):
     # confirm file save for the override case
     saved = tmp_path / "flt_tol.png"
     assert saved.exists() and saved.stat().st_size > 0
-    assert os.path.basename(meta_tol['chart_metadata']['relative_path']) == "flt_tol.png"
+    assert os.path.basename(meta_tol['chart_metadata']['file_name']) == "flt_tol.png"
 
 def test_float_low_cardinality_discrete_path_2b(tmp_path):
     # Floats that are not integer‐like, but with low cardinality (unique < max_unique_values)
@@ -207,4 +207,4 @@ def test_float_low_cardinality_discrete_path_2b(tmp_path):
     # confirm file was saved
     saved = tmp_path / "low_card.png"
     assert saved.exists() and saved.stat().st_size > 0
-    assert os.path.basename(chart['relative_path']) == "low_card.png"
+    assert os.path.basename(chart['file_name']) == "low_card.png"

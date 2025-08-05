@@ -22,7 +22,8 @@ from .validate_numeric_named_series import validate_numeric_named_series
 def plot_cardinality_barchart(
     series: pd.Series,
     top_k: int = 10,
-    title: str = "Value Counts (Top k) for Cardinality",
+    title_template: str = "Value Counts (Top {top_k}) of {name} for Cardinality",
+    name: str = None,
     xlabel: str = "Value",
     ylabel: str = "Count",
     data_source: str = None,
@@ -59,8 +60,10 @@ def plot_cardinality_barchart(
         Numeric dataset to analyze. Missing values will be dropped.
     top_k : int, default=10
         Number of most frequent values to display.
-    title : str, default="Value Counts (Top k) for Cardinality"
-        Chart title.
+    title_template: A Python format-string with placeholders:
+      - {name}:        series name or label
+      - {modifiers}:   combined filter/transform text, empty if none
+    name:                Optional override for series.name
     xlabel : str, default="Value"
         Label for the x-axis.
     ylabel : str, default="Count"
@@ -95,7 +98,7 @@ def plot_cardinality_barchart(
                 'ylabel': str,
                 'data_source': str or None,
                 'top_k': int,
-                'relative_path': str or None
+                'file_name': str or None
             }
         }
     """
@@ -108,6 +111,9 @@ def plot_cardinality_barchart(
         max_unique_values=max_unique_values,
         integer_tolerance=integer_tolerance
     )
+
+    label = name or getattr(series, "name", None) or "Value"
+    title = title_template.format(name=label, top_k=top_k)
 
     # Compute top-k frequencies
     counts = clean.value_counts().head(top_k)
@@ -134,12 +140,10 @@ def plot_cardinality_barchart(
         )
 
     # Optional save
-    relative_path = None
     if save_path and file_name:
         os.makedirs(save_path, exist_ok=True)
         abs_path = os.path.join(save_path, file_name)
         fig.savefig(abs_path, bbox_inches='tight')
-        relative_path = os.path.relpath(abs_path)
 
     return {
         'descriptive_stats': {
@@ -155,7 +159,7 @@ def plot_cardinality_barchart(
             'max_unique_fraction': max_unique_fraction,
             'max_unique_values': max_unique_values,
             'integer_tolerance': integer_tolerance,
-            'relative_path': relative_path
+            'file_name': file_name
         }
     }
 

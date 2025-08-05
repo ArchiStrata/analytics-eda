@@ -20,11 +20,15 @@ import matplotlib.pyplot as plt
 from scipy import stats
 
 from .validate_numeric_named_series import validate_numeric_named_series
+from ..utils.build_chart_title import build_chart_title
 
 def plot_distribution_qq_fit(
     series: pd.Series,
     distribution_name: Literal['norm', 'lognorm', 'gamma', 'expon'],
-    title: str = "Q–Q Plot Fit Assessment for",
+    title_template: str = "Q–Q Plot Fit Assessment of {name}{modifiers}",
+    name: str = None,
+    filter_desc: str = None,
+    transform_desc: str = None,
     xlabel: str = "Theoretical Quantiles",
     ylabel: str = "Sample Quantiles",
     data_source: str = None,
@@ -60,8 +64,12 @@ def plot_distribution_qq_fit(
         Numeric data to assess; NaNs will be dropped.
     distribution_name : Literal['norm', 'lognorm', 'gamma', 'expon']
         Name of SciPy distribution (e.g. 'norm', 'lognorm', 'gamma', 'expon').
-    title : str, default="Q–Q Plot Fit Assessment for (distribution_name)"
-        Base title; the distribution name will be appended.
+    title_template: A Python format-string with placeholders:
+      - {name}:        series name or label
+      - {modifiers}:   combined filter/transform text, empty if none
+    name:                Optional override for series.name
+    filter_desc:         e.g. "filtered by New York"
+    transform_desc:      e.g. "log-transformed"
     xlabel : str, default="Theoretical Quantiles"
         Label for the x-axis.
     ylabel : str, default="Sample Quantiles"
@@ -104,7 +112,7 @@ def plot_distribution_qq_fit(
                 'xlabel': str,
                 'ylabel': str,
                 'data_source': str or None,
-                'relative_path': str or None,
+                'file_name': str or None,
                 'distribution': str,
                 'alpha': float
             }
@@ -118,6 +126,12 @@ def plot_distribution_qq_fit(
     data = series.copy().dropna().astype(float)
     n = data.size
 
+    title = build_chart_title(
+                    name=name, series=series,
+                    filter_desc=filter_desc,
+                    transform_desc=transform_desc,
+                    title_template=title_template
+                )
     full_title = f"{title} ({distribution_name})"
 
     # early return for empty series
@@ -141,7 +155,7 @@ def plot_distribution_qq_fit(
                 'xlabel': xlabel,
                 'ylabel': ylabel,
                 'data_source': data_source,
-                'relative_path': None,
+                'file_name': None,
                 'alpha': alpha
             }
         }
@@ -257,12 +271,10 @@ def plot_distribution_qq_fit(
             fontsize="small", bbox=dict(facecolor="white", alpha=0.5))
 
     # optional save
-    rel_path = None
     if save_path and file_name:
         os.makedirs(save_path, exist_ok=True)
         abs_path = os.path.join(save_path, file_name)
         fig.savefig(abs_path, bbox_inches="tight")
-        rel_path = os.path.relpath(abs_path)
 
     return {
         'descriptive_stats': {
@@ -282,7 +294,7 @@ def plot_distribution_qq_fit(
             'xlabel': xlabel,
             'ylabel': ylabel,
             'data_source': data_source,
-            'relative_path': rel_path,
+            'file_name': file_name,
             'distribution': distribution_name,
             'alpha': alpha
         }

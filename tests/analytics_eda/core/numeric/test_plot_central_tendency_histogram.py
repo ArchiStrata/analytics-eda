@@ -21,11 +21,11 @@ def test_single_mode():
     
     # Chart metadata
     assert chart['bins'] == bins
-    assert chart['title'] == "Histogram with Central Tendency"
+    assert chart['title'] == "Distribution of numeric_series: Central Tendency"
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "Count"
     assert chart['data_source'] is None
-    assert chart['relative_path'] is None
+    assert chart['file_name'] is None
 
 def test_two_modes():
     data = pd.Series([1, 1, 2, 2, 3, 4], name='numeric_series')
@@ -76,14 +76,14 @@ def test_save_creates_file(tmp_path):
         sig = f.read(8)
     assert sig == b'\x89PNG\r\n\x1a\n'
     # Metadata path is a relative path ending with the filename
-    rel = chart['relative_path']
+    rel = chart['file_name']
     assert os.path.basename(rel) == filename
     # Other metadata
     assert chart['data_source'] == None
     assert chart['bins'] == 5
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "Count"
-    assert chart['title'] == "Histogram with Central Tendency"
+    assert chart['title'] == "Distribution of numeric_series: Central Tendency"
 
 def test_default_bins_square_root_choice():
     # Verify that when bins=None, it defaults to ceil(sqrt(n))
@@ -109,7 +109,7 @@ def test_override_chart_labels_and_source(tmp_path):
     meta = plot_central_tendency_histogram(
         data,
         bins=4,
-        title=custom_title,
+        title_template=custom_title,
         xlabel=custom_xlabel,
         ylabel=custom_ylabel,
         data_source=custom_source,
@@ -138,7 +138,7 @@ def test_override_chart_labels_and_source(tmp_path):
         assert f.read(8) == b'\x89PNG\r\n\x1a\n'
 
     # Metadata path is a relative path ending with the filename
-    assert os.path.basename(chart['relative_path']) == filename
+    assert os.path.basename(chart['file_name']) == filename
 
 def test_missing_series_name_raises_error():
     missing_name = pd.Series(dtype=float)
@@ -162,8 +162,8 @@ def test_empty_series_returns_stats():
 
     # Chart metadata defaults
     assert chart['bins'] == 0
-    assert chart['title'] == "Histogram with Central Tendency"
+    assert chart['title'] == "Distribution of empty_series: Central Tendency"
     assert chart['xlabel'] == "Value"
     assert chart['ylabel'] == "Count"
     assert chart['data_source'] is None
-    assert chart['relative_path'] is None
+    assert chart['file_name'] is None

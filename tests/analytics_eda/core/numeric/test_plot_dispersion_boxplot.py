@@ -48,10 +48,10 @@ def test_default_parameters_no_save():
     assert series.median() >= low and series.median() <= high
 
     # Chart metadata
-    assert chart['title']         == "Boxplot with Dispersion Statistics"
+    assert chart['title']         == "Dispersion of numeric_series (IQR & Outliers)"
     assert chart['ylabel']        == "Value"
     assert chart['data_source'] is None
-    assert chart['relative_path'] is None
+    assert chart['file_name'] is None
 
 def test_override_and_save(tmp_path):
     # Prepare a small series
@@ -64,7 +64,7 @@ def test_override_and_save(tmp_path):
     # Call with overrides and saving enabled
     meta = plot_dispersion_boxplot(
         series,
-        title=custom_title,
+        title_template=custom_title,
         ylabel=custom_ylabel,
         data_source=custom_source,
         figsize=(12, 8),
@@ -120,7 +120,7 @@ def test_override_and_save(tmp_path):
     assert header == b'\x89PNG\r\n\x1a\n'
 
     # Metadata path ends with filename
-    assert os.path.basename(chart['relative_path']) == filename
+    assert os.path.basename(chart['file_name']) == filename
 
 def test_save_defaults_and_metadata(tmp_path):
     # Prepare a simple numeric series
@@ -136,7 +136,7 @@ def test_save_defaults_and_metadata(tmp_path):
     chart = meta['chart_metadata']
 
     # Verify default chart metadata
-    assert chart['title'] == "Boxplot with Dispersion Statistics"
+    assert chart['title'] == "Dispersion of numeric_series (IQR & Outliers)"
     assert chart['ylabel'] == "Value"
     assert chart['data_source'] is None
 
@@ -149,8 +149,8 @@ def test_save_defaults_and_metadata(tmp_path):
         header = f.read(8)
     assert header == b'\x89PNG\r\n\x1a\n'
 
-    # The returned relative_path should end with the filename
-    rel = chart['relative_path']
+    # The returned file_name should end with the filename
+    rel = chart['file_name']
     assert os.path.basename(rel) == filename
 
 def test_missing_series_name_raises_error():
@@ -182,10 +182,10 @@ def test_empty_series_returns_stats_and_defaults_dispersion():
     assert np.isnan(low) and np.isnan(high)
 
     # Chart metadata defaults
-    assert chart['title'] == "Boxplot with Dispersion Statistics"
+    assert chart['title'] == "Dispersion of empty_series (IQR & Outliers)"
     assert chart['ylabel'] == "Value"
     assert chart['data_source'] is None
-    assert chart['relative_path'] is None
+    assert chart['file_name'] is None
 
 def test_override_and_save_extreme_bounds(tmp_path):
     # Construct a series with clear upper and lower extremes
@@ -195,7 +195,7 @@ def test_override_and_save_extreme_bounds(tmp_path):
     # Override parameters: use a small multiplier to flag both tails
     overrides = {
         "std_outlier_multiplier": 0.3,
-        "title": "Custom Dispersion",
+        "title_template": "Custom Dispersion",
         "ylabel": "Units",
         "data_source": "UnitTest",
         "file_name": "dispersion.png"
@@ -220,7 +220,7 @@ def test_override_and_save_extreme_bounds(tmp_path):
     assert series.median() >= low and series.median() <= high
 
     # Chart metadata
-    assert chart["title"]       == overrides["title"]
+    assert chart["title"]       == overrides["title_template"]
     assert chart["ylabel"]      == overrides["ylabel"]
     assert chart["data_source"] == overrides["data_source"]
     assert pytest.approx(chart["std_outlier_multiplier"]) == overrides["std_outlier_multiplier"]
@@ -232,8 +232,8 @@ def test_override_and_save_extreme_bounds(tmp_path):
         header = f.read(8)
     assert header == b'\x89PNG\r\n\x1a\n'
 
-    # relative_path ends with the file name
-    assert os.path.basename(chart["relative_path"]) == overrides["file_name"]
+    # file_name ends with the file name
+    assert os.path.basename(chart["file_name"]) == overrides["file_name"]
 
 
 def test_violin_silhouette_and_save(tmp_path):
@@ -245,7 +245,7 @@ def test_violin_silhouette_and_save(tmp_path):
     # Override parameters and enable saving
     overrides = {
         "std_outlier_multiplier": 2.0,
-        "title": "Violin Dispersion Test",
+        "title_template": "Violin Dispersion Test",
         "ylabel": "Units",
         "data_source": "UnitTest",
         "file_name": "violin_dispersion.png"
@@ -269,7 +269,7 @@ def test_violin_silhouette_and_save(tmp_path):
     assert pd.Series(data).median() >= low and pd.Series(data).median() <= high
 
     # Chart metadata overrides
-    assert chart["title"]       == overrides["title"]
+    assert chart["title"]       == overrides["title_template"]
     assert chart["ylabel"]      == overrides["ylabel"]
     assert chart["data_source"] == overrides["data_source"]
     assert pytest.approx(chart["std_outlier_multiplier"]) == overrides["std_outlier_multiplier"]
