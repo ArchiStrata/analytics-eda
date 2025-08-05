@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import math
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -25,6 +26,7 @@ from .validate_numeric_named_series import validate_numeric_named_series
 def plot_central_tendency_histogram(
     series: pd.Series,
     bins: int = None,
+    alpha: float = 0.05,
     title_template: str = "Distribution of {name}{modifiers}: Central Tendency",
     name: str = None,
     filter_desc: str = None,
@@ -60,6 +62,7 @@ def plot_central_tendency_histogram(
         Numeric dataset to plot. Missing values will be dropped.
     bins : int or sequence, optional
         Number of histogram bins or explicit bin edges. Defaults to Square-Root Choice ceil(sqrt(n)).
+    alpha: significance level for CI
     title_template: A Python format-string with placeholders:
       - {name}:        series name or label
       - {modifiers}:   combined filter/transform text, empty if none
@@ -87,8 +90,8 @@ def plot_central_tendency_histogram(
                 'n': int,                        # see table below
                 'mean': float,
                 'median': float,
-                'mode': list of float,
-                'ci95': (float, float)
+                'modes': list of float,
+                'mean_ci': (float, float) # tuple(lower, upper) of the (1-alpha)*100% CI for the mean
             },
             'chart_metadata': {
                 'title': str,
@@ -96,6 +99,7 @@ def plot_central_tendency_histogram(
                 'ylabel': str,
                 'data_source': str or None,
                 'bins': int or sequence,
+                'alpha': float,
                 'file_name': str or None
             }
         }
@@ -107,25 +111,12 @@ def plot_central_tendency_histogram(
     | `n`       | Sample size – number of observations                         |
     | `mean`    | Arithmetic average – balance point of the distribution       |
     | `median`  | 50th percentile – midpoint, robust to outliers               |
-    | `mode`    | Most frequent value(s) – where data piled up                 |
-    | `ci95`    | 95% confidence interval – uncertainty around the sample mean |
+    | `modes`   | Most frequent value(s)                                       |
+    | `mean_ci` | Confidence interval of uncertainty around the sample mean    |
     """
     validate_numeric_named_series(series)
     series_clean = series.copy().dropna()
     n = series_clean.size
-
-    # Determine bins via Square-Root choice if not specified
-    if bins is None:
-        bins = math.ceil(math.sqrt(n))
-
-    # Compute descriptive statistics
-    mean = series_clean.mean()
-    median = series_clean.median()
-
-    # TODO: enhance mode
-    mode_vals = series_clean.mode().tolist()
-    sem = stats.sem(series_clean)
-    ci_low, ci_high = stats.t.interval(0.95, n - 1, loc=mean, scale=sem)
 
     # Build chart title
     title = build_chart_title(
@@ -135,6 +126,55 @@ def plot_central_tendency_histogram(
         transform_desc=transform_desc,
         title_template=title_template
     )
+
+    # Determine bins via Square-Root choice if not specified
+    if bins is None:
+        bins = math.ceil(math.sqrt(n))
+
+    # If no data after cleaning, return defaults
+    if n == 0:
+        return {
+            'descriptive_stats': {
+                'n': 0,
+                'mean': np.nan,
+                'median': np.nan,
+                'modes': [],
+                'mean_ci': (np.nan, np.nan)
+            },
+            'chart_metadata': {
+                'title': title,
+                'xlabel': xlabel,
+                'ylabel': ylabel,
+                'data_source': data_source,
+                'bins': bins,
+                'alpha': alpha,
+                'file_name': file_name
+            }
+        }
+
+    # Compute descriptive statistics
+    mean = series_clean.mean()
+    median = series_clean.median()
+
+    raw_modes = series_clean.mode().tolist()
+    if len(raw_modes) == 1:
+        # A clear single mode in the data → use it
+        mode_vals = raw_modes
+    else:
+        # Ambiguous or multimodal → use histogram‐based bin centers
+        # Calculate mode based on most frequent bins
+        counts, edges = np.histogram(series_clean, bins=bins, density=False)
+        first_top = np.argmax(counts)
+        max_count = counts[first_top]
+        top_bins = np.where(counts == max_count)[0]
+        mode_vals = [
+            0.5 * (edges[i] + edges[i+1])
+            for i in top_bins
+        ]
+
+    # Compute standard error and CI for mean
+    sem = stats.sem(series_clean, ddof=1)
+    mean_ci_low, mean_ci_high = stats.t.interval(1 - alpha, df=n - 1, loc=mean, scale=sem)
 
     # Prepare plot
     sns.set_palette("colorblind")
@@ -148,14 +188,20 @@ def plot_central_tendency_histogram(
     ax.axvline(mean, color='black', linestyle='--', label=f"Mean = {mean:.2f}")
     ax.axvline(median, color='firebrick', linestyle='-.', label=f"Median = {median:.2f}")
 
-    # Only plot mode lines if fewer than 4 modes to avoid clutter
-    if len(mode_vals) > 0 and len(mode_vals) < 4:
-        for i, mv in enumerate(mode_vals):
-            label = "Mode" if len(mode_vals) == 1 else f"Mode {i+1}"
-            ax.axvline(mv, color='green', linestyle=':', label=f"{label} = {mv:.2f}")
+    # Plot mode lines
+    for i, center in enumerate(mode_vals, start=1):
+        label = "Mode" if len(mode_vals) == 1 else f"Mode {i}"
+        ax.axvline(
+            x=center,
+            color='green',
+            linestyle=':',
+            linewidth=1,
+            label=f"{label} ≈ {center:.2f}"
+        )
 
-    # Shaded 95% Confidence Interval
-    ax.axvspan(ci_low, ci_high, color='gray', alpha=0.2, hatch='//', label="95% CI")
+    # Shade confidence interval for mean
+    mean_ci_label = f"{int((1-alpha)*100)}% CI"
+    ax.axvspan(mean_ci_low, mean_ci_high, color='gray', alpha=0.2, hatch='//', label=mean_ci_label)
 
     # Optional data source annotation
     if data_source:
@@ -186,8 +232,8 @@ def plot_central_tendency_histogram(
             'n': n,
             'mean': mean,
             'median': median,
-            'mode': mode_vals,
-            'ci95': (ci_low, ci_high)
+            'modes': mode_vals,
+            'mean_ci': (mean_ci_low, mean_ci_high)
         },
         'chart_metadata': {
             'title': title,
@@ -195,6 +241,7 @@ def plot_central_tendency_histogram(
             'ylabel': ylabel,
             'data_source': data_source,
             'bins': bins,
+            'alpha': alpha,
             'file_name': file_name
         }
     }

@@ -56,8 +56,8 @@ def test_norm_override_parameters_save(tmp_path):
     assert desc["n"] == 50
     assert isinstance(desc["mean"], float)
     assert isinstance(desc["median"], float)
-    assert isinstance(desc["mode"], list)
-    assert isinstance(desc["ci95"], tuple)
+    assert isinstance(desc["modes"], list)
+    assert isinstance(desc["mean_ci"], tuple)
 
 @pytest.mark.parametrize(
     "dist_name, rng_func, support_adjust, has_anderson",

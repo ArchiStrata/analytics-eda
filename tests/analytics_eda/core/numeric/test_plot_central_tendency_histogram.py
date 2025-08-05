@@ -16,8 +16,8 @@ def test_single_mode():
     assert stats['n'] == 6
     assert pytest.approx(stats['mean'], 0.01) == 1.67
     assert stats['median'] == 1.5
-    assert stats['mode'] == [1]
-    assert isinstance(stats['ci95'], tuple) and len(stats['ci95']) == 2
+    assert stats['modes'] == [1]
+    assert isinstance(stats['mean_ci'], tuple) and len(stats['mean_ci']) == 2
     
     # Chart metadata
     assert chart['bins'] == bins
@@ -34,7 +34,7 @@ def test_two_modes():
     stats = meta['descriptive_stats']
     
     assert stats['n'] == 6
-    assert stats['mode'] == [1, 2]
+    assert stats['modes'] == [1, 2]
 
 def test_three_modes():
     data = pd.Series([1, 1, 2, 2, 3, 3, 4], name='numeric_series')
@@ -43,7 +43,7 @@ def test_three_modes():
     stats = meta['descriptive_stats']
     
     assert stats['n'] == 7
-    assert sorted(stats['mode']) == [1, 2, 3]
+    assert sorted(stats['modes']) == [1, 2, 3]
 
 def test_bell_shaped_default_bins():
     data = pd.Series([1, 2, 2, 3, 3, 3, 4, 4, 5], name='numeric_series')
@@ -52,7 +52,7 @@ def test_bell_shaped_default_bins():
     chart = meta['chart_metadata']
     
     assert stats['n'] == 9
-    assert stats['mode'] == [3]
+    assert stats['modes'] == [3]
     assert chart['bins'] == math.ceil(math.sqrt(9))
 
 def test_save_creates_file(tmp_path):
@@ -128,7 +128,7 @@ def test_override_chart_labels_and_source(tmp_path):
     
     # Descriptive stats should still be correct
     assert stats['n'] == 6
-    assert stats['mode'] == [30]
+    assert stats['modes'] == [30]
     
     # File exists and is valid PNG
     saved_path = tmp_path / filename
@@ -155,9 +155,9 @@ def test_empty_series_returns_stats():
     assert stats['n'] == 0
     assert math.isnan(stats['mean'])
     assert math.isnan(stats['median'])
-    assert stats['mode'] == []
-    ci_low, ci_high = stats['ci95']
-    assert isinstance(stats['ci95'], tuple) and len(stats['ci95']) == 2
+    assert stats['modes'] == []
+    ci_low, ci_high = stats['mean_ci']
+    assert isinstance(stats['mean_ci'], tuple) and len(stats['mean_ci']) == 2
     assert math.isnan(ci_low) and math.isnan(ci_high)
 
     # Chart metadata defaults
