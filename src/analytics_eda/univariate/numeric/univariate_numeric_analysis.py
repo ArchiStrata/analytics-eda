@@ -13,6 +13,7 @@
 # limitations under the License.
 from pathlib import Path
 import logging
+from typing import Optional
 import uuid
 
 import pandas as pd
@@ -24,7 +25,8 @@ logger = logging.getLogger(__name__)
 def univariate_numeric_analysis(
     series: pd.Series,
     report_root: str = 'reports/eda/univariate/numeric',
-    report_log_id = str(uuid.uuid4())
+    report_log_id = str(uuid.uuid4()),
+    data_source: Optional[str] = None
 ) -> Path:
     """
     Conduct a full univariate analysis on a numeric series.
@@ -67,24 +69,28 @@ def univariate_numeric_analysis(
     series_copy = series.copy()
 
     # Prepare directory
-    save_dir = Path(report_root) / series_copy.name.replace(' ', '_')
-    save_dir.mkdir(parents=True, exist_ok=True)
+    report_path = Path(report_root) / series_copy.name.replace(' ', '_')
+    report_path.mkdir(parents=True, exist_ok=True)
 
     # Missing Data Analysis
-    missing_data = missing_data_analysis(series_copy, save_dir, report_log_id=report_log_id)
+    missing_data = missing_data_analysis(series_copy, report_path, report_log_id=report_log_id)
 
-    # TODO: plot_cardinality_barchart
-    # plot_cardinality_barchart_meta = plot_cardinality_barchart(series_copy, )
+    # Cardinality Analysis
+    top_k = 10
+    plot_cardinality_barchart_file_name = f"Value Counts (Top {top_k}) of {series_copy.name} for Cardinality.png"
+    plot_cardinality_barchart_meta = plot_cardinality_barchart(series_copy, top_k=top_k, data_source=data_source, save_path=report_path, file_name=plot_cardinality_barchart_file_name)
+
     cardinality = {
-        'plot_cardinality_barchart': None
+        'plot_cardinality_barchart': plot_cardinality_barchart_meta
     }
 
     # Distribution Analysis
-    distribution_result = numeric_distribution_analysis(series_copy, save_dir, report_log_id=report_log_id)
+    distribution_result = numeric_distribution_analysis(series_copy, report_path, report_log_id=report_log_id)
 
     # Generate report
     eda_report = {
         'missing_data': missing_data,
+        'cardinality': cardinality,
         'distribution': distribution_result
     }
 
@@ -99,7 +105,7 @@ def univariate_numeric_analysis(
         'data': eda_report
     }
 
-    report_path = save_dir / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"
+    report_path = report_path / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"
     write_json_report(full_report, report_path)
 
     logger.info(

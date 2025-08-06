@@ -42,7 +42,7 @@ def test_univariate_numeric_analysis_on_normal_series(tmp_path, normal_15_series
     assert 'data' in result
     eda_report = result['data']
 
-    expected_top = {'missing_data', 'distribution'}
+    expected_top = {'missing_data', 'cardinality', 'distribution'}
     assert set(eda_report.keys()) == expected_top
     
     # Inspect the distribution sub-report
