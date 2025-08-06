@@ -82,9 +82,10 @@ def test_numeric_distribution_analysis_basic_structure(
     # 1) Top-level keys
     assert set(report) == {"central_tendency", "dispersion", "shape"}
 
-    # 2) central_tendency → histogram
+    # 2) central_tendency → histogram & violin
     ct = report["central_tendency"]
-    assert set(ct) == {"histogram"}
+    assert set(ct) == {"histogram", "violin"}
+    
     hist_meta = ct["histogram"]
     assert "descriptive_stats" in hist_meta and "chart_metadata" in hist_meta
     # Chart metadata saved file

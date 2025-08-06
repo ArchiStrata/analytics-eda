@@ -19,6 +19,7 @@ from typing import Optional, Dict, Any, Callable, Sequence
 import pandas as pd
 
 from .plot_central_tendency_histogram import plot_central_tendency_histogram
+from .plot_central_tendency_violin import plot_central_tendency_violin
 from .plot_dispersion_boxplot       import plot_dispersion_boxplot
 from .plot_distribution_ecdf_gap    import plot_distribution_ecdf_gap
 from .plot_distribution_ecdf_vs_cdf import plot_distribution_ecdf_vs_cdf
@@ -41,6 +42,7 @@ def numeric_distribution_analysis(
         ]
     ] = None,
     plot_central_tendency_histogram_overrides: Optional[Dict[str, Any]] = None,
+    plot_central_tendency_violin_overrides: Optional[Dict[str, Any]] = None,
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_ecdf_gap_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_ecdf_vs_cdf_overrides: Optional[Dict[str, Any]] = None,
@@ -90,24 +92,33 @@ def numeric_distribution_analysis(
     )
 
     # Central Tendency
+    central_tendency = {}
+
     central_tendency_hist_over = (plot_central_tendency_histogram_overrides or {}).copy()
     if not central_tendency_hist_over.get('file_name'):
         central_tendency_hist_over['file_name'] = (
             f"Distribution of {series.name} (overview): Central Tendency.png"
     )
-        
-    # TODO: plot_central_tendency_violin
 
-    plot_central_tendency_histogram_meta = call_plot_with_overrides(
+    central_tendency['histogram'] = call_plot_with_overrides(
         plot_central_tendency_histogram,
         series,
         overrides=central_tendency_hist_over,
         save_path=report_path,
     )
 
-    central_tendency = {
-        'histogram': plot_central_tendency_histogram_meta,
-    }
+    central_tendency_violin_over = (plot_central_tendency_violin_overrides or {}).copy()
+    if not central_tendency_violin_over.get('file_name'):
+        central_tendency_violin_over['file_name'] = (
+            f"Distribution of {series.name} (overview): Central Tendency (Violin).png"
+    )
+
+    central_tendency['violin'] = call_plot_with_overrides(
+        plot_central_tendency_violin,
+        series,
+        overrides=central_tendency_violin_over,
+        save_path=report_path,
+    )
 
     # Dispersion
     dispersion_over = (plot_dispersion_boxplot_overrides or {}).copy()
@@ -211,6 +222,7 @@ def numeric_distribution_analysis(
             report_log_id=report_log_id,
             distribution_names=distribution_names,
             plot_central_tendency_histogram_overrides=plot_central_tendency_histogram_overrides,
+            plot_central_tendency_violin_overrides=plot_central_tendency_violin_overrides,
             plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
             plot_distribution_ecdf_gap_overrides=plot_distribution_ecdf_gap_overrides,
             plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,

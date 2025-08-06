@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import pandas as pd
 
@@ -29,6 +29,7 @@ def evaluate_transforms(
     report_log_id: str | None = None,
     distribution_names=None,
     plot_central_tendency_histogram_overrides=None,
+    plot_central_tendency_violin_overrides: Optional[Dict[str, Any]] = None,
     plot_dispersion_boxplot_overrides=None,
     plot_distribution_ecdf_gap_overrides=None,
     plot_distribution_ecdf_vs_cdf_overrides=None,
@@ -76,12 +77,12 @@ def evaluate_transforms(
             report_log_id=report_log_id,
             distribution_names=distribution_names,
             plot_central_tendency_histogram_overrides=plot_central_tendency_histogram_overrides,
+            plot_central_tendency_violin_overrides=plot_central_tendency_violin_overrides,
             plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
             plot_distribution_ecdf_gap_overrides=plot_distribution_ecdf_gap_overrides,
             plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,
             plot_distribution_density_overrides=plot_distribution_density_overrides,
             plot_distribution_qq_fit_overrides=plot_distribution_qq_fit_overrides,
-            # TODO: plot_central_tendency_violin
         )
 
         transforms[transform_name] = analysis_meta
