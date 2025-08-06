@@ -97,10 +97,6 @@ def numeric_distribution_analysis(
     central_tendency = {}
 
     central_tendency_hist_over = (plot_central_tendency_histogram_overrides or {}).copy()
-    if not central_tendency_hist_over.get('file_name'):
-        central_tendency_hist_over['file_name'] = (
-            f"Distribution of {series.name} (overview): Central Tendency.png"
-    )
 
     central_tendency['histogram'] = call_plot_with_overrides(
         plot_central_tendency_histogram,
@@ -110,10 +106,6 @@ def numeric_distribution_analysis(
     )
 
     central_tendency_violin_over = (plot_central_tendency_violin_overrides or {}).copy()
-    if not central_tendency_violin_over.get('file_name'):
-        central_tendency_violin_over['file_name'] = (
-            f"Distribution of {series.name} (overview): Central Tendency (Violin).png"
-    )
 
     central_tendency['violin'] = call_plot_with_overrides(
         plot_central_tendency_violin,
@@ -124,10 +116,6 @@ def numeric_distribution_analysis(
 
     # Dispersion
     dispersion_over = (plot_dispersion_boxplot_overrides or {}).copy()
-    if not dispersion_over.get('file_name'):
-        dispersion_over['file_name'] = (
-            f"Dispersion of {series.name} (overview) (IQR & Outliers).png"
-    )
 
     plot_dispersion_boxplot_meta = call_plot_with_overrides(
         plot_dispersion_boxplot,
@@ -146,12 +134,6 @@ def numeric_distribution_analysis(
     # ECDF gap plot
     ecdf_gap_over = (plot_distribution_ecdf_gap_overrides or {}).copy()
 
-    # only set a default file_name if none was provided
-    if not ecdf_gap_over.get('file_name'):
-        ecdf_gap_over['file_name'] = (
-            f"ECDF Gap Analysis of {series.name}.png"
-        )
-
     # call the plotting helper with the overrides dict
     shape['ecdf_gap'] = call_plot_with_overrides(
         plot_distribution_ecdf_gap,
@@ -162,12 +144,6 @@ def numeric_distribution_analysis(
 
     # prepare overrides for density plot
     density_over = (plot_distribution_density_overrides or {}).copy()
-
-    # only set a default file_name if none was provided
-    if not density_over.get('file_name'):
-        density_over['file_name'] = (
-            f"Distribution Density of {series.name}.png"
-        )
 
     # call the plotting helper with the overrides dict
     shape['density'] = call_plot_with_overrides(
@@ -183,7 +159,6 @@ def numeric_distribution_analysis(
         # force the distribution_name to the current dist
         ecdf_vs_cdf_over = (plot_distribution_ecdf_vs_cdf_overrides or {}).copy()
         ecdf_vs_cdf_over['distribution_name'] = dist
-        ecdf_vs_cdf_over['file_name'] = f"ECDF vs. Theoretical CDF ({dist}).png"
 
         ecdf_vs_cdf_meta = call_plot_with_overrides(
             plot_distribution_ecdf_vs_cdf,
@@ -195,7 +170,6 @@ def numeric_distribution_analysis(
         # Q–Q fit
         qq_fit_over = (plot_distribution_qq_fit_overrides or {}).copy()
         qq_fit_over['distribution_name'] = dist
-        qq_fit_over['file_name'] = f"Q–Q Plot Fit Assessment for ({dist}).png"
 
         qq_meta = call_plot_with_overrides(
             plot_distribution_qq_fit,
@@ -275,21 +249,19 @@ def call_plot_with_overrides(
     save_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Generic wrapper to call a plotting function with overrideable kwargs + smart file_name defaulting.
+    Generic wrapper to call a plotting function with overrideable kwargs.
 
     Steps:
       1. Inspect the target func’s signature.
       2. Start with its default parameter values.
-      3. Pop out a 'file_name' override if provided.
-      4. Apply any other overrides (error on unknown keys).
-      5. If no file_name override, default to '{title}.png'.
-      6. Invoke plot_func(series, **kwargs, save_path=save_path, file_name=file_name).
+      3. Apply any other overrides (error on unknown keys).
+      4. Invoke plot_func(series, **kwargs, save_path=save_path).
     """
     overrides = overrides.copy() if overrides else {}
 
     # 1. inspect signature
     sig = inspect.signature(plot_func)
-    forbidden = {"series", "save_path", "file_name"}
+    forbidden = {"series", "save_path"}
     allowed = {p for p in sig.parameters if p not in forbidden}
 
     # 2. start with defaults
@@ -299,19 +271,15 @@ def call_plot_with_overrides(
         if name in allowed
     }
 
-    # 3. extract file_name override
-    file_name = overrides.pop("file_name", None)
-
-    # 4. apply remaining overrides
+    # 3. apply remaining overrides
     for key, val in overrides.items():
         if key not in allowed:
             raise KeyError(f"'{key}' is not a valid parameter for {plot_func.__name__}")
         plot_kwargs[key] = val
 
-    # 5. call the plot function
+    # 4. call the plot function
     return plot_func(
         series,
         **plot_kwargs,
         save_path=save_path,
-        file_name=file_name,
     )

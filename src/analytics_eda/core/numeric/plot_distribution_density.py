@@ -268,7 +268,9 @@ def plot_distribution_density(
         ax.legend(handles, labels)
 
     # Optional save
-    if save_path and file_name:
+    if save_path:
+        if file_name is None:
+            file_name = f"{title}.png"
         os.makedirs(save_path, exist_ok=True)
         abs_path = os.path.join(save_path, file_name)
         fig.savefig(abs_path, bbox_inches='tight')

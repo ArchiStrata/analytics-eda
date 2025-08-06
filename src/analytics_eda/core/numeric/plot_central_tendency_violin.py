@@ -252,7 +252,9 @@ def plot_central_tendency_violin(
     ax.legend()
 
     # Save
-    if save_path and file_name:
+    if save_path:
+        if file_name is None:
+            file_name = f"{title}.png"
         os.makedirs(save_path, exist_ok=True)
         fig.savefig(os.path.join(save_path, file_name), bbox_inches='tight')
 
