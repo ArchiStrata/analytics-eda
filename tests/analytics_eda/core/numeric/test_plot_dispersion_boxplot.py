@@ -40,13 +40,6 @@ def test_default_parameters_no_save():
     assert stats['pct_75'] == pytest.approx(expected_p75)
     assert stats['pct_90'] == pytest.approx(expected_p90)
 
-    assert 'median_ci' in stats
-    low, high = stats['median_ci']
-    assert isinstance(stats['median_ci'], tuple) and len(stats['median_ci']) == 2
-    assert isinstance(low, float) and isinstance(high, float)
-    # median should lie within its CI
-    assert series.median() >= low and series.median() <= high
-
     # Chart metadata
     assert chart['title']         == "Dispersion of numeric_series (IQR & Outliers)"
     assert chart['ylabel']        == "Value"
@@ -101,10 +94,6 @@ def test_override_and_save(tmp_path):
     assert stats['pct_25'] == pytest.approx(expected_p25)
     assert stats['pct_75'] == pytest.approx(expected_p75)
     assert stats['pct_90'] == pytest.approx(expected_p90)
-
-    assert 'median_ci' in stats
-    low, high = stats['median_ci']
-    assert low <= series.median() <= high
 
     # Chart metadata overrides
     assert chart['title']        == custom_title
@@ -178,9 +167,6 @@ def test_empty_series_returns_stats_and_defaults_dispersion():
     assert np.isnan(stats['pct_75'])
     assert np.isnan(stats['pct_90'])
 
-    low, high = stats['median_ci']
-    assert np.isnan(low) and np.isnan(high)
-
     # Chart metadata defaults
     assert chart['title'] == "Dispersion of empty_series (IQR & Outliers)"
     assert chart['ylabel'] == "Value"
@@ -214,10 +200,6 @@ def test_override_and_save_extreme_bounds(tmp_path):
     # With multiplier=0.3, lower bound ≈ mean−0.3σ flags 4 values, upper bound flags 1 value
     assert desc["extreme_lower_count"] == 4
     assert desc["extreme_upper_count"] == 1
-
-    low, high = desc["median_ci"]
-    assert isinstance(low, float) and isinstance(high, float)
-    assert series.median() >= low and series.median() <= high
 
     # Chart metadata
     assert chart["title"]       == overrides["title_template"]
@@ -263,10 +245,6 @@ def test_violin_silhouette_and_save(tmp_path):
     assert "iqr" in desc and isinstance(desc["iqr"], float)
     assert desc["extreme_lower_count"] >= 1
     assert desc["extreme_upper_count"] >= 1
-
-    low, high = desc["median_ci"]
-    assert isinstance(low, float) and isinstance(high, float)
-    assert pd.Series(data).median() >= low and pd.Series(data).median() <= high
 
     # Chart metadata overrides
     assert chart["title"]       == overrides["title_template"]

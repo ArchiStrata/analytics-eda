@@ -13,24 +13,17 @@
 # limitations under the License.
 import os
 import math
-from typing import Literal
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy import stats
 
 from ..utils.build_chart_title import build_chart_title
 from .validate_numeric_named_series import validate_numeric_named_series
 
-MeanCIMethod = Literal['t', 'bootstrap']
-
 def plot_central_tendency_histogram(
     series: pd.Series,
     bins: int = None,
-    mean_ci_method: MeanCIMethod = "t",
-    alpha: float = 0.05,
-    bootstrap_samples: int = 1_000,
     title_template: str = "Distribution of {name}{modifiers}: Central Tendency",
     name: str = None,
     filter_desc: str = None,
@@ -66,13 +59,6 @@ def plot_central_tendency_histogram(
         Numeric dataset to plot. Missing values will be dropped.
     bins : int or sequence, optional
         Number of histogram bins or explicit bin edges. Defaults to Square-Root Choice ceil(sqrt(n)).
-    mean_ci_method : {'t', 'bootstrap'}, default='t'
-    Which confidence interval to compute: 
-    - 't' for the parametric t–interval, 
-    - 'bootstrap' for a percentile bootstrap on the mean.
-    alpha: significance level for CI.
-    bootstrap_samples : int, default=1000
-        Number of resamples when `ci_method='bootstrap'`.
     title_template: A Python format-string with placeholders:
       - {name}:        series name or label
       - {modifiers}:   combined filter/transform text, empty if none
@@ -100,11 +86,7 @@ def plot_central_tendency_histogram(
                 'n': int,                        # see table below
                 'mean': float,
                 'median': float,
-                'modes': list of float,
-                'mean_ci': (float, float), # tuple(lower, upper) of the (1-alpha)*100% CI for the mean
-                'alpha': float,
-                'mean_ci_method': mean_ci_method,
-                'bootstrap_samples': bootstrap_samples
+                'modes': list of float
             },
             'chart_metadata': {
                 'title': str,
@@ -124,7 +106,6 @@ def plot_central_tendency_histogram(
     | `mean`    | Arithmetic average – balance point of the distribution       |
     | `median`  | 50th percentile – midpoint, robust to outliers               |
     | `modes`   | Most frequent value(s)                                       |
-    | `mean_ci` | Confidence interval of uncertainty around the sample mean    |
     """
     validate_numeric_named_series(series)
     series_clean = series.copy().dropna()
@@ -150,11 +131,7 @@ def plot_central_tendency_histogram(
                 'n': 0,
                 'mean': np.nan,
                 'median': np.nan,
-                'modes': [],
-                'mean_ci': (np.nan, np.nan),
-                'mean_ci_method': mean_ci_method,
-                'alpha': alpha,
-                'bootstrap_samples': bootstrap_samples
+                'modes': []
             },
             'chart_metadata': {
                 'title': title,
@@ -186,19 +163,6 @@ def plot_central_tendency_histogram(
             for i in top_bins
         ]
 
-    # Compute standard error and CI for mean
-
-    if mean_ci_method == "t":
-        # Using t-distribution
-        sem = stats.sem(series_clean, ddof=1)
-        mean_ci_low, mean_ci_high = stats.t.interval(1 - alpha, df=n - 1, loc=mean, scale=sem)
-    elif mean_ci_method == "bootstrap":
-        boot_means = [np.mean(np.random.choice(series_clean, size=n, replace=True))
-                    for _ in range(bootstrap_samples)]
-        mean_ci_low, mean_ci_high = np.percentile(boot_means, [100*alpha/2, 100*(1-alpha/2)])
-    else:
-        raise ValueError("ci_method must be 't' or 'bootstrap'")
-
     # Prepare plot
     sns.set_palette("colorblind")
     fig, ax = plt.subplots(figsize=figsize)
@@ -221,10 +185,6 @@ def plot_central_tendency_histogram(
             linewidth=1,
             label=f"{label} ≈ {center:.2f}"
         )
-
-    # Shade confidence interval for mean
-    mean_ci_label = f"{int((1-alpha)*100)}% CI ({mean_ci_method})"
-    ax.axvspan(mean_ci_low, mean_ci_high, color='gray', alpha=0.2, hatch='//', label=mean_ci_label)
 
     # Optional data source annotation
     if data_source:
@@ -255,11 +215,7 @@ def plot_central_tendency_histogram(
             'n': n,
             'mean': mean,
             'median': median,
-            'modes': mode_vals,
-            'mean_ci': (mean_ci_low, mean_ci_high),
-            'mean_ci_method': mean_ci_method,
-            'alpha': alpha,
-            'bootstrap_samples': bootstrap_samples
+            'modes': mode_vals
         },
         'chart_metadata': {
             'title': title,

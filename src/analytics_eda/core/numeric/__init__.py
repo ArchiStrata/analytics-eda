@@ -7,3 +7,4 @@ from .plot_cardinality_barchart import plot_cardinality_barchart
 from .plot_distribution_ecdf_gap import plot_distribution_ecdf_gap
 from .plot_distribution_qq_fit import plot_distribution_qq_fit
 from .plot_distribution_ecdf_vs_cdf import plot_distribution_ecdf_vs_cdf
+from .plot_central_tendency_violin import plot_central_tendency_violin

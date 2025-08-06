@@ -17,7 +17,6 @@ def test_single_mode():
     assert pytest.approx(stats['mean'], 0.01) == 1.67
     assert stats['median'] == 1.5
     assert stats['modes'] == [1]
-    assert isinstance(stats['mean_ci'], tuple) and len(stats['mean_ci']) == 2
     
     # Chart metadata
     assert chart['bins'] == bins
@@ -156,9 +155,6 @@ def test_empty_series_returns_stats():
     assert math.isnan(stats['mean'])
     assert math.isnan(stats['median'])
     assert stats['modes'] == []
-    ci_low, ci_high = stats['mean_ci']
-    assert isinstance(stats['mean_ci'], tuple) and len(stats['mean_ci']) == 2
-    assert math.isnan(ci_low) and math.isnan(ci_high)
 
     # Chart metadata defaults
     assert chart['bins'] == 0
