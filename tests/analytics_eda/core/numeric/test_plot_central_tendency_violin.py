@@ -119,16 +119,19 @@ def test_save_popmean(tmp_path):
     assert res["descriptive_stats"]["popvariance"] == popvariance
 
     tests = res["tests"]
-    assert "t_test" in tests and "cohens_d" in tests
-    assert isinstance(tests["t_test"]["statistic"], float)
-    assert isinstance(tests["t_test"]["p_value"], float)
-    assert isinstance(tests["t_test"]["reject"], bool)
+    assert "popmean" in tests
+    popmean_tests = tests["popmean"]
 
-    assert isinstance(tests["cohens_d"], float)
+    assert "t_test" in popmean_tests and "cohens_d" in popmean_tests
+    assert isinstance(popmean_tests["t_test"]["statistic"], float)
+    assert isinstance(popmean_tests["t_test"]["p_value"], float)
+    assert isinstance(popmean_tests["t_test"]["reject"], bool)
 
-    assert isinstance(tests["z_test"]["statistic"], float)
-    assert isinstance(tests["z_test"]["p_value"], float)
-    assert isinstance(tests["z_test"]["reject"], bool)
+    assert isinstance(popmean_tests["cohens_d"], float)
+
+    assert isinstance(popmean_tests["z_test"]["statistic"], float)
+    assert isinstance(popmean_tests["z_test"]["p_value"], float)
+    assert isinstance(popmean_tests["z_test"]["reject"], bool)
 
     cm = res["chart_metadata"]
     assert "file_name" in cm
@@ -143,9 +146,9 @@ def test_save_popmean(tmp_path):
     assert sig == b'\x89PNG\r\n\x1a\n'
 
 def test_save_popmedian(tmp_path):
-    rng = np.random.default_rng(1)
-    data = rng.normal(loc=0, scale=1, size=30)
-    s = pd.Series(data, name="G")
+    # Series contains both zeros and non-zeros relative to popmedian=0.0
+    data = [0.0, 1.0, -1.0, 2.5, 0.0]
+    s = pd.Series(data, dtype=float, name="G")
     file_name = "popmedian.png"
 
     popmedian=0.0
@@ -156,9 +159,22 @@ def test_save_popmedian(tmp_path):
     assert res["descriptive_stats"]["popmedian"] == popmedian
 
     tests = res["tests"]
-    assert "wilcoxon" in tests
+
+    assert "popmedian" in tests
+    popmedian_tests = tests["popmedian"]
+    
+    assert "wilcoxon" in popmedian_tests
+    assert isinstance(popmedian_tests["wilcoxon"]["statistic"], float)
+    assert isinstance(popmedian_tests["wilcoxon"]["p_value"], float)
+    assert isinstance(popmedian_tests["wilcoxon"]["reject"], bool)
+
     # sign test only if there are non-zero diffs
-    assert "sign_test" in tests or all(d == 0 for d in (s - 0.0))
+    assert "sign_test" in popmedian_tests
+    assert isinstance(popmedian_tests["sign_test"]["n"], int)
+    assert isinstance(popmedian_tests["sign_test"]["num_positive"], int)
+    assert isinstance(popmedian_tests["sign_test"]["num_negative"], int)
+    assert isinstance(popmedian_tests["sign_test"]["p_value"], float)
+    assert isinstance(popmedian_tests["sign_test"]["reject"], bool)
 
     cm = res["chart_metadata"]
     assert "file_name" in cm

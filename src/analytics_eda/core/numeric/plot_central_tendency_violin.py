@@ -153,18 +153,20 @@ def plot_central_tendency_violin(
     test_results: Dict[str, Any] = {}
 
     if popmean is not None:
+        test_results['popmean'] = {}
+
         # One-Sample Cohen's d
         sd = data.std(ddof=1)
         cohens_d = (sample_mean - popmean) / sd if sd != 0 else None
-        test_results['cohens_d'] = cohens_d
+        test_results['popmean']['cohens_d'] = cohens_d
 
         # One-Sample t-Test
         t_stat, t_p = stats.ttest_1samp(data, popmean)
-        test_results['t_test'] = {'statistic': float(t_stat), 'p_value': float(t_p), 'reject': bool(t_p < alpha)}
+        test_results['popmean']['t_test'] = {'statistic': float(t_stat), 'p_value': float(t_p), 'reject': bool(t_p < alpha)}
         stats_lines.append(
             f"Mean vs {popmean:.2f}: d={cohens_d:.2f}, "
             f"t={t_stat:.2f}, p={t_p:.3f} "
-            f"{'(reject)' if test_results['t_test']['reject'] else '(ns)'}"
+            f"{'(reject)' if test_results['popmean']['t_test']['reject'] else '(ns)'}"
         )
 
         # One-sample Z-test (requires known σ²)
@@ -172,20 +174,21 @@ def plot_central_tendency_violin(
             sigma = np.sqrt(popvariance)
             z_stat = (sample_mean - popmean) / (sigma / np.sqrt(n))
             z_p = 2 * (1 - stats.norm.cdf(abs(z_stat)))
-            test_results['z_test'] = {'statistic': float(z_stat), 'p_value': float(z_p), 'reject': bool(z_p < alpha)}
+            test_results['popmean']['z_test'] = {'statistic': float(z_stat), 'p_value': float(z_p), 'reject': bool(z_p < alpha)}
             stats_lines.append(
                 f"Z-test vs {popmean:.2f}: z={z_stat:.2f}, p={z_p:.3f} "
-                f"{'(reject)' if test_results['z_test']['reject'] else '(ns)'}"
+                f"{'(reject)' if test_results['popmean']['z_test']['reject'] else '(ns)'}"
             )
 
     if popmedian is not None:
+        test_results['popmedian'] = {}
         # Wilcoxon Signed-Rank Test
         diff = data - popmedian
         stat_wr, p_wr = stats.wilcoxon(diff)
-        test_results['wilcoxon'] = {'statistic': float(stat_wr), 'p_value': float(p_wr), 'reject': bool(p_wr < alpha)}
+        test_results['popmedian']['wilcoxon'] = {'statistic': float(stat_wr), 'p_value': float(p_wr), 'reject': bool(p_wr < alpha)}
         stats_lines.append(
             f"Median vs {popmedian:.2f}: W={stat_wr:.2f}, p={p_wr:.3f} "
-            f"{'(reject)' if test_results['wilcoxon']['reject'] else '(ns)'}"
+            f"{'(reject)' if test_results['popmedian']['wilcoxon']['reject'] else '(ns)'}"
         )
 
         # Sign test (binomial on signs)
@@ -194,10 +197,10 @@ def plot_central_tendency_violin(
         if n_sign > 0:
             pos = int((nonzero > 0).sum())
             sign_res = stats.binomtest(pos, n_sign, p=0.5)
-            test_results['sign_test'] = {'num_positive': pos, 'num_negative': n_sign - pos, 'n': n_sign, 'p_value': float(sign_res.pvalue), 'reject': bool(sign_res.pvalue < alpha)}
+            test_results['popmedian']['sign_test'] = {'num_positive': pos, 'num_negative': n_sign - pos, 'n': n_sign, 'p_value': float(sign_res.pvalue), 'reject': bool(sign_res.pvalue < alpha)}
             stats_lines.append(
                 f"Sign test: +={pos}, -={n_sign-pos}, p={sign_res.pvalue:.3f} "
-                f"{'(reject)' if test_results['sign_test']['reject'] else '(ns)'}"
+                f"{'(reject)' if test_results['popmedian']['sign_test']['reject'] else '(ns)'}"
             )
 
     # Plot
