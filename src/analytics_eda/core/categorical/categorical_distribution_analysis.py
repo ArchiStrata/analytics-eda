@@ -77,6 +77,31 @@ def categorical_distribution_analysis(
 
     save_dir.mkdir(parents=True, exist_ok=True)
 
+    # Core Pillars
+
+    # TODO: 1. Frequency Distribution
+        # What it is: A listing of each category alongside its count and proportion.
+
+        # Key metrics:
+        # Absolute counts
+        # Relative frequencies (percentages)
+        # Mode (most common category)
+
+        # Why it matters: Shows which categories dominate and which are rare
+
+    # TODO: plot_frequency_pareto
+
+    # TODO: 2. Cardinality & Balance
+    # Cardinality: Number of unique categories
+    # Rare categories (outliers): analyze categories below a threshold that are typically aggregated into 'Others'
+    # Balance: How evenly the observations are spread across those categories
+    # * Entropy (higher means a more even spread)
+    # * Gini index (higher means more inequality in category sizes)
+
+    # Why it matters: Tells you if you have too many categories to handle, or if one category overwhelms the rest.
+
+
+
     total = len(series)
     # frequency and proportions
     freq = series.value_counts(dropna=False).rename_axis(series.name)

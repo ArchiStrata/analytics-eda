@@ -82,7 +82,7 @@ def univariate_numeric_analysis(
     # Distribution Analysis
     distribution_result = numeric_distribution_analysis(series_copy, save_dir, report_log_id=report_log_id)
 
-    # 4. Generate report
+    # Generate report
     eda_report = {
         'missing_data': missing_data,
         'distribution': distribution_result

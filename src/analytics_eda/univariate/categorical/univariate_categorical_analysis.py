@@ -88,14 +88,17 @@ def univariate_categorical_analysis(
 
     total = int(len(series))
 
-    # 2. Missing Data Analysis
+    # TODO: 1. Data Quality & Standardization
+    # Missing Data Analysis
     missing_data = missing_data_analysis(series, save_dir, report_log_id=report_log_id)
 
-    # 3. Distribution Analysis
+    # Label consistency (spelling/casing/abbreviations)
+
+    # 2. Distribution Analysis
     distribution_result = categorical_distribution_analysis(series, save_dir, top_n, report_log_id=report_log_id)
     freq_tbl = distribution_result['report']['frequency_report']['frequency_table']
 
-    # 4. Outlier Analysis
+    # TODO: combine Outlier Analysis with Distribution Analysis
     # Identify rare categories
     rare_categories = [
         cat
@@ -107,10 +110,10 @@ def univariate_categorical_analysis(
         'rare_categories': rare_categories,
     }
 
-    # 5. Inferential Analysis
+    # TODO: combine Inferential Analysis with Distribution Analysis
     inferential = categorical_inferential_analysis(freq_tbl, total, alpha)
 
-    # 6. Generate report
+    # Generate report
     eda_report = {
         'missing_data': missing_data,
         'distribution': distribution_result['report'],
