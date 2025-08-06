@@ -6,6 +6,9 @@ import pandas as pd
 from analytics_eda.core.numeric.numeric_distribution_analysis import numeric_distribution_analysis
 from analytics_eda.core.numeric.evaluate_transforms import evaluate_transforms
 
+is_discrete_true = True
+is_discrete_false = False
+
 def load_and_validate_report(response: dict, report_dir: Path) -> dict:
     """
     Given the return value of `numeric_distribution_analysis` and the directory
@@ -48,7 +51,7 @@ def test_missing_series_name_raises_error(tmp_path):
     # Series without a name should trigger validation error
     series = pd.Series([1.0, 2.0, 3.0], dtype=float)
     with pytest.raises(ValueError):
-        numeric_distribution_analysis(series, report_path=tmp_path)
+        numeric_distribution_analysis(series, report_path=tmp_path, is_discrete=is_discrete_true)
 
 def test_norm_override_parameters_save(tmp_path):
     rng = np.random.default_rng(1)
@@ -60,7 +63,6 @@ def test_norm_override_parameters_save(tmp_path):
         "filter_desc": "filtered by New York",
         "xlabel": "Custom X",
         "ylabel": "Custom Y",
-        "data_source": "UnitTest",
         "bins": 5,
         "file_name": "custom_hist.png"
     }
@@ -68,7 +70,9 @@ def test_norm_override_parameters_save(tmp_path):
     out = numeric_distribution_analysis(
         series,
         report_path=tmp_path,
-        plot_central_tendency_histogram_overrides=overrides
+        plot_central_tendency_histogram_overrides=overrides,
+        is_discrete=is_discrete_false,
+        data_source="UnitTest"
     )
 
     full_report = load_and_validate_report(out, tmp_path)
@@ -87,7 +91,7 @@ def test_norm_override_parameters_save(tmp_path):
     assert chart["title"]       == "Distribution of Custom (filtered by New York): Central Tendency"
     assert chart["xlabel"]      == overrides["xlabel"]
     assert chart["ylabel"]      == overrides["ylabel"]
-    assert chart["data_source"] == overrides["data_source"]
+    assert chart["data_source"] == "UnitTest"
     assert chart["bins"]        == overrides["bins"]
 
     # Descriptive stats still valid
@@ -114,7 +118,7 @@ def test_numeric_distribution_analysis_basic_structure(
     series = pd.Series(raw, name="x")
 
     # Run analysis without transforms
-    out = numeric_distribution_analysis(series, report_path=tmp_path)
+    out = numeric_distribution_analysis(series, report_path=tmp_path, is_discrete=is_discrete_false)
 
     full_report = load_and_validate_report(out, tmp_path)
     report = full_report["data"]
@@ -142,7 +146,7 @@ def test_numeric_distribution_analysis_basic_structure(
 
     # 4) shape contains ecdf_gap, density, distribution_fits
     shape = report["shape"]
-    assert set(shape) == {"ecdf_gap", "density", "distribution_fits"}
+    assert set(shape) == {"ecdf_gap", "density", "distribution_fits", "probability"}
 
     # ecdf_gap saved
     eg = shape["ecdf_gap"]["chart_metadata"]["file_name"]
@@ -221,7 +225,8 @@ def test_numeric_distribution_analysis_with_transforms(dist_name, rng_func, supp
     out = numeric_distribution_analysis(
         series,
         report_path=tmp_path,
-        evaluate_transforms_fn=evaluate_transforms
+        evaluate_transforms_fn=evaluate_transforms,
+        is_discrete=is_discrete_false
     )
 
     full_report = load_and_validate_report(out, tmp_path)

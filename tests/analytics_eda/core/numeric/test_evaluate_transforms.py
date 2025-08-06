@@ -23,9 +23,12 @@ def test_evaluate_transforms_invokes_analysis_per_candidate(monkeypatch, tmp_pat
         fake_numeric_distribution_analysis
     )
 
+    is_discrete = True
+
     # 3) Run evaluate_transforms
     out = evaluate_transforms(
         series,
+        is_discrete,
         statistics,
         normality_tests,
         report_path=tmp_path

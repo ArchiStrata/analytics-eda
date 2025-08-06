@@ -23,10 +23,12 @@ from .numeric_distribution_analysis import numeric_distribution_analysis
 
 def evaluate_transforms(
     series: pd.Series,
+    is_discrete: bool,
     statistics: Dict[str, Any],
     normality_tests: Dict[str, Any],
     report_path: Path,
     report_log_id: str | None = None,
+    data_source: Optional[str] = None,
     distribution_names=None,
     plot_central_tendency_histogram_overrides=None,
     plot_central_tendency_violin_overrides: Optional[Dict[str, Any]] = None,
@@ -35,6 +37,7 @@ def evaluate_transforms(
     plot_distribution_ecdf_vs_cdf_overrides=None,
     plot_distribution_density_overrides=None,
     plot_distribution_qq_fit_overrides=None,
+    plot_distribution_probability_overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Apply a suite of candidate transforms to a series and run full distribution analysis on each.
@@ -73,8 +76,10 @@ def evaluate_transforms(
         # Analyze the transformed data
         analysis_meta = numeric_distribution_analysis(
             transformed,
+            is_discrete=is_discrete,
             report_path=transform_dir,
             report_log_id=report_log_id,
+            data_source=data_source,
             distribution_names=distribution_names,
             plot_central_tendency_histogram_overrides=plot_central_tendency_histogram_overrides,
             plot_central_tendency_violin_overrides=plot_central_tendency_violin_overrides,
@@ -83,6 +88,7 @@ def evaluate_transforms(
             plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,
             plot_distribution_density_overrides=plot_distribution_density_overrides,
             plot_distribution_qq_fit_overrides=plot_distribution_qq_fit_overrides,
+            plot_distribution_probability_overrides=plot_distribution_probability_overrides,
         )
 
         transforms[transform_name] = analysis_meta

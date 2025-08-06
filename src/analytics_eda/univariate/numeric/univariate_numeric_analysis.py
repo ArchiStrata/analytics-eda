@@ -13,7 +13,7 @@
 # limitations under the License.
 from pathlib import Path
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional, Sequence
 import uuid
 
 import pandas as pd
@@ -26,7 +26,16 @@ def univariate_numeric_analysis(
     series: pd.Series,
     report_root: str = 'reports/eda/univariate/numeric',
     report_log_id = str(uuid.uuid4()),
-    data_source: Optional[str] = None
+    data_source: Optional[str] = None,
+    distribution_names: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon'),
+    plot_central_tendency_histogram_overrides: Optional[Dict[str, Any]] = None,
+    plot_central_tendency_violin_overrides: Optional[Dict[str, Any]] = None,
+    plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
+    plot_distribution_ecdf_gap_overrides: Optional[Dict[str, Any]] = None,
+    plot_distribution_ecdf_vs_cdf_overrides: Optional[Dict[str, Any]] = None,
+    plot_distribution_density_overrides:      Optional[Dict[str, Any]] = None,
+    plot_distribution_qq_fit_overrides: Optional[Dict[str, Any]] = None,
+    plot_distribution_probability_overrides: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """
     Conduct a full univariate analysis on a numeric series.
@@ -76,16 +85,30 @@ def univariate_numeric_analysis(
     missing_data = missing_data_analysis(series_copy, report_path, report_log_id=report_log_id)
 
     # Cardinality Analysis
-    top_k = 10
-    plot_cardinality_barchart_file_name = f"Value Counts (Top {top_k}) of {series_copy.name} for Cardinality.png"
-    plot_cardinality_barchart_meta = plot_cardinality_barchart(series_copy, top_k=top_k, data_source=data_source, save_path=report_path, file_name=plot_cardinality_barchart_file_name)
+    plot_cardinality_barchart_meta = plot_cardinality_barchart(series_copy, data_source=data_source, save_path=report_path)
+    is_discrete = plot_cardinality_barchart_meta['descriptive_stats']['is_discrete']
 
     cardinality = {
         'plot_cardinality_barchart': plot_cardinality_barchart_meta
     }
 
     # Distribution Analysis
-    distribution_result = numeric_distribution_analysis(series_copy, report_path, report_log_id=report_log_id)
+    distribution_result = numeric_distribution_analysis(
+        series_copy,
+        is_discrete=is_discrete,
+        data_source=data_source,
+        report_path=report_path,
+        report_log_id=report_log_id,
+        distribution_names=distribution_names,
+        plot_central_tendency_histogram_overrides=plot_central_tendency_histogram_overrides,
+        plot_central_tendency_violin_overrides=plot_central_tendency_violin_overrides,
+        plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
+        plot_distribution_ecdf_gap_overrides=plot_distribution_ecdf_gap_overrides,
+        plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,
+        plot_distribution_density_overrides=plot_distribution_density_overrides,
+        plot_distribution_qq_fit_overrides=plot_distribution_qq_fit_overrides,
+        plot_distribution_probability_overrides=plot_distribution_probability_overrides,
+    )
 
     # Generate report
     eda_report = {

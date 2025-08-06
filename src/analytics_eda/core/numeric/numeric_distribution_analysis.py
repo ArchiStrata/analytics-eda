@@ -25,6 +25,7 @@ from .plot_distribution_ecdf_gap    import plot_distribution_ecdf_gap
 from .plot_distribution_ecdf_vs_cdf import plot_distribution_ecdf_vs_cdf
 from .plot_distribution_density         import plot_distribution_density
 from .plot_distribution_qq_fit import plot_distribution_qq_fit
+from .plot_distribution_probability_function import plot_distribution_probability_function
 
 from .validate_numeric_named_series import validate_numeric_named_series
 
@@ -34,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 def numeric_distribution_analysis(
     series: pd.Series,
+    is_discrete: bool,
     report_path: Path,
     report_log_id: str = str(uuid.uuid4()),
     distribution_names: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon'),
@@ -43,6 +45,7 @@ def numeric_distribution_analysis(
             dict
         ]
     ] = None,
+    data_source: Optional[str] = None,
     plot_central_tendency_histogram_overrides: Optional[Dict[str, Any]] = None,
     plot_central_tendency_violin_overrides: Optional[Dict[str, Any]] = None,
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
@@ -50,6 +53,7 @@ def numeric_distribution_analysis(
     plot_distribution_ecdf_vs_cdf_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_density_overrides:      Optional[Dict[str, Any]] = None,
     plot_distribution_qq_fit_overrides: Optional[Dict[str, Any]] = None,
+    plot_distribution_probability_overrides: Optional[Dict[str, Any]] = None,
 ) -> dict:
     """
     Compute descriptive statistics, assess fit to common distributions, visualize
@@ -103,6 +107,7 @@ def numeric_distribution_analysis(
         series,
         overrides=central_tendency_hist_over,
         save_path=report_path,
+        data_source=data_source,
     )
 
     central_tendency_violin_over = (plot_central_tendency_violin_overrides or {}).copy()
@@ -112,6 +117,7 @@ def numeric_distribution_analysis(
         series,
         overrides=central_tendency_violin_over,
         save_path=report_path,
+        data_source=data_source,
     )
 
     # Dispersion
@@ -122,6 +128,7 @@ def numeric_distribution_analysis(
         series,
         overrides=dispersion_over,
         save_path=report_path,
+        data_source=data_source,
     )
 
     dispersion = {
@@ -140,6 +147,7 @@ def numeric_distribution_analysis(
         series,
         overrides=ecdf_gap_over,
         save_path=report_path,
+        data_source=data_source,
     )
 
     # prepare overrides for density plot
@@ -151,6 +159,18 @@ def numeric_distribution_analysis(
         series,
         overrides=density_over,
         save_path=report_path,
+        data_source=data_source,
+    )
+
+    # probability
+    prob_over = (plot_distribution_probability_overrides or {}).copy()
+
+    shape['probability'] = call_plot_with_overrides(
+        plot_distribution_probability_function,
+        series,
+        overrides=prob_over,
+        save_path=report_path,
+        data_source=data_source,
     )
 
     # Fit each theoretical distribution
@@ -165,6 +185,7 @@ def numeric_distribution_analysis(
             series,
             overrides=ecdf_vs_cdf_over,
             save_path=report_path,
+            data_source=data_source,
         )
 
         # Q–Q fit
@@ -176,6 +197,7 @@ def numeric_distribution_analysis(
             series,
             overrides=qq_fit_over,
             save_path=report_path,
+            data_source=data_source,
         )
 
         distribution_fits[dist] = {
@@ -192,10 +214,12 @@ def numeric_distribution_analysis(
         tests   = norm_qq.get('tests', {})
         transforms_meta = evaluate_transforms_fn(
             series=series,
+            is_discrete=is_discrete,
             statistics=stats,
             normality_tests=tests,
             report_path=report_path,
             report_log_id=report_log_id,
+            data_source=data_source,
             distribution_names=distribution_names,
             plot_central_tendency_histogram_overrides=plot_central_tendency_histogram_overrides,
             plot_central_tendency_violin_overrides=plot_central_tendency_violin_overrides,
@@ -204,6 +228,7 @@ def numeric_distribution_analysis(
             plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,
             plot_distribution_density_overrides=plot_distribution_density_overrides,
             plot_distribution_qq_fit_overrides=plot_distribution_qq_fit_overrides,
+            plot_distribution_probability_overrides=plot_distribution_probability_overrides,
         )
         # expose only the inner mapping of name → analysis
         shape['transforms'] = transforms_meta.get('transforms', {})
@@ -247,6 +272,7 @@ def call_plot_with_overrides(
     series: pd.Series,
     overrides: Optional[Dict[str, Any]] = None,
     save_path: Optional[str] = None,
+    data_source: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Generic wrapper to call a plotting function with overrideable kwargs.
@@ -261,7 +287,7 @@ def call_plot_with_overrides(
 
     # 1. inspect signature
     sig = inspect.signature(plot_func)
-    forbidden = {"series", "save_path"}
+    forbidden = {"series", "save_path", "data_source"}
     allowed = {p for p in sig.parameters if p not in forbidden}
 
     # 2. start with defaults
@@ -282,4 +308,5 @@ def call_plot_with_overrides(
         series,
         **plot_kwargs,
         save_path=save_path,
+        data_source=data_source,
     )
