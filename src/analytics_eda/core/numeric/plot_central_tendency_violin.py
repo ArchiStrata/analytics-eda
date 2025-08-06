@@ -33,6 +33,7 @@ def plot_central_tendency_violin(
     bootstrap_samples: int = 1_000,
     popmean: Optional[float] = None,
     popmedian: Optional[float] = None,
+    popvariance: Optional[float] = None,
     title_template: str = "Distribution of {name}{modifiers}: Central Tendency (Violin)",
     name: Optional[str] = None,
     filter_desc: Optional[str] = None,
@@ -48,8 +49,8 @@ def plot_central_tendency_violin(
     Generate a horizontal violin plot showing distribution with overlaid point and error bars for
     mean and/or median confidence intervals.
 
-    Tests shown when popmean and/or popmedian are not None:
-      - Cohen's d and one-sample t-test for popmean
+    Tests shown when popmean and/or popmedian and/or popvariance are not None:
+      - Cohen’s d, one-sample t-test, and (if popvariance) one-sample Z-test for popmean
       - Wilcoxon signed-rank and sign test for popmedian
 
     Parameters
@@ -108,7 +109,10 @@ def plot_central_tendency_violin(
                 'mean_ci_method': mean_ci_method,
                 'median_ci_method': median_ci_method,
                 'alpha': alpha,
-                'bootstrap_samples': bootstrap_samples
+                'bootstrap_samples': bootstrap_samples,
+                'popmean': popmean,
+                'popmedian': popmedian,
+                'popvariance': popvariance
             },
             'tests': {},
             'chart_metadata': {
@@ -147,6 +151,7 @@ def plot_central_tendency_violin(
     # perform population tests
     stats_lines = []
     test_results: Dict[str, Any] = {}
+
     if popmean is not None:
         # One-Sample Cohen's d
         sd = data.std(ddof=1)
@@ -161,6 +166,17 @@ def plot_central_tendency_violin(
             f"t={t_stat:.2f}, p={t_p:.3f} "
             f"{'(reject)' if test_results['t_test']['reject'] else '(ns)'}"
         )
+
+        # One-sample Z-test (requires known σ²)
+        if popvariance is not None:
+            sigma = np.sqrt(popvariance)
+            z_stat = (sample_mean - popmean) / (sigma / np.sqrt(n))
+            z_p = 2 * (1 - stats.norm.cdf(abs(z_stat)))
+            test_results['z_test'] = {'statistic': float(z_stat), 'p_value': float(z_p), 'reject': bool(z_p < alpha)}
+            stats_lines.append(
+                f"Z-test vs {popmean:.2f}: z={z_stat:.2f}, p={z_p:.3f} "
+                f"{'(reject)' if test_results['z_test']['reject'] else '(ns)'}"
+            )
 
     if popmedian is not None:
         # Wilcoxon Signed-Rank Test
@@ -248,7 +264,10 @@ def plot_central_tendency_violin(
             'mean_ci_method': mean_ci_method,
             'median_ci_method': median_ci_method,
             'alpha': alpha,
-            'bootstrap_samples': bootstrap_samples
+            'bootstrap_samples': bootstrap_samples,
+            'popmean': popmean,
+            'popmedian': popmedian,
+            'popvariance': popvariance
         },
         'tests': test_results,
         'chart_metadata': {

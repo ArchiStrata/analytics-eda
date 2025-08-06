@@ -110,11 +110,25 @@ def test_save_popmean(tmp_path):
 
     file_name = "popmean.png"
 
-    res = plot_central_tendency_violin(s, popmean=10.0, save_path=str(tmp_path), file_name=file_name)
+    popmean = 10.0
+    popvariance = 5.0
+    res = plot_central_tendency_violin(s, popmean=popmean, popvariance=popvariance, save_path=str(tmp_path), file_name=file_name)
+
+    assert "descriptive_stats" in res
+    assert res["descriptive_stats"]["popmean"] == popmean
+    assert res["descriptive_stats"]["popvariance"] == popvariance
+
     tests = res["tests"]
     assert "t_test" in tests and "cohens_d" in tests
     assert isinstance(tests["t_test"]["statistic"], float)
     assert isinstance(tests["t_test"]["p_value"], float)
+    assert isinstance(tests["t_test"]["reject"], bool)
+
+    assert isinstance(tests["cohens_d"], float)
+
+    assert isinstance(tests["z_test"]["statistic"], float)
+    assert isinstance(tests["z_test"]["p_value"], float)
+    assert isinstance(tests["z_test"]["reject"], bool)
 
     cm = res["chart_metadata"]
     assert "file_name" in cm
@@ -134,7 +148,13 @@ def test_save_popmedian(tmp_path):
     s = pd.Series(data, name="G")
     file_name = "popmedian.png"
 
-    res = plot_central_tendency_violin(s, popmedian=0.0, save_path=str(tmp_path), file_name=file_name)
+    popmedian=0.0
+
+    res = plot_central_tendency_violin(s, popmedian=popmedian, save_path=str(tmp_path), file_name=file_name)
+
+    assert "descriptive_stats" in res
+    assert res["descriptive_stats"]["popmedian"] == popmedian
+
     tests = res["tests"]
     assert "wilcoxon" in tests
     # sign test only if there are non-zero diffs
