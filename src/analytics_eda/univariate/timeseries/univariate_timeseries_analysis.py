@@ -102,7 +102,7 @@ def univariate_timeseries_analysis(df: pd.DataFrame,
                 'time_col': time_col
             }
         },
-        'eda': eda_report
+        'data': eda_report
     }
 
     report_path = report_dir / f"{time_col.replace(' ', '_')}_{numeric_col.replace(' ', '_')}_univariate_analysis_report.json"

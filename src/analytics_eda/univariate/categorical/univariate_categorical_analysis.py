@@ -56,7 +56,7 @@ def univariate_categorical_analysis(
     JSON report structure:
         {
             'metadata': { ... } # Report metadata
-            'eda': {
+            'data': {
                 'missing_data': {'total': int, 'missing': int, 'pct_missing': float},
                 'distribution': {...},  # output from categorical_distribution_analysis
                 'outliers': {'rare_categories': List[str]},
@@ -126,7 +126,7 @@ def univariate_categorical_analysis(
                 'series': series.name
             }
         },
-        'eda': eda_report
+        'data': eda_report
     }
 
     report_path = save_dir / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"

@@ -1,9 +1,43 @@
-import os
+import json
+from pathlib import Path
 import pytest
 import numpy as np
 import pandas as pd
 from analytics_eda.core.numeric.numeric_distribution_analysis import numeric_distribution_analysis
 from analytics_eda.core.numeric.evaluate_transforms import evaluate_transforms
+
+def load_and_validate_report(response: dict, report_dir: Path) -> dict:
+    """
+    Given the return value of `numeric_distribution_analysis` and the directory
+    where reports are written, this will:
+
+      1. Assert that 'report_file_name' is present in the response.
+      2. Assert that the file exists and is a regular file.
+      3. Load it as JSON (failing if invalid).
+      4. Return the parsed JSON.
+
+    Usage in pytest:
+        report = load_and_validate_report(out, tmp_path)
+        # now you can make assertions about report['metadata'], report['data'], etc.
+    """
+    # 1. Key present
+    assert 'report_file_name' in response, "response must contain 'report_file_name'"
+    report_file = response['report_file_name']
+    assert isinstance(report_file, str) and report_file, "report_file_name must be a non-empty string"
+
+    # 2. File exists
+    path = report_dir / report_file
+    assert path.exists() and path.is_file(), f"Report file not found at {path!s}"
+
+    # 3. Load & validate JSON
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            full_report = json.load(f)
+    except json.JSONDecodeError as e:
+        raise AssertionError(f"Report file is not valid JSON: {e}") from e
+
+    # 4. Return parsed report
+    return full_report
 
 
 def make_float_series(data, name="x"):
@@ -31,12 +65,16 @@ def test_norm_override_parameters_save(tmp_path):
         "file_name": "custom_hist.png"
     }
 
-    result = numeric_distribution_analysis(
+    out = numeric_distribution_analysis(
         series,
         report_path=tmp_path,
         plot_central_tendency_histogram_overrides=overrides
     )
-    hist_meta = result["report"]["central_tendency"]["histogram"]
+
+    full_report = load_and_validate_report(out, tmp_path)
+    report = full_report["data"]
+
+    hist_meta = report["central_tendency"]["histogram"]
     chart = hist_meta["chart_metadata"]
     desc  = hist_meta["descriptive_stats"]
 
@@ -76,8 +114,10 @@ def test_numeric_distribution_analysis_basic_structure(
     series = pd.Series(raw, name="x")
 
     # Run analysis without transforms
-    result = numeric_distribution_analysis(series, report_path=tmp_path)
-    report = result["report"]
+    out = numeric_distribution_analysis(series, report_path=tmp_path)
+
+    full_report = load_and_validate_report(out, tmp_path)
+    report = full_report["data"]
 
     # 1) Top-level keys
     assert set(report) == {"central_tendency", "dispersion", "shape"}
@@ -129,7 +169,7 @@ def test_numeric_distribution_analysis_basic_structure(
     # descriptive_stats
     assert desc["distribution"] == dist_name
     assert desc["n"] == series.size
-    assert isinstance(desc["params"], tuple)
+    assert isinstance(desc["params"], list)
 
     # tests: KS and CvM always, Anderson only for norm/expon
     expected = {"ks", "cvm"}
@@ -178,12 +218,15 @@ def test_numeric_distribution_analysis_with_transforms(dist_name, rng_func, supp
     series = pd.Series(raw, name=dist_name)
 
     # Run analysis *with* transforms enabled
-    result = numeric_distribution_analysis(
+    out = numeric_distribution_analysis(
         series,
         report_path=tmp_path,
         evaluate_transforms_fn=evaluate_transforms
     )
-    report = result["report"]
+
+    full_report = load_and_validate_report(out, tmp_path)
+    report = full_report["data"]
+
     shape  = report["shape"]
 
     # transforms key should now be present
@@ -197,7 +240,10 @@ def test_numeric_distribution_analysis_with_transforms(dist_name, rng_func, supp
     # each transform entry should itself be a full analysis dict
     for transform_name, transform_meta in transforms.items():
         assert isinstance(transform_meta, dict), f"{transform_name!r} meta must be a dict"
-        report_t = transform_meta.get("report")
+
+        full_transform_report = load_and_validate_report(transform_meta, tmp_path / transform_name)
+        report_t = full_transform_report["data"]
+
         assert report_t is not None, f"{transform_name!r} entry missing 'report'"
 
         # 1) central_tendency → histogram

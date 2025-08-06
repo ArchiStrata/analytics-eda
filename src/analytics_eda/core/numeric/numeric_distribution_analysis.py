@@ -28,6 +28,8 @@ from .plot_distribution_qq_fit import plot_distribution_qq_fit
 
 from .validate_numeric_named_series import validate_numeric_named_series
 
+from ..reporting import write_json_report
+
 logger = logging.getLogger(__name__)
 
 def numeric_distribution_analysis(
@@ -240,12 +242,30 @@ def numeric_distribution_analysis(
         }
     )
 
-    return {
-        'report': {
+    distribution_report = {
             'central_tendency': central_tendency,
             'dispersion': dispersion,
             'shape': shape
         }
+
+    full_report = {
+        'metadata': {
+            'version': '1.0.0',
+            'report_name': 'numeric_distribution_analysis',
+            'parameters': {
+                'series': series.name,
+                'distribution_names': distribution_names
+            }
+        },
+        'data': distribution_report
+    }
+
+    report_file_name = f"{series.name.replace(' ', '_')}_numeric_distribution_analysis_report.json"
+    report_file_path = report_path / report_file_name
+    write_json_report(full_report, report_file_path)
+
+    return {
+        'report_file_name': report_file_name
     }
 
 def call_plot_with_overrides(

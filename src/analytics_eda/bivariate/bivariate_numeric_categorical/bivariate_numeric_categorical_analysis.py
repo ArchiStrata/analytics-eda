@@ -125,7 +125,7 @@ def bivariate_numeric_categorical_analysis(
                 'categorical_col': categorical_col
             }
         },
-        'eda': eda_report
+        'data': eda_report
     }
 
     report_path = report_dir / f"{numeric_col}_by_{categorical_col}_bivariate_analysis_report.json"

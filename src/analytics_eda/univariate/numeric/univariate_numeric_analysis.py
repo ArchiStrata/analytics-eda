@@ -47,13 +47,12 @@ def univariate_numeric_analysis(
     JSON report structure:
         {
             'metadata': { ... } # Report metadata
-            'eda': {
+            'data': {
                 'missing_data': Summary of missing data analysis,
                 'distribution': Summary of distribution analysis,
             }
         }
     """
-    # 1. Validate Numeric
     validate_numeric_named_series(series)
 
     logger.info(
@@ -71,7 +70,7 @@ def univariate_numeric_analysis(
     save_dir = Path(report_root) / series_copy.name.replace(' ', '_')
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    # 2. Missing Data Analysis
+    # Missing Data Analysis
     missing_data = missing_data_analysis(series_copy, save_dir, report_log_id=report_log_id)
 
     # TODO: plot_cardinality_barchart
@@ -80,15 +79,13 @@ def univariate_numeric_analysis(
         'plot_cardinality_barchart': None
     }
 
-    # 3. Distribution Analysis
+    # Distribution Analysis
     distribution_result = numeric_distribution_analysis(series_copy, save_dir, report_log_id=report_log_id)
 
-    # 5. TODO: Inferential Analysis
-
-    # 6. Generate report
+    # 4. Generate report
     eda_report = {
         'missing_data': missing_data,
-        'distribution': distribution_result['report']
+        'distribution': distribution_result
     }
 
     full_report = {
@@ -99,7 +96,7 @@ def univariate_numeric_analysis(
                 'series': series.name
             }
         },
-        'eda': eda_report
+        'data': eda_report
     }
 
     report_path = save_dir / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"

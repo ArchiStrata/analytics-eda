@@ -39,8 +39,8 @@ def test_univariate_numeric_analysis_on_normal_series(tmp_path, normal_15_series
     for key in ("version", "report_name", "parameters"):
         assert key in result['metadata']
 
-    assert 'eda' in result
-    eda_report = result['eda']
+    assert 'data' in result
+    eda_report = result['data']
 
     expected_top = {'missing_data', 'distribution'}
     assert set(eda_report.keys()) == expected_top
@@ -48,9 +48,7 @@ def test_univariate_numeric_analysis_on_normal_series(tmp_path, normal_15_series
     # Inspect the distribution sub-report
     dist = eda_report['distribution']
     expected_dist_keys = {
-        'dispersion',
-        'central_tendency',
-        'shape'
+        'report_file_name'
     }
     assert set(dist.keys()) == expected_dist_keys
 

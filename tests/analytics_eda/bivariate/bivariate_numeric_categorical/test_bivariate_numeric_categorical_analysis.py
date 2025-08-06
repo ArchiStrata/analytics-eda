@@ -69,8 +69,8 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
     assert 'report_name' in loaded['metadata']
     assert 'parameters' in loaded['metadata']
 
-    assert 'eda' in loaded
-    eda_report = loaded['eda']
+    assert 'data' in loaded
+    eda_report = loaded['data']
 
     assert 'statistical_tests' in eda_report, "Missing 'statistical_tests' in report"
     assert 'segments_report' in eda_report, "Missing 'segments_report' in report"

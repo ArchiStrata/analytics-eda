@@ -43,11 +43,11 @@ def test_univariate_timeseries_analysis_creates_and_populates_report(tmp_path):
     for key in ("version", "report_name", "parameters"):
         assert key in report["metadata"]
     
-    assert "eda" in report
+    assert "data" in report
 
-    assert "visuals" in report["eda"], "'visuals' key missing in report"
+    assert "visuals" in report["data"], "'visuals' key missing in report"
 
     # 8. Assert visuals dict is non‐empty
-    visuals = report["eda"]["visuals"]
+    visuals = report["data"]["visuals"]
     assert isinstance(visuals, dict), f"'visuals' should be a dict, got {type(visuals)}"
     assert visuals, "Visuals dictionary is empty"
