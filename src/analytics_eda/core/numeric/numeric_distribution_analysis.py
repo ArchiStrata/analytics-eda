@@ -14,7 +14,6 @@
 import logging
 import uuid
 from pathlib import Path
-import inspect
 from typing import Optional, Dict, Any, Callable, Sequence
 import pandas as pd
 
@@ -30,6 +29,7 @@ from .plot_distribution_probability_function import plot_distribution_probabilit
 from .validate_numeric_named_series import validate_numeric_named_series
 
 from ..reporting import write_json_report
+from ..utils import call_plot_with_overrides
 
 logger = logging.getLogger(__name__)
 
@@ -266,47 +266,3 @@ def numeric_distribution_analysis(
     return {
         'report_file_name': report_file_name
     }
-
-def call_plot_with_overrides(
-    plot_func: Callable[..., Dict[str, Any]],
-    series: pd.Series,
-    overrides: Optional[Dict[str, Any]] = None,
-    save_path: Optional[str] = None,
-    data_source: Optional[str] = None,
-) -> Dict[str, Any]:
-    """
-    Generic wrapper to call a plotting function with overrideable kwargs.
-
-    Steps:
-      1. Inspect the target func’s signature.
-      2. Start with its default parameter values.
-      3. Apply any other overrides (error on unknown keys).
-      4. Invoke plot_func(series, **kwargs, save_path=save_path).
-    """
-    overrides = overrides.copy() if overrides else {}
-
-    # 1. inspect signature
-    sig = inspect.signature(plot_func)
-    forbidden = {"series", "save_path", "data_source"}
-    allowed = {p for p in sig.parameters if p not in forbidden}
-
-    # 2. start with defaults
-    plot_kwargs: Dict[str, Any] = {
-        name: param.default
-        for name, param in sig.parameters.items()
-        if name in allowed
-    }
-
-    # 3. apply remaining overrides
-    for key, val in overrides.items():
-        if key not in allowed:
-            raise KeyError(f"'{key}' is not a valid parameter for {plot_func.__name__}")
-        plot_kwargs[key] = val
-
-    # 4. call the plot function
-    return plot_func(
-        series,
-        **plot_kwargs,
-        save_path=save_path,
-        data_source=data_source,
-    )
