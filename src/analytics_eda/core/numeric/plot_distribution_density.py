@@ -103,7 +103,8 @@ def plot_distribution_density(
     metadata : dict
         {
             'descriptive_stats': {
-                'n': int,                  
+                'n': int,               
+                'entropy_bits': float,   
                 'skewness': float,         
                 'kurtosis': float,         
                 'modes_count': int,        
@@ -148,7 +149,7 @@ def plot_distribution_density(
     # Early exit for empty data
     if n == 0:
         empty_stats = dict(
-            n=0, skewness=np.nan, kurtosis=np.nan, modes_count=0,
+            n=0, entropy_bits=np.nan, skewness=np.nan, kurtosis=np.nan, modes_count=0,
             quartile_skew=np.nan, pct_10=np.nan, pct_25=np.nan,
             pct_50=np.nan, pct_75=np.nan, pct_90=np.nan
         )
@@ -202,6 +203,11 @@ def plot_distribution_density(
     sns.set_palette("colorblind")
     fig, ax = plt.subplots(figsize=figsize)
 
+    # Compute entropy over histogram
+    hist_counts, _ = np.histogram(data, bins=bins)
+    probs = hist_counts / hist_counts.sum() if hist_counts.sum() > 0 else np.array([])
+    entropy_bits = float(-np.sum(probs * np.log2(probs + 1e-12)))
+
     # Histogram (normalized to density)
     ax.hist(data, bins=bins, density=True,
             alpha=hist_alpha, label="Histogram")
@@ -237,9 +243,10 @@ def plot_distribution_density(
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
-    # Annotate skew/kurt/quartile_skew
+    # Annotate stats
     stats_text = (
         f"n = {n}\n"
+        f"Entropy = {entropy_bits:.2f} bits\n"
         f"Skewness = {skewness:.2f}\n"
         f"Kurtosis = {kurtosis:.2f}\n"
         f"Quartile skew = {quartile_skew:.2f}"
@@ -278,6 +285,7 @@ def plot_distribution_density(
     return {
         'descriptive_stats': {
             'n': n,
+            'entropy_bits': entropy_bits,
             'skewness': skewness,
             'kurtosis': kurtosis,
             'modes_count': modes_count,
