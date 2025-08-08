@@ -13,20 +13,22 @@
 # limitations under the License.
 from pathlib import Path
 import logging
+from typing import Any, Dict, Optional
 import uuid
 import pandas as pd
 
-from ...core import write_json_report, missing_data_analysis, validate_categorical_named_series, categorical_inferential_analysis, categorical_distribution_analysis
+from ...core import write_json_report, missing_data_analysis, validate_categorical_named_series, categorical_distribution_analysis
 
 logger = logging.getLogger(__name__)
 
 def univariate_categorical_analysis(
     series: pd.Series,
-    top_n: int = 10,
     report_root: str = 'reports/eda/univariate/categorical',
-    rare_threshold: float = 0.01,
-    alpha: float = 0.05,
-    report_log_id = str(uuid.uuid4())
+    report_log_id = str(uuid.uuid4()),
+    data_source: Optional[str] = None,
+    plot_frequency_pareto_overrides: Optional[Dict[str, Any]] = None,
+    plot_distribution_density_overrides: Optional[Dict[str, Any]] = None,
+    plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None
 ) -> Path:
     """
     Run a full univariate analysis on a named categorical pandas Series and save results.
@@ -35,39 +37,25 @@ def univariate_categorical_analysis(
       1. Validate that `series` is a named categorical Series.
       2. Compute and save missing-data statistics using `missing_data_analysis`.
       3. Generate frequency distribution and a top-N bar plot via `categorical_distribution_analysis`.
-      4. Identify rare categories below `rare_threshold`.
-      5. Perform a chi-square goodness-of-fit test (uniform) via `categorical_inferential_analysis`.
-      6. Compile all outputs and write a JSON report with `write_json_report`.
+      4. Compile all outputs and write a JSON report with `write_json_report`.
 
     Args:
         series (pd.Series): Named categorical Series (dtype 'category' or 'object').
-        top_n (int, optional): Number of leading categories in the bar plot.
-            Adjusted if fewer unique values exist. Defaults to 10.
         report_root (str, optional): Directory path for saving plots and report.
             Defaults to 'reports/eda/univariate/categorical'.
-        rare_threshold (float, optional): Proportion threshold for rare-category detection.
-            Defaults to 0.01.
-        alpha (float, optional): Significance level for inferential testing. Defaults to 0.05.
         report_log_id (str): report log id.
 
     Returns:
-        Path: File path to the saved JSON report as written by `write_json_report`.
+        {
+            'report_file_path': <report_file_path> # File path to the saved JSON report as written by `write_json_report`.
+        }
 
     JSON report structure:
         {
             'metadata': { ... } # Report metadata
             'data': {
                 'missing_data': {'total': int, 'missing': int, 'pct_missing': float},
-                'distribution': {...},  # output from categorical_distribution_analysis
-                'outliers': {'rare_categories': List[str]},
-                'inferential': {
-                    'goodness_of_fit': {
-                        'chi2_statistic': float,
-                        'p_value': float,
-                        'alpha': float,
-                        'reject_null_uniform': bool
-                    }
-                }
+                'distribution': {...}  # output from categorical_distribution_analysis
             }
         }
     """
@@ -86,39 +74,27 @@ def univariate_categorical_analysis(
     save_dir = Path(report_root) / series.name.replace(' ', '_')
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    total = int(len(series))
-
-    # TODO: 1. Data Quality & Standardization
+    # 1. Data Quality & Standardization
     # Missing Data Analysis
     missing_data = missing_data_analysis(series, save_dir, report_log_id=report_log_id)
 
-    # Label consistency (spelling/casing/abbreviations)
+    # TODO: Label consistency (spelling/casing/abbreviations)
 
     # 2. Distribution Analysis
-    distribution_result = categorical_distribution_analysis(series, save_dir, top_n, report_log_id=report_log_id)
-    freq_tbl = distribution_result['report']['frequency_report']['frequency_table']
-
-    # TODO: combine Outlier Analysis with Distribution Analysis
-    # Identify rare categories
-    rare_categories = [
-        cat
-        for cat, stats in freq_tbl.items()
-        if stats['proportion'] < rare_threshold
-    ]
-
-    outliers = {
-        'rare_categories': rare_categories,
-    }
-
-    # TODO: combine Inferential Analysis with Distribution Analysis
-    inferential = categorical_inferential_analysis(freq_tbl, total, alpha)
+    distribution_result = categorical_distribution_analysis(
+        series,
+        save_dir,
+        report_log_id=report_log_id,
+        data_source=data_source,
+        plot_frequency_pareto_overrides=plot_frequency_pareto_overrides,
+        plot_distribution_density_overrides=plot_distribution_density_overrides,
+        plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
+    )
 
     # Generate report
     eda_report = {
         'missing_data': missing_data,
-        'distribution': distribution_result['report'],
-        'outliers': outliers,
-        'inferential': inferential
+        'distribution': distribution_result
     }
 
     full_report = {
@@ -143,4 +119,6 @@ def univariate_categorical_analysis(
         }
     )
 
-    return report_path
+    return {
+        'report_file_path': report_path
+    }

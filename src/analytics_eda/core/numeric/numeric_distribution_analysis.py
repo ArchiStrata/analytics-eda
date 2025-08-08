@@ -264,5 +264,5 @@ def numeric_distribution_analysis(
     write_json_report(full_report, report_file_path)
 
     return {
-        'report_file_name': report_file_name
+        'report_file_path': report_file_name
     }

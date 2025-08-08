@@ -1,64 +1,99 @@
 import pytest
 import pandas as pd
-from pathlib import Path
 
 from analytics_eda.core.categorical.categorical_distribution_analysis import categorical_distribution_analysis
 
-def test_categorical_distribution_analysis_basic(tmp_path):
-    # Setup: 3 items, 2 unique categories, dtype=category
-    series = pd.Series(['a', 'b', 'a'], dtype='category', name='test_series')
-    save_dir = tmp_path / "plots"
-    
-    result = categorical_distribution_analysis(series, save_dir)
-    assert 'report' in result
-    report = result['report']
-    
-    # Statistics
-    stats = report['statistics']
-    assert stats['cardinality'] == 2
-    assert pytest.approx(stats['imbalance_ratio'], rel=1e-6) == 2.0
-    # Category length stats
-    max_len = max(len('a'), len('b'))
-    min_len = min(len('a'), len('b'))
-    assert stats['category_length_stats']['max_length'] == max_len
-    assert stats['category_length_stats']['min_length'] == min_len
+@pytest.mark.parametrize(
+    "make_series, kwargs, expected_sections",
+    [
+        (
+            # modestly imbalanced categories to populate all plots
+            lambda: pd.Series(
+                ["A","A","A","B","B","C","C","C","C","D", None],
+                name="pets",
+                dtype="object",
+            ),
+            { "data_source": "UnitTest" },
+            {
+                "frequency_distribution": {
+                    "pareto": {
+                        "chart_metadata":  {"xlabel": "Value", "ylabel": "Count", "data_source": "UnitTest"},
+                        "descriptive_stats": {},  # nothing specific to assert
+                    },
+                },
+                "balance": {
+                    "density": {
+                        "chart_metadata":  {"xlabel": "Frequency", "data_source": "UnitTest"},
+                        "descriptive_stats": {},  # nothing specific to assert
+                    },
+                    "boxplot": {
+                        "chart_metadata":  {"ylabel": "Frequency", "data_source": "UnitTest"},
+                        "descriptive_stats": {},  # nothing specific to assert
+                    },
+                },
+            },
+        ),
+    ],
+    ids=["basic_report"],
+)
+def test_categorical_distribution_analysis_report_data_driven(
+    tmp_path,
+    load_and_validate_report,
+    assert_plot_metadata,
+    make_series,
+    kwargs,
+    expected_sections,
+):
+    # Arrange
+    s = make_series()
 
-    # Distribution / Frequency table
-    freq_report = report['frequency_report']
-    freq_table = freq_report['frequency_table']
-    assert freq_table['a']['count'] == 2
-    assert pytest.approx(freq_table['a']['proportion'], rel=1e-6) == 2/3
-    assert freq_table['b']['count'] == 1
-    assert pytest.approx(freq_table['b']['proportion'], rel=1e-6) == 1/3
+    # Act
+    out = categorical_distribution_analysis(
+        s,
+        report_path=tmp_path,
+        **kwargs,
+    )
+    full_report = load_and_validate_report(out, tmp_path)
 
-    # Visualization: top-n plot file exists
-    viz = freq_report['visualizations']
-    plot_path = Path(viz['top_n_plot'])
-    assert plot_path.exists()
-    assert plot_path.suffix == '.png'
+    # Assert
+    assert "data" in full_report
+    report = full_report["data"]
 
-def test_top_n_adjustment(tmp_path):
-    # 4 unique categories, default top_n=10 → adjusted to max(1,4//2)=2
-    series = pd.Series(['w','x','y','z'], dtype='category', name='letters')
-    save_dir = tmp_path / "plots2"
-    result = categorical_distribution_analysis(series, save_dir, top_n=10)
-    
-    viz = result['report']['frequency_report']['visualizations']
-    plot_path = Path(viz['top_n_plot'])
-    # filename should reflect the adjusted top_n = 2
-    assert '_top_2' in plot_path.name
+    # Sections present
+    assert set(report.keys()) == set(expected_sections.keys())
 
-def test_requires_series_and_name(tmp_path):
-    # Not a Series
-    with pytest.raises(TypeError):
-        categorical_distribution_analysis(['a', 'b'], tmp_path)
-    # Series without name
-    s = pd.Series(['a','b'], dtype='category')
-    with pytest.raises(ValueError):
-        categorical_distribution_analysis(s, tmp_path)
+    # For each expected section/plot: assert metadata + (optional) stats
+    for section, plots in expected_sections.items():
+        assert section in report, f"Missing section {section!r}"
+        for plot_key, expectations in plots.items():
+            assert plot_key in report[section], f"Missing plot {plot_key!r} in section {section!r}"
 
-def test_requires_categorical_or_object_dtype(tmp_path):
-    # Integer dtype is invalid
-    s = pd.Series([1,2,3], name='nums')
-    with pytest.raises(TypeError):
-        categorical_distribution_analysis(s, tmp_path)
+            payload = report[section][plot_key]
+            
+            assert_plot_metadata(payload, expectations, tmp_path)
+
+
+@pytest.mark.parametrize(
+    "series_factory, expected_exc, match",
+    [
+        # Not a pandas Series
+        (lambda: ["a", "b", "c"], TypeError, r"Input must be a pandas Series\."),
+
+        # Not categorical/object dtype
+        (lambda: pd.Series([1, 2, 3], name="numeric"), TypeError,
+         r"must be categorical.*for categorical analysis"),
+
+        # Missing name (None)
+        (lambda: pd.Series(["x", "y", "z"], dtype="category"), ValueError,
+         r"must have a non-empty 'name'"),
+
+        # Blank/whitespace name
+        (lambda: pd.Series(["x", "y", "z"], dtype="object", name=" "), ValueError,
+         r"must have a non-empty 'name'"),
+    ],
+    ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
+)
+def test_validate_categorical_named_series_errors(series_factory, expected_exc, match, tmp_path):
+    obj = series_factory()
+    with pytest.raises(expected_exc, match=match):
+        categorical_distribution_analysis(obj, report_path=tmp_path)

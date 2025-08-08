@@ -1,5 +1,3 @@
-import json
-from pathlib import Path
 import pytest
 import numpy as np
 import pandas as pd
@@ -9,51 +7,32 @@ from analytics_eda.core.numeric.evaluate_transforms import evaluate_transforms
 is_discrete_true = True
 is_discrete_false = False
 
-def load_and_validate_report(response: dict, report_dir: Path) -> dict:
-    """
-    Given the return value of `numeric_distribution_analysis` and the directory
-    where reports are written, this will:
-
-      1. Assert that 'report_file_name' is present in the response.
-      2. Assert that the file exists and is a regular file.
-      3. Load it as JSON (failing if invalid).
-      4. Return the parsed JSON.
-
-    Usage in pytest:
-        report = load_and_validate_report(out, tmp_path)
-        # now you can make assertions about report['metadata'], report['data'], etc.
-    """
-    # 1. Key present
-    assert 'report_file_name' in response, "response must contain 'report_file_name'"
-    report_file = response['report_file_name']
-    assert isinstance(report_file, str) and report_file, "report_file_name must be a non-empty string"
-
-    # 2. File exists
-    path = report_dir / report_file
-    assert path.exists() and path.is_file(), f"Report file not found at {path!s}"
-
-    # 3. Load & validate JSON
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            full_report = json.load(f)
-    except json.JSONDecodeError as e:
-        raise AssertionError(f"Report file is not valid JSON: {e}") from e
-
-    # 4. Return parsed report
-    return full_report
-
 
 def make_float_series(data, name="x"):
     # ensure float dtype and proper name
     return pd.Series(data, dtype=float, name=name)
 
-def test_missing_series_name_raises_error(tmp_path):
-    # Series without a name should trigger validation error
-    series = pd.Series([1.0, 2.0, 3.0], dtype=float)
-    with pytest.raises(ValueError):
-        numeric_distribution_analysis(series, report_path=tmp_path, is_discrete=is_discrete_true)
+@pytest.mark.parametrize(
+    "make_input, exc, pattern",
+    [
+        # Not a Series
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        # Non-numeric Series
+        (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
+        # Missing name
+        (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
+        # Blank/whitespace name
+        (lambda: pd.Series([1, 2, 3], name="   "), ValueError, r"must have a non-empty 'name'"),
+    ],
+    ids=["not_series", "non_numeric", "missing_name", "blank_name"],
+)
+def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path):
+    with pytest.raises(exc, match=pattern):
+        numeric_distribution_analysis(make_input(), report_path=tmp_path, is_discrete=is_discrete_true)
 
-def test_norm_override_parameters_save(tmp_path):
+
+
+def test_norm_override_parameters_save(tmp_path, load_and_validate_report):
     rng = np.random.default_rng(1)
     data = rng.normal(size=50)
     series = make_float_series(data)
@@ -110,7 +89,7 @@ def test_norm_override_parameters_save(tmp_path):
     ]
 )
 def test_numeric_distribution_analysis_basic_structure(
-    dist_name, rng_func, support_adjust, has_anderson, tmp_path
+    dist_name, rng_func, support_adjust, has_anderson, tmp_path, load_and_validate_report
 ):
     rng = np.random.default_rng(0)
     raw = rng_func(rng)
@@ -215,7 +194,7 @@ def test_numeric_distribution_analysis_basic_structure(
         ("expon",   lambda r: r.exponential(size=100), lambda x: np.abs(x)),
     ]
 )
-def test_numeric_distribution_analysis_with_transforms(dist_name, rng_func, support_adjust, tmp_path):
+def test_numeric_distribution_analysis_with_transforms(dist_name, rng_func, support_adjust, tmp_path, load_and_validate_report):
     rng = np.random.default_rng(0)
     raw = rng_func(rng)
     raw = support_adjust(raw).astype(float)

@@ -13,21 +13,29 @@
 # limitations under the License.
 
 import logging
+from typing import Any, Dict, Optional
 import uuid
 from pathlib import Path
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from .validate_categorical_named_series import validate_categorical_named_series
+
+from .plot_frequency_pareto import plot_frequency_pareto
+
+from ..numeric import plot_distribution_density, plot_dispersion_boxplot
+from ..reporting import write_json_report
+from ..utils import call_plot_with_overrides
 
 logger = logging.getLogger(__name__)
 
 def categorical_distribution_analysis(
     series: pd.Series,
-    save_dir: Path,
-    top_n: int = 10,
-    report_log_id = str(uuid.uuid4())
+    report_path: Path,
+    report_log_id = str(uuid.uuid4()),
+    data_source: Optional[str] = None,
+    plot_frequency_pareto_overrides: Optional[Dict[str, Any]] = None,
+    plot_distribution_density_overrides: Optional[Dict[str, Any]] = None,
+    plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None
 ) -> dict:
     """
     Analyze a categorical pandas Series and produce a structured report with summary
@@ -37,32 +45,8 @@ def categorical_distribution_analysis(
     ----------
     series : pd.Series
         Categorical data to analyze (dtype 'category' or 'object').
-    save_dir : pathlib.Path
-        Directory where the top-N bar chart will be saved. Created if it does not exist.
-    top_n : int, optional
-        Number of highest-frequency categories to plot. If the series has fewer than
-        top_n unique values, top_n is reset to max(1, unique_categories // 2). Default is 10.
+    report_path : pathlib.Path
     report_log_id (str): report log id.
-
-    Returns
-    -------
-    dict
-        A dict with a single key `'report'`, whose value is another dict containing:
-
-        - **statistics** : dict  
-            - **category_length_stats** : dict with  
-                - `'max_length'` (int) – length of the longest category label  
-                - `'min_length'` (int) – length of the shortest category label  
-            - **cardinality** (int) – number of unique non‐null categories  
-            - **imbalance_ratio** (float or None) – ratio of most to least frequent category  
-
-        - **frequency_report** : dict  
-            - **frequency_table** : dict  
-                Mapping each category (str) to a dict with keys  
-                - `'count'` (int) – raw frequency  
-                - `'proportion'` (float) – frequency divided by total observations  
-            - **visualizations** : dict  
-                - `'top_n_plot'` (str) – filesystem path to the saved bar chart  
     """
     # validate input
     validate_categorical_named_series(series)
@@ -75,122 +59,73 @@ def categorical_distribution_analysis(
         }
     )
 
-    save_dir.mkdir(parents=True, exist_ok=True)
+    # 1. Frequency Distribution
+    # What it is: A listing of each category alongside its count and proportion.
+    # Why it matters: Shows which categories dominate and which are rare.
+    frequency_distribution = {}
 
-    # Core Pillars
+    # Pareto
+    freq_pareto_over = (plot_frequency_pareto_overrides or {}).copy()
+    frequency_distribution['pareto'] = call_plot_with_overrides(
+        plot_frequency_pareto,
+        series,
+        overrides=freq_pareto_over,
+        save_path=report_path,
+        data_source=data_source,
+    )
 
-    # TODO: 1. Frequency Distribution
-        # What it is: A listing of each category alongside its count and proportion.
-
-        # Key metrics:
-        # Absolute counts
-        # Relative frequencies (percentages)
-        # Mode (most common category)
-
-        # Why it matters: Shows which categories dominate and which are rare
-
-    # TODO: plot_frequency_pareto
-
-    # TODO: 2. Cardinality & Balance
-    # Cardinality: Number of unique categories
-    # Rare categories (outliers): analyze categories below a threshold that are typically aggregated into 'Others'
-    # Balance: How evenly the observations are spread across those categories
-    # * Entropy (higher means a more even spread)
-    # * Gini index (higher means more inequality in category sizes)
-
+    # 2. Cardinality & Balance
+    # What it is:  
+    #   Assessment of category cardinality and balance –  
+    #   counting unique categories, identifying rare “tail” categories (often grouped as ‘Others’),  
+    #   and quantifying how evenly observations are distributed using metrics like entropy and the Gini index.
     # Why it matters: Tells you if you have too many categories to handle, or if one category overwhelms the rest.
 
+    balance = {}
 
+    freq_counts = series.copy().dropna().astype(str).value_counts()
 
-    total = len(series)
-    # frequency and proportions
-    freq = series.value_counts(dropna=False).rename_axis(series.name)
-    props = freq / total
-    frequency = {
-        str(cat): {
-            'count': int(freq_cat),
-            'proportion': float(props_cat)
-        }
-        for cat, freq_cat, props_cat in zip(freq.index, freq.values, props.values)
-    }
+    # Density plot (Histogram + KDE)
+    balance_density_over = (plot_distribution_density_overrides or {}).copy()
+    balance_density_over.setdefault('xlabel', 'Frequency')
+    balance['density'] = call_plot_with_overrides(
+        plot_distribution_density,
+        freq_counts,
+        overrides=balance_density_over,
+        save_path=report_path,
+        data_source=data_source,
+    )
 
-    # category length stats
-    lengths = [len(str(cat)) for cat in freq.index]
-    category_length_stats = {'max_length': max(lengths), 'min_length': min(lengths)}
+    # Boxplot + Violin (Dispersion)
+    balance_boxplot_over = (plot_dispersion_boxplot_overrides or {}).copy()
+    balance_boxplot_over.setdefault('ylabel', 'Frequency')
+    balance['boxplot'] = call_plot_with_overrides(
+        plot_dispersion_boxplot,
+        freq_counts,
+        overrides=balance_boxplot_over,
+        save_path=report_path,
+        data_source=data_source,
+    )
 
-    # cardinality and imbalance
-    cardinality = int(series.nunique(dropna=True))
-    imbalance_ratio = float(freq.max() / freq.min()) if freq.min() > 0 else None
+    # TODO: Side-by-side bar chart with Chi-square goodness-of-fit against a uniform distribution
 
-    # Bar plot of top N categories
-    unique_categories = len(freq)
-
-    # If fewer than requested top_n, adjust top_n (e.g., reduce to 5 if <10 categories)
-    if unique_categories <= top_n:
-        # Set top_n to half of available categories (or at least 1)
-        top_n = max(1, unique_categories // 2)
-
-    top = freq.head(top_n)
-    others_count = freq.iloc[top_n:].sum()
-    top = pd.concat([top, pd.Series({'Others': others_count})])
-    top = top.sort_values(ascending=False)
-
-    # Define accessible colors
-    color_map = {
-        0: "#DAA520",   # Gold
-        1: "#C0C0C0",   # Silver
-        2: "#CD7F32",   # Bronze
-    }
-    default_color = "steelblue"
-    others_color = "#A9A9A9"
-
-    # Assign colors
-    colors = []
-    for i, cat in enumerate(top.index):
-        if cat == "Others":
-            colors.append(others_color)
-        elif i in color_map:
-            colors.append(color_map[i])
-        else:
-            colors.append(default_color)
-
-    # Plot
-    plt.figure(figsize=(10, 8))
-    ax2 = sns.barplot(x=top.values, y=top.index, palette=colors, hue=top.index, legend=False)
-
-    # Add value labels
-    buffer = max(top.values) * 0.1
-    ax2.set_xlim(0, max(top.values) + buffer)
-    
-    for i, v in enumerate(top.values):
-        ax2.text(v + max(top.values) * 0.01, i, f"{v:,}", va="center", fontsize=10)
-
-    # Set labels and title
-    ax2.set_title(f"Top {top_n} Values in {series.name.replace('_', ' ').title()} (+Others Aggregated)",
-                fontsize=14, weight="bold")
-    ax2.set_xlabel("Count", fontsize=12)
-    ax2.set_ylabel(series.name.replace('_', ' ').title(), fontsize=12)
-
-    plt.tight_layout()
-    fig2 = ax2.get_figure()
-
-    plot_path = save_dir / f"{series.name.replace(' ', '_')}_top_{top_n}.png"
-    fig2.savefig(plot_path)
-    plt.close(fig2)
+    # TODO: Lorenz curve with Gini index
 
     # compile report
-    report = {
-        'statistics': {
-            'category_length_stats': category_length_stats,
-            'cardinality': int(cardinality),
-            'imbalance_ratio': imbalance_ratio,
-        },
-        'frequency_report': {
-            'frequency_table': frequency,
-            'visualizations': {
-                'top_n_plot': str(plot_path)
+    distribution_report = {
+        'frequency_distribution': frequency_distribution,
+        'balance': balance
+    }
+
+    full_report = {
+        'metadata': {
+            'version': '1.0.0',
+            'report_name': 'categorical_distribution_analysis',
+            'parameters': {
+                'series': series.name
             }
-        }
+        },
+        'data': distribution_report
     }
 
     logger.info(
@@ -201,4 +136,10 @@ def categorical_distribution_analysis(
         }
     )
 
-    return {'report': report}
+    report_file_name = f"{series.name.replace(' ', '_')}_categorical_distribution_analysis_report.json"
+    report_file_path = report_path / report_file_name
+    write_json_report(full_report, report_file_path)
+
+    return {
+        'report_file_path': report_file_name
+    }

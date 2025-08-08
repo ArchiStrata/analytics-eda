@@ -2,27 +2,23 @@ import pytest
 import pandas as pd
 from analytics_eda.core.numeric.validate_numeric_named_series import validate_numeric_named_series
 
-def test_non_series_input_raises_type_error():
-    with pytest.raises(TypeError, match="Input must be a pandas Series."):
-        validate_numeric_named_series([1, 2, 3])
-
-
-def test_non_numeric_series_raises_type_error():
-    series = pd.Series(["a", "b", "c"], name="letters")
-    with pytest.raises(TypeError, match="Series must be numeric"):
-        validate_numeric_named_series(series)
-
-
-def test_missing_name_raises_value_error():
-    series = pd.Series([1, 2, 3])  # name is None
-    with pytest.raises(ValueError, match="Series must have a non-empty 'name' attribute."):
-        validate_numeric_named_series(series)
-
-
-def test_empty_name_raises_value_error():
-    series = pd.Series([1, 2, 3], name="   ")  # name is whitespace
-    with pytest.raises(ValueError, match="Series must have a non-empty 'name' attribute."):
-        validate_numeric_named_series(series)
+@pytest.mark.parametrize(
+    "make_input, exc, pattern",
+    [
+        # Not a Series
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        # Non-numeric Series
+        (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
+        # Missing name
+        (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
+        # Blank/whitespace name
+        (lambda: pd.Series([1, 2, 3], name="   "), ValueError, r"must have a non-empty 'name'"),
+    ],
+    ids=["not_series", "non_numeric", "missing_name", "blank_name"],
+)
+def test_validate_numeric_named_series_errors(make_input, exc, pattern):
+    with pytest.raises(exc, match=pattern):
+        validate_numeric_named_series(make_input())
 
 
 def test_require_name_false_allows_unnamed_series():

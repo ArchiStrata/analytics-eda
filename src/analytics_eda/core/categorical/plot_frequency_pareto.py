@@ -12,12 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from matplotlib import pyplot as plt
 import numpy as np
+import pandas as pd
 
+from .validate_categorical_named_series import validate_categorical_named_series
 
-def plot_frequency_pareto(series, title=None, xlabel=None, ylabel='Count',
-                figsize=(12, 8), data_source='Unknown', min_value=None):
+from ..utils.build_chart_title import build_chart_title
+
+def plot_frequency_pareto(
+    series: pd.Series,
+    min_value: int = None,
+    title_template: str = "Pareto Chart of {name}{modifiers}",
+    name: str = None,
+    filter_desc: str = None,
+    transform_desc: str = None,
+    xlabel: str = "Value",
+    ylabel: str ='Count',
+    data_source: str = None,
+    figsize: tuple = (10, 6),
+    horizontal: bool = False,
+    save_path: str = None,
+    file_name: str = None
+):
     """
     Plot a Pareto chart for a categorical Pandas Series with:
       - Bar chart of category counts (sorted descending)
@@ -32,26 +50,80 @@ def plot_frequency_pareto(series, title=None, xlabel=None, ylabel='Count',
     ----------
     series : pd.Series
         Categorical data to plot.
-    title : str, optional
-        Chart title. Defaults to 'Pareto Chart: <series.name>'.
-    xlabel : str, optional
-        X-axis label. Defaults to series.name.
-    ylabel : str, default 'Count'
-        Y-axis label for counts.
-    figsize : tuple, default (12, 8)
-        Figure size in inches.
-    data_source : str, default 'Unknown'
-        Data source annotation.
     min_value : int, optional
-        Minimum count required to show a category. Categories below this are grouped into 'Others'.
+        Minimum count to keep as its own bar; smaller categories are grouped into 'Others'.
+    title_template : str, default "Pareto Chart of {name}{modifiers}"
+        Template for the chart title; supports placeholders for series name and any
+        filter/transform descriptions.
+    name : str, optional
+        Human-readable name for the series (used in title).
+    filter_desc : str, optional
+        Description of any filtering applied (used in title).
+    transform_desc : str, optional
+        Description of any transformations applied (used in title).
+    xlabel, ylabel : str
+        Axis labels.
+    data_source : str, optional
+        Text to show in the bottom-left corner as the data source.
+    figsize : tuple
+        Figure size in inches.
+    horizontal : bool, default False
+        If True, plot horizontal bars; otherwise, vertical.
+    save_path : str, optional
+        Directory to save the figure.
+    file_name : str, optional
+        Filename for saving; defaults to a slugified version of the title.
 
     Returns
     -------
-    None
+    dict
+        {
+          'descriptive_stats': {
+              'mode': <most common category>,
+              'total_count': <sum of counts>,
+              'n_categories': <number of unique categories>,
+              'cumulative_count_at_80pct': <cumulative count at the 80% threshold>
+          },
+          'chart_metadata': {
+              'title': <final title>,
+              'xlabel': ...,
+              'ylabel': ...,
+              'data_source': ...,
+              'file_name': ...
+          }
+        }
     """
     # Prepare data
-    data = series.dropna().astype(str)
+    validate_categorical_named_series(series)
+    data = series.copy().dropna().astype(str)
     counts = data.value_counts()
+
+    # Build chart title
+    title = build_chart_title(
+        name=name,
+        series=series,
+        filter_desc=filter_desc,
+        transform_desc=transform_desc,
+        title_template=title_template
+    )
+
+    if data.empty:
+        # Return metadata
+        return {
+            'descriptive_stats': {
+                'mode': None,
+                'total_count': 0,
+                'n_categories': 0,
+                'cumulative_count_at_80pct': 0
+            },
+            'chart_metadata': {
+                'title': title,
+                'xlabel': xlabel,
+                'ylabel': ylabel,
+                'data_source': data_source,
+                'file_name': file_name
+            }
+        }
 
     # Group small categories into 'Others' if min_value is set
     if min_value is not None:
@@ -68,6 +140,14 @@ def plot_frequency_pareto(series, title=None, xlabel=None, ylabel='Count',
     threshold_idx = int(np.argmax(cumperc.values >= 80))
     threshold_count = counts.values[:threshold_idx + 1].sum()
 
+    # Compute descriptive stats
+    descriptive_stats = {
+        'mode': counts.index[0] if len(counts) > 0 else None,
+        'total_count': int(counts.sum()),
+        'n_categories': int(len(counts)),
+        'cumulative_count_at_80pct': int(threshold_count)
+    }
+
     # Colors: muted grey and colorblind-friendly accent
     muted = '#999999'
     accent = '#0072B2'  # colorblind-friendly blue
@@ -77,40 +157,80 @@ def plot_frequency_pareto(series, title=None, xlabel=None, ylabel='Count',
 
     # Create plot
     fig, ax = plt.subplots(figsize=figsize)
-    bars = ax.bar(counts.index, counts.values, color=bar_colors, edgecolor='black')
 
-    # Annotate counts and relative frequencies
-    for bar, count, pct in zip(bars, counts.values, rel_freq.values):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2, height,
-                f'{int(count)}\n({pct:.1f}%)',
-                ha='center', va='bottom')
+    if horizontal:
+        bars = ax.barh(counts.index, counts.values, color=bar_colors, edgecolor='black')
+        # Annotations
+        for bar, count, pct in zip(bars, counts.values, rel_freq.values):
+            width = bar.get_width()
+            ax.text(width, bar.get_y() + bar.get_height()/2,
+                    f'{int(count)} ({pct:.1f}%)',
+                    ha='left', va='center')
+        # Axes
+        ax.set_xlabel(ylabel)
+        ax.set_ylabel(xlabel)
+        ticks = np.arange(counts.size)
+        ax.set_yticks(ticks)
+        ax.set_yticklabels(counts.index)
+        # Cumulative % on top axis
+        ax2 = ax.twiny()
+        ax2.plot(cumperc.values, ticks, marker='o', linestyle='-', color='black')
+        ax2.set_xlabel('Cumulative %')
+        ax2.set_xlim(0, 110)
+        ax2.axvline(80, color=accent, linestyle='--')
+        ax2.text(80, ticks[-1], '80% threshold', ha='left', va='top', color=accent)
+    else:
+        bars = ax.bar(counts.index, counts.values, color=bar_colors, edgecolor='black')
+        # Annotations
+        for bar, count, pct in zip(bars, counts.values, rel_freq.values):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2, height,
+                    f'{int(count)}\n({pct:.1f}%)',
+                    ha='center', va='bottom')
+        # Axes
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ticks = np.arange(counts.size)
+        ax.set_xticks(ticks)
+        ax.set_xticklabels(counts.index, rotation=45, ha='right')
+        # Cumulative % on right axis
+        ax2 = ax.twinx()
+        ax2.plot(ticks, cumperc.values, marker='o', linestyle='-', color='black')
+        ax2.set_ylabel('Cumulative %')
+        ax2.set_ylim(0, 110)
+        ax2.axhline(80, color=accent, linestyle='--')
+        ax2.text(ticks[-1], 80, '80% threshold', ha='right', va='bottom', color=accent)
 
-    # Set ticks and labels
-    ticks = np.arange(len(counts))
-    ax.set_xticks(ticks)
-    ax.set_xticklabels(counts.index, rotation=45, ha='right')
-    ax.set_xlabel(xlabel or series.name or '')
-    ax.set_ylabel(ylabel)
-    ax.set_title(title or f'Pareto Chart: {series.name}')
-
-    # Cumulative percentage line
-    ax2 = ax.twinx()
-    ax2.plot(ticks, cumperc.values, marker='o', linestyle='-', color='black')
-    ax2.set_ylabel('Cumulative %')
-    ax2.set_ylim(0, 110)
-
-    # 80% threshold line
-    ax2.axhline(80, color=accent, linestyle='--')
-    ax2.text(len(counts) - 1, 80, '80% threshold', va='bottom', ha='right', color=accent)
-
-    # Data source annotation
-    fig.text(0.99, 0.01, f"Data Source: {data_source}",
-             ha='right', va='bottom', fontsize=8, color='gray')
+    # Optional data source annotation
+    if data_source:
+        fig.text(
+            0.01, 0.01, f"Source: {data_source}",
+            ha='left', va='bottom',
+            fontsize='small', color='gray'
+        )
 
     # Footnote with cumulative count at 80%
-    fig.text(0.01, 0.01, f"Cumulative count at 80%: {threshold_count}",
-             ha='left', va='bottom', fontsize=8, color='gray')
+    fig.text(0.99, 0.01, f"Cumulative count at 80%: {threshold_count}",
+             ha='right', va='bottom', fontsize=8, color='gray')
 
     fig.tight_layout()
-    plt.show()
+
+    # Optional save
+    if save_path:
+        if file_name is None:
+            file_name = f"{title}.png"
+        os.makedirs(save_path, exist_ok=True)
+        abs_path = os.path.join(save_path, file_name)
+        fig.savefig(abs_path, bbox_inches='tight')
+
+    # Return metadata
+    return {
+        'descriptive_stats': descriptive_stats,
+        'chart_metadata': {
+            'title': title,
+            'xlabel': xlabel,
+            'ylabel': ylabel,
+            'data_source': data_source,
+            'file_name': file_name
+        }
+    }

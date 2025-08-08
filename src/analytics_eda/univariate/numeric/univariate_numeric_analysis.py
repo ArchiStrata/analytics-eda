@@ -53,7 +53,9 @@ def univariate_numeric_analysis(
         report_log_id (str): report log id.
     
     Returns:
-        Path: File path to the saved JSON report as written by `write_json_report`.
+        {
+            'report_file_path': <report_file_path> # File path to the saved JSON report as written by `write_json_report`.
+        }
 
     JSON report structure:
         {
@@ -139,4 +141,6 @@ def univariate_numeric_analysis(
         }
     )
 
-    return report_path
+    return {
+        'report_file_path': report_path
+    }
