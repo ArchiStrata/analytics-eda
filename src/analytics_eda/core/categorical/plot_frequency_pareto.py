@@ -110,8 +110,8 @@ def plot_frequency_pareto(
         title_template=title_template
     )
 
+    # Early return if empty
     if data.empty:
-        # Return metadata
         return {
             'descriptive_stats': {
                 'mode': None,
