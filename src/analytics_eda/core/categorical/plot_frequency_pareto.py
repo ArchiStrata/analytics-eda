@@ -37,60 +37,63 @@ def plot_frequency_pareto(
     file_name: str = None
 ):
     """
-    Plot a Pareto chart for a categorical Pandas Series with:
-      - Bar chart of category counts (sorted descending)
-      - Count annotations and relative frequency (%) above each bar
-      - Cumulative percentage line
-      - 80% threshold marker
-      - Highlight all bars up to and including the first bar that reaches 80%
-      - Optional: Aggregate small categories into 'Others'
-      - Data source annotation
+    Plot a Pareto chart to analyze the categorical distribution of a variable and identify the most impactful categories.
+
+    Why this is important:
+        The Pareto chart highlights the most frequent categories in descending order and shows their cumulative contribution. 
+        This helps identify the “vital few” that account for the majority of occurrences — a core principle of the 80/20 rule 
+        (Pareto Principle). It supports data-driven prioritization and effective decision-making.
+
+    What it does:
+        - Plots a bar chart of sorted category counts with percentage annotations
+        - Overlays a cumulative percentage line and highlights the 80% threshold
+        - Groups infrequent categories into "Others" based on a count threshold (optional)
+        - Optionally displays the data source and saves the chart
 
     Parameters
     ----------
     series : pd.Series
         Categorical data to plot.
     min_value : int, optional
-        Minimum count to keep as its own bar; smaller categories are grouped into 'Others'.
+        Minimum count to show as its own bar; smaller categories are grouped into 'Others'.
     title_template : str, default "Pareto Chart of {name}{modifiers}"
-        Template for the chart title; supports placeholders for series name and any
-        filter/transform descriptions.
+        Template for the chart title; supports placeholders for series name and optional descriptors.
     name : str, optional
-        Human-readable name for the series (used in title).
+        Human-readable variable name to display in the title.
     filter_desc : str, optional
-        Description of any filtering applied (used in title).
+        Text describing any filters applied to the data.
     transform_desc : str, optional
-        Description of any transformations applied (used in title).
+        Text describing any transformations applied to the data.
     xlabel, ylabel : str
         Axis labels.
     data_source : str, optional
-        Text to show in the bottom-left corner as the data source.
-    figsize : tuple
+        Text displayed in the chart footer to identify the data source.
+    figsize : tuple, default (10, 6)
         Figure size in inches.
     horizontal : bool, default False
-        If True, plot horizontal bars; otherwise, vertical.
+        If True, plots horizontal bars; otherwise, vertical bars.
     save_path : str, optional
-        Directory to save the figure.
+        Directory path where the figure should be saved.
     file_name : str, optional
-        Filename for saving; defaults to a slugified version of the title.
+        File name to use when saving the chart.
 
     Returns
     -------
     dict
         {
-          'descriptive_stats': {
-              'mode': <most common category>,
-              'total_count': <sum of counts>,
-              'n_categories': <number of unique categories>,
-              'cumulative_count_at_80pct': <cumulative count at the 80% threshold>
-          },
-          'chart_metadata': {
-              'title': <final title>,
-              'xlabel': ...,
-              'ylabel': ...,
-              'data_source': ...,
-              'file_name': ...
-          }
+        'descriptive_stats': {
+            'mode': str or None,  # Most frequent category
+            'total_count': int,   # Total number of values
+            'n_categories': int,  # Number of unique categories shown
+            'cumulative_count_at_80pct': int  # Count at which cumulative frequency reaches 80%
+        },
+        'chart_metadata': {
+            'title': str,
+            'xlabel': str,
+            'ylabel': str,
+            'data_source': str or None,
+            'file_name': str or None
+        }
         }
     """
     # Prepare data
