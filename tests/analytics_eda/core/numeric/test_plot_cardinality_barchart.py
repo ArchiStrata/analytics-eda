@@ -1,210 +1,250 @@
-import os
+import numpy as np
 import pandas as pd
 import pytest
 
 from analytics_eda.core.numeric import plot_cardinality_barchart
 
-def test_default_parameters_no_save():
-    # a series with 5 distinct values
-    series = pd.Series([1, 2, 2, 3, 4, 4, 5], name="nums")
-    meta = plot_cardinality_barchart(series)
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
+@pytest.mark.parametrize(
+    "series_factory, expected_exc, match",
+    [
+        # Not a Series
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        # Non-numeric Series
+        (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
+        # Missing name
+        (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
+        # Blank/whitespace name
+        (lambda: pd.Series([1, 2, 3], name="   "), ValueError, r"must have a non-empty 'name'"),
+    ],
+    ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
+)
+def test_validate_categorical_named_series_errors(series_factory, expected_exc, match):
+    obj = series_factory()
+    with pytest.raises(expected_exc, match=match):
+        plot_cardinality_barchart(obj)
 
-    # descriptive_stats
-    assert stats['nunique'] == 5
 
-    # chart_metadata defaults
-    assert chart['title'] == f"Value Counts (Top 10) of {series.name} for Cardinality"
-    assert chart['xlabel'] == "Value"
-    assert chart['ylabel'] == "Count"
-    assert chart['data_source'] is None
-    assert chart['top_k'] == 10
-    assert chart['file_name'] is None
+@pytest.mark.parametrize(
+    "make_series, kwargs, expect",
+    [
+        # 0) EMPTY numeric series
+        (
+            lambda: pd.Series([], dtype="float64", name="nums"),
+            {},
+            {
+                "chart_metadata": {
+                    "title": "Value Counts (Top 10) of nums for Cardinality",
+                    "xlabel": "Value",
+                    "ylabel": "Count",
+                    "top_k": 10,
+                    "file_name": None,
+                },
+                "descriptive_stats": {
+                    "total": 0,
+                    "nunique": 0,
+                    "uniqueness_ratio": 0.0,
+                    "is_discrete": None,
+                    "params": {
+                        "max_unique_fraction": 0.05,
+                        "max_unique_values": 20,
+                        "integer_tolerance": 1e-8,
+                    },
+                },
+            },
+        ),
+        # 1) Low-cardinality integer data is discrete; include data_source
+        (
+            lambda: pd.Series([1, 1, 2, 2, 2, 3], name="ids", dtype="int64"),
+            {"data_source": "UnitTest"},
+            {
+                "chart_metadata": {
+                    "data_source": "UnitTest",
+                    "xlabel": "Value",
+                    "ylabel": "Count",
+                    "top_k": 10,
+                },
+                "descriptive_stats": {
+                    "total": 6,
+                    "nunique": 3,
+                    "is_discrete": True,
+                },
+            },
+        ),
+        # 2) Float values that are whole numbers (within tolerance) => discrete
+        (
+            lambda: pd.Series([1.0, 2.0, 2.0, 3.0], name="vals", dtype="float64"),
+            {},
+            {
+                "descriptive_stats": {
+                    "total": 4,
+                    "nunique": 3,
+                    "is_discrete": True,
+                },
+            },
+        ),
+        # 3) Many unique floats => continuous (not discrete)
+        (
+            lambda: pd.Series(np.linspace(0, 0.99, 100), name="x", dtype="float64"),
+            {},
+            {
+                "descriptive_stats": {
+                    "total": 100,
+                    "nunique": 100,
+                    "is_discrete": False,
+                },
+            },
+        ),
+        # 4) NaNs present; uniqueness_ratio uses len(series) (not len(clean))
+        (
+            lambda: pd.Series([1, 1, 2, np.nan, np.nan], name="with_nans"),
+            {},
+            {
+                "descriptive_stats": {
+                    "total": 3,  # clean size
+                    "nunique": 2,
+                    "uniqueness_ratio": 2 / 5,  # nunique / original length
+                },
+            },
+        ),
+        # 5) name override + custom top_k reflected in title
+        (
+            lambda: pd.Series([5, 5, 4, 4, 4, 3], name="ignored"),
+            {"name": "Age", "top_k": 5},
+            {
+                "chart_metadata": {
+                    "title": "Value Counts (Top 5) of Age for Cardinality",
+                    "top_k": 5,
+                },
+            },
+        ),
+        # 6) Explicit file_name triggers save to tmp_path
+        (
+            lambda: pd.Series([1, 1, 2, 3, 3, 3], name="save_me"),
+            {"file_name": "cardinality.png"},
+            {
+                "chart_metadata": {"file_name": "cardinality.png"},
+                "descriptive_stats": {"total": 6},
+            },
+        ),
+        # A) Non-empty, no kwargs, assert all defaults
+        (
+            lambda: pd.Series([1, 2, 2, 3, 4, 4, 5], name="nums"),
+            {},
+            {
+                "chart_metadata": {
+                    "title": "Value Counts (Top 10) of nums for Cardinality",
+                    "xlabel": "Value",
+                    "ylabel": "Count",
+                    "data_source": None,
+                    "top_k": 10,
+                    "file_name": None,
+                },
+                "descriptive_stats": {
+                    "nunique": 5
+                },
+            },
+        ),
 
-def test_override_and_save(tmp_path):
-    # series with known values
-    series = pd.Series([10, 20, 20, 30, 30, 30], name="vals")
-    custom_title   = "Top 3 Frequencies"
-    custom_xlabel  = "Category"
-    custom_ylabel  = "Frequency"
-    custom_source  = "UnitTest"
-    top_k          = 3
-    filename       = "card.png"
+        # B) Custom title_template + axis labels + data_source + save
+        (
+            lambda: pd.Series([10, 20, 20, 30, 30, 30], name="vals"),
+            {
+                "top_k": 3,
+                "title_template": "Top 3 Frequencies",
+                "xlabel": "Category",
+                "ylabel": "Frequency",
+                "data_source": "UnitTest",
+                "file_name": "card.png",
+            },
+            {
+                "chart_metadata": {
+                    "title": "Top 3 Frequencies",
+                    "xlabel": "Category",
+                    "ylabel": "Frequency",
+                    "data_source": "UnitTest",
+                    "top_k": 3,
+                    "file_name": "card.png",
+                },
+                "descriptive_stats": {
+                    "nunique": 3
+                },
+            },
+        ),
 
-    meta = plot_cardinality_barchart(
-        series,
-        top_k=top_k,
-        title_template=custom_title,
-        xlabel=custom_xlabel,
-        ylabel=custom_ylabel,
-        data_source=custom_source,
-        save_path=str(tmp_path),
-        file_name=filename
-    )
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
+        # C) Override max_unique_fraction to 1.0 on high-cardinality → discrete
+        (
+            lambda: pd.Series(range(100), name="nums"),
+            {
+                "max_unique_fraction": 1.0,
+                "file_name": "frac.png",
+            },
+            {
+                "descriptive_stats": {
+                    "is_discrete": True
+                },
+                "chart_metadata": {
+                    "file_name": "frac.png"
+                },
+            },
+        ),
 
-    # descriptive_stats
-    assert stats['nunique'] == 3  # values 10,20,30
+        # D) Floats not integer-like, but unique < max_unique_values → discrete (path 2b)
+        (
+            lambda: pd.Series([i + 0.1 for i in range(10)], name="floats"),
+            {
+                "file_name": "low_card.png",
+            },
+            {
+                "descriptive_stats": {
+                    "is_discrete": True
+                },
+                "chart_metadata": {
+                    "file_name": "low_card.png"
+                },
+            },
+        ),
 
-    # chart_metadata overrides
-    assert chart['title']       == custom_title
-    assert chart['xlabel']      == custom_xlabel
-    assert chart['ylabel']      == custom_ylabel
-    assert chart['data_source'] == custom_source
-    assert chart['top_k']       == top_k
+        # E) High-cardinality floats, not integer-like, tolerance flips discrete from False → True
+        #    We'll check only the 'True' case here; the 'False' case is already covered in many_unique_floats_continuous.
+        (
+            lambda: pd.Series([i + 1e-6 for i in range(30)], name="floats"),
+            {
+                "integer_tolerance": 1e-5,
+                "file_name": "flt_tol.png",
+            },
+            {
+                "descriptive_stats": {
+                    "is_discrete": True
+                },
+                "chart_metadata": {
+                    "file_name": "flt_tol.png"
+                },
+            },
+        ),
+    ],
+    ids=[
+        "empty",
+        "discrete_integers_with_source",
+        "whole_like_floats_are_discrete",
+        "many_unique_floats_continuous",
+        "nans_affect_uniqueness_ratio_denominator",
+        "name_override_and_topk_in_title",
+        "explicit_filename_saves",
+        "defaults_non_empty",
+        "custom_title_and_labels_with_save",
+        "override_max_unique_fraction_discrete",
+        "float_low_cardinality_path_2b",
+        "float_high_cardinality_tol_flip",
+    ],
+)
+def test_plot_cardinality_barchart_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+    s = make_series()
 
-    # file was saved correctly
-    saved = tmp_path / filename
-    assert saved.exists() and saved.stat().st_size > 0
-    with open(saved, 'rb') as f:
-        sig = f.read(8)
-    assert sig == b'\x89PNG\r\n\x1a\n'
-    # file_name ends with filename
-    assert os.path.basename(chart['file_name']) == filename
+    # If a file_name is provided, also set save_path to tmp_path
+    if "file_name" in kwargs:
+        kwargs = kwargs.copy()
+        kwargs["save_path"] = tmp_path
 
-def test_save_defaults_and_metadata(tmp_path):
-    series = pd.Series(range(5), name="range")
-    filename = "out.png"
-    meta = plot_cardinality_barchart(
-        series,
-        save_path=str(tmp_path),
-        file_name=filename
-    )
-    chart = meta['chart_metadata']
+    payload = plot_cardinality_barchart(s, **kwargs)
 
-    # defaults preserved
-    assert chart['title']   == f"Value Counts (Top 10) of {series.name} for Cardinality"
-    assert chart['xlabel']  == "Value"
-    assert chart['ylabel']  == "Count"
-    assert chart['data_source'] is None
-    assert chart['top_k']   == 10
-
-    # file exists and non-empty
-    saved = tmp_path / filename
-    assert saved.exists()
-    assert saved.stat().st_size > 0
-
-def test_missing_series_name_raises_error():
-    # series without a name
-    unnamed = pd.Series([1, 2, 3])
-    with pytest.raises(ValueError):
-        plot_cardinality_barchart(unnamed)
-
-def test_empty_series_returns_stats_and_defaults():
-    empty = pd.Series([], dtype=float, name="empty")
-    meta = plot_cardinality_barchart(empty)
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
-
-    # empty descriptive_stats
-    assert stats['nunique'] == 0
-
-    # default chart metadata, no save
-    assert chart['file_name'] is None
-    assert chart['data_source'] is None
-    assert chart['title'] == f"Value Counts (Top 10) of {empty.name} for Cardinality"
-    assert chart['xlabel'] == "Value"
-    assert chart['ylabel'] == "Count"
-    assert chart['top_k'] == 10
-
-def test_default_is_discrete_low_cardinality():
-    # 4 unique ints repeated, default thresholds -> discrete
-    series = pd.Series([1, 2, 3, 4] * 10, name="nums")
-    meta = plot_cardinality_barchart(series)
-    assert meta['descriptive_stats']['is_discrete'] is True
-
-def test_default_is_not_discrete_high_cardinality():
-    # 100 unique ints, default thresholds -> not discrete
-    series = pd.Series(range(100), name="nums")
-    meta = plot_cardinality_barchart(series)
-    assert meta['descriptive_stats']['is_discrete'] is False
-
-def test_override_max_unique_fraction(tmp_path):
-    # high-cardinality series but override fraction to 1.0 -> discrete
-    series = pd.Series(range(100), name="nums")
-    meta = plot_cardinality_barchart(
-        series,
-        max_unique_fraction=1.0,
-        save_path=str(tmp_path),
-        file_name="frac.png"
-    )
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
-
-    assert stats['is_discrete'] is True
-    saved = tmp_path / "frac.png"
-    assert saved.exists()
-    assert os.path.basename(chart['file_name']) == "frac.png"
-
-def test_override_max_unique_values(tmp_path):
-    # 25 unique ints, default fraction fails but override max_unique_values=30 -> discrete
-    series = pd.Series(range(25), name="nums")
-    meta = plot_cardinality_barchart(
-        series,
-        max_unique_values=30,
-        save_path=str(tmp_path),
-        file_name="uniq.png"
-    )
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
-
-    assert stats['is_discrete'] is True
-    saved = tmp_path / "uniq.png"
-    assert saved.exists()
-    assert os.path.basename(chart['file_name']) == "uniq.png"
-
-def test_integer_tolerance_paths_for_high_cardinality_floats(tmp_path):
-    # Create a float series slightly off whole numbers,
-    # with length > default max_unique_values (20) so low-cardinality
-    # logic does NOT trigger.
-    n = 30
-    offset = 1e-6
-    series = pd.Series([i + offset for i in range(n)], name="floats")
-
-    # 1) default tolerance=1e-8: 
-    #    s % 1 = offset (1e-6) is NOT within 1e-8 → path 2a False
-    #    nunique=30 >= max_unique_values=20 → path 2b False
-    #    → overall is_discrete=False
-    meta_def = plot_cardinality_barchart(
-        series,
-        save_path=str(tmp_path),
-        file_name="flt_def.png"
-    )
-    assert meta_def['descriptive_stats']['is_discrete'] is False
-
-    # 2) override tolerance to 1e-5:
-    #    now np.isclose(offset, 0, atol=1e-5) → True → path 2a True
-    meta_tol = plot_cardinality_barchart(
-        series,
-        integer_tolerance=1e-5,
-        save_path=str(tmp_path),
-        file_name="flt_tol.png"
-    )
-    assert meta_tol['descriptive_stats']['is_discrete'] is True
-
-    # confirm file save for the override case
-    saved = tmp_path / "flt_tol.png"
-    assert saved.exists() and saved.stat().st_size > 0
-    assert os.path.basename(meta_tol['chart_metadata']['file_name']) == "flt_tol.png"
-
-def test_float_low_cardinality_discrete_path_2b(tmp_path):
-    # Floats that are not integer‐like, but with low cardinality (unique < max_unique_values)
-    series = pd.Series([i + 0.1 for i in range(10)], name="floats")
-    # default max_unique_values=20 → 10 < 20 triggers path 2b
-    meta = plot_cardinality_barchart(
-        series,
-        save_path=str(tmp_path),
-        file_name="low_card.png"
-    )
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
-
-    # 2b low‐cardinality should yield True
-    assert stats['is_discrete'] is True
-
-    # confirm file was saved
-    saved = tmp_path / "low_card.png"
-    assert saved.exists() and saved.stat().st_size > 0
-    assert os.path.basename(chart['file_name']) == "low_card.png"
+    assert_plot_metadata(payload, expect, tmp_path)

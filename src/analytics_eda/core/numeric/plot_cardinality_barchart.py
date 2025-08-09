@@ -89,6 +89,11 @@ def plot_cardinality_barchart(
     metadata : dict
         {
             'descriptive_stats': {
+                'params': {
+                    'max_unique_fraction': float,
+                    'max_unique_values': int,
+                    'integer_tolerance': float
+                }
                 'total': int # total number of values
                 'nunique': int   # number of distinct values
                 'uniqueness_ratio': float # ratio of distinct values to total
@@ -114,6 +119,11 @@ def plot_cardinality_barchart(
     if clean.size == 0:
         return {
             'descriptive_stats': {
+                'params': {
+                    'max_unique_fraction': max_unique_fraction,
+                    'max_unique_values': max_unique_values,
+                    'integer_tolerance': integer_tolerance
+                },
                 'total': clean.size,
                 'nunique': 0,
                 'uniqueness_ratio': 0,
@@ -125,9 +135,6 @@ def plot_cardinality_barchart(
                 'ylabel': ylabel,
                 'data_source': data_source,
                 'top_k': top_k,
-                'max_unique_fraction': max_unique_fraction,
-                'max_unique_values': max_unique_values,
-                'integer_tolerance': integer_tolerance,
                 'file_name': file_name
             }
         }
@@ -178,6 +185,11 @@ def plot_cardinality_barchart(
 
     return {
         'descriptive_stats': {
+            'params': {
+                'max_unique_fraction': max_unique_fraction,
+                'max_unique_values': max_unique_values,
+                'integer_tolerance': integer_tolerance
+            },
             'total': clean.size,
             'nunique': nunique,
             'uniqueness_ratio': uniqueness_ratio,
@@ -189,9 +201,6 @@ def plot_cardinality_barchart(
             'ylabel': ylabel,
             'data_source': data_source,
             'top_k': top_k,
-            'max_unique_fraction': max_unique_fraction,
-            'max_unique_values': max_unique_values,
-            'integer_tolerance': integer_tolerance,
             'file_name': file_name
         }
     }
