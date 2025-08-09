@@ -83,7 +83,7 @@ def categorical_distribution_analysis(
 
     balance = {}
 
-    freq_counts = series.copy().dropna().astype(str).value_counts()
+    freq_counts = series.copy().dropna().value_counts()
 
     # Density plot (Histogram + KDE)
     balance_density_over = (plot_distribution_density_overrides or {}).copy()
@@ -106,6 +106,8 @@ def categorical_distribution_analysis(
         save_path=report_path,
         data_source=data_source,
     )
+
+    # TODO: Rare categories (e.g. <1% of total) - bar chart
 
     # TODO: Side-by-side bar chart with Chi-square goodness-of-fit against a uniform distribution
 

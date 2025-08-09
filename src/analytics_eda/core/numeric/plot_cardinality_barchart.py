@@ -105,6 +105,9 @@ def plot_cardinality_barchart(
     validate_numeric_named_series(series)
     clean = series.copy().dropna()
     nunique = int(clean.nunique())
+
+    # TODO: Include Uniqueness Ratio = nunique / total_rows: Shows how many values are unique vs repeated.
+
     is_discrete = is_discrete_numeric(
         clean,
         max_unique_fraction=max_unique_fraction,

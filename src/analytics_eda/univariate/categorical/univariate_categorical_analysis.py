@@ -74,11 +74,18 @@ def univariate_categorical_analysis(
     save_dir = Path(report_root) / series.name.replace(' ', '_')
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Data Quality & Standardization
-    # Missing Data Analysis
+    # 1. Data Quality & Standardization / categorical_variable_profiling
+    # Missing Data Analysis - Detect missingness
     missing_data = missing_data_analysis(series, save_dir, report_log_id=report_log_id)
 
+    # TODO: plot_cardinality_barchart - Detect cardinality
+
+    # TODO: Detect ordinality / monotonicity - Is the variable nominal (unordered) or ordinal (has natural order)?
+
     # TODO: Label consistency (spelling/casing/abbreviations)
+    # * Inconsistent labels (e.g., "Yes", "yes", "Y")
+    # * Leading/trailing whitespace
+    # * Unicode or character issues
 
     # 2. Distribution Analysis
     distribution_result = categorical_distribution_analysis(
