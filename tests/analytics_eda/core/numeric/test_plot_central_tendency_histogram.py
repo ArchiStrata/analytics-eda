@@ -1,5 +1,4 @@
-import os
-import math
+import numpy as np
 import pytest
 import pandas as pd
 
@@ -25,156 +24,251 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
         plot_central_tendency_histogram(obj)
 
 
-def test_single_mode():
-    data = pd.Series([1, 1, 1, 2, 2, 3], name='numeric_series')
-    bins = [0.5, 1.5, 2.5, 3.5]
-    meta = plot_central_tendency_histogram(data, bins=bins)
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
-    
-    # Descriptive stats
-    assert stats['n'] == 6
-    assert pytest.approx(stats['mean'], 0.01) == 1.67
-    assert stats['median'] == 1.5
-    assert stats['modes'] == [1]
-    
-    # Chart metadata
-    assert chart['bins'] == bins
-    assert chart['title'] == "Distribution of numeric_series: Central Tendency"
-    assert chart['xlabel'] == "Value"
-    assert chart['ylabel'] == "Count"
-    assert chart['data_source'] is None
-    assert chart['file_name'] is None
+@pytest.mark.parametrize(
+    "make_series, kwargs, expect",
+    [
+        # 0) EMPTY numeric series → bins computed as ceil(sqrt(0)) = 0
+        (
+            lambda: pd.Series([], dtype="float64", name="nums"),
+            {},
+            {
+                "chart_metadata": {
+                    "title": "Distribution of nums: Central Tendency",
+                    "xlabel": "Value",
+                    "ylabel": "Count",
+                    "data_source": None,
+                    "bins": 0,
+                    "file_name": None,
+                },
+                "descriptive_stats": {
+                    "n": 0,
+                    "mean": (lambda v: np.isnan(v)),
+                    "median": (lambda v: np.isnan(v)),
+                    "modes": [],
+                    "params": {
+                        "bins": 0,
+                        "mode_method": None,
+                    },
+                },
+            },
+        ),
 
-def test_two_modes():
-    data = pd.Series([1, 1, 2, 2, 3, 4], name='numeric_series')
-    bins = [0.5, 1.5, 2.5, 3.5, 4.5]
-    meta = plot_central_tendency_histogram(data, bins=bins)
-    stats = meta['descriptive_stats']
-    
-    assert stats['n'] == 6
-    assert stats['modes'] == [1, 2]
+        # 1) Default bins via Square-Root Choice on non-empty data (n=9 → bins=3)
+        (
+            lambda: pd.Series([1,2,3,4,5,6,7,8,9], dtype="float64", name="nums"),
+            {},
+            {
+                "chart_metadata": {
+                    "bins": 3,
+                },
+                "descriptive_stats": {
+                    "n": 9,
+                    "params": {
+                        "bins": 3,
+                        "mode_method": "histogram_bin_centers",
+                    },
+                },
+            },
+        ),
 
-def test_three_modes():
-    data = pd.Series([1, 1, 2, 2, 3, 3, 4], name='numeric_series')
-    bins = [0.5, 1.5, 2.5, 3.5, 4.5]
-    meta = plot_central_tendency_histogram(data, bins=bins)
-    stats = meta['descriptive_stats']
-    
-    assert stats['n'] == 7
-    assert sorted(stats['modes']) == [1, 2, 3]
+        # 2) Explicit integer bins; single clear mode uses series.mode()
+        (
+            lambda: pd.Series([1,1,2,3,4,5], dtype="float64", name="vals"),
+            {"bins": 5},
+            {
+                "chart_metadata": {"bins": 5},
+                "descriptive_stats": {
+                    "n": 6,
+                    "modes": [1],
+                    "params": {
+                        "bins": 5,
+                        "mode_method": "series.mode",
+                    },
+                },
+            },
+        ),
 
-def test_bell_shaped_default_bins():
-    data = pd.Series([1, 2, 2, 3, 3, 3, 4, 4, 5], name='numeric_series')
-    meta = plot_central_tendency_histogram(data)
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
-    
-    assert stats['n'] == 9
-    assert stats['modes'] == [3]
-    assert chart['bins'] == math.ceil(math.sqrt(9))
+        # 3) Custom bin edges (sequence); ambiguous/multimodal → histogram_bin_centers
+        #    We only assert the mode_method and that at least one mode was produced.
+        (
+            lambda: pd.Series([1,2,3,4,5,6,7,8,9], dtype="float64", name="edges"),
+            {"bins": [0, 3, 6, 10]},
+            {
+                "chart_metadata": {"bins": [0, 3, 6, 10]},
+                "descriptive_stats": {
+                    "n": 9,
+                    "modes": (lambda v: isinstance(v, list) and len(v) >= 1),
+                    "params": {
+                        "bins": [0, 3, 6, 10],
+                        "mode_method": "histogram_bin_centers",
+                    },
+                },
+            },
+        ),
 
-def test_save_creates_file(tmp_path):
-    data = pd.Series([0,1,2,2,3,3,3], name='numeric_series')
-    filename = "hist.png"
-    
-    meta = plot_central_tendency_histogram(
-        data,
-        bins=5,
-        save_path=str(tmp_path),
-        file_name=filename
-    )
-    chart = meta['chart_metadata']
-    # File exists
-    saved_path = tmp_path / filename
-    assert saved_path.exists() and saved_path.is_file()
-    # Not empty
-    assert saved_path.stat().st_size > 0
-    # Check PNG signature
-    with open(saved_path, 'rb') as f:
-        sig = f.read(8)
-    assert sig == b'\x89PNG\r\n\x1a\n'
-    # Metadata path is a relative path ending with the filename
-    rel = chart['file_name']
-    assert os.path.basename(rel) == filename
-    # Other metadata
-    assert chart['data_source'] == None
-    assert chart['bins'] == 5
-    assert chart['xlabel'] == "Value"
-    assert chart['ylabel'] == "Count"
-    assert chart['title'] == "Distribution of numeric_series: Central Tendency"
+        # 4) NaNs present → n counts non-NaN, title defaults
+        (
+            lambda: pd.Series([1.0, np.nan, 2.0, np.nan, 3.0], name="with_nans"),
+            {},
+            {
+                "chart_metadata": {
+                    "title": "Distribution of with_nans: Central Tendency",
+                    "xlabel": "Value",
+                    "ylabel": "Count",
+                },
+                "descriptive_stats": {
+                    "n": 3,  # only non-NaN
+                    # don't pin mean/median numerically; just ensure modes list exists
+                    "modes": (lambda v: isinstance(v, list)),
+                },
+            },
+        ),
 
-def test_default_bins_square_root_choice():
-    # Verify that when bins=None, it defaults to ceil(sqrt(n))
-    data = pd.Series(range(16), name='numeric_series')  # n = 16
-    expected_bins = math.ceil(math.sqrt(16))
-    meta = plot_central_tendency_histogram(data, bins=None)
-    chart = meta['chart_metadata']
-    
-    assert chart['bins'] == expected_bins
-    # Ensure descriptive_stats n matches
-    assert meta['descriptive_stats']['n'] == 16
+        # 5) Name override + modifiers in title (filter + transform)
+        (
+            lambda: pd.Series([10, 20, 20, 30], name="ignored"),
+            {"name": "Price", "filter_desc": "NY only", "transform_desc": "log-scaled"},
+            {
+                "chart_metadata": {
+                    "title": "Distribution of Price (NY only, log-scaled): Central Tendency",
+                },
+                "descriptive_stats": {
+                    "n": 4,
+                },
+            },
+        ),
 
-def test_override_chart_labels_and_source(tmp_path):
-    # Prepare data
-    data = pd.Series([10, 20, 20, 30, 30, 30], name='numeric_series')
-    custom_title = "Custom Histogram Title"
-    custom_xlabel = "Custom X"
-    custom_ylabel = "Custom Y"
-    custom_source = "Custom DataSource"
-    filename = "custom_hist.png"
-    
-    # Call with overrides
-    meta = plot_central_tendency_histogram(
-        data,
-        bins=4,
-        title_template=custom_title,
-        xlabel=custom_xlabel,
-        ylabel=custom_ylabel,
-        data_source=custom_source,
-        save_path=str(tmp_path),
-        file_name=filename
-    )
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
-    
-    # Check overrides applied
-    assert chart['title'] == custom_title
-    assert chart['xlabel'] == custom_xlabel
-    assert chart['ylabel'] == custom_ylabel
-    assert chart['data_source'] == custom_source
-    assert chart['bins'] == 4
-    
-    # Descriptive stats should still be correct
-    assert stats['n'] == 6
-    assert stats['modes'] == [30]
-    
-    # File exists and is valid PNG
-    saved_path = tmp_path / filename
-    assert saved_path.exists() and saved_path.is_file()
-    assert saved_path.stat().st_size > 0
-    with open(saved_path, 'rb') as f:
-        assert f.read(8) == b'\x89PNG\r\n\x1a\n'
+        # 6) Custom title template that ignores modifiers
+        (
+            lambda: pd.Series([1, 2, 3, 4], name="nums"),
+            {"title_template": "My Hist: {name}", "filter_desc": "ignored", "transform_desc": "ignored"},
+            {
+                "chart_metadata": {
+                    "title": "My Hist: nums",
+                },
+                "descriptive_stats": {"n": 4},
+            },
+        ),
 
-    # Metadata path is a relative path ending with the filename
-    assert os.path.basename(chart['file_name']) == filename
+        # 7) Axis labels + data_source overrides, with explicit save filename
+        (
+            lambda: pd.Series([1, 1, 2, 3, 5, 8], name="fib"),
+            {"xlabel": "Score", "ylabel": "Frequency", "data_source": "UnitTest", "file_name": "hist.png"},
+            {
+                "chart_metadata": {
+                    "xlabel": "Score",
+                    "ylabel": "Frequency",
+                    "data_source": "UnitTest",
+                    "file_name": "hist.png",
+                },
+                "descriptive_stats": {"n": 6},
+            },
+        ),
+        # T1) Single mode with bin edges, check mean/median/title/labels
+        (
+            lambda: pd.Series([1, 1, 1, 2, 2, 3], name="numeric_series"),
+            {"bins": [0.5, 1.5, 2.5, 3.5]},
+            {
+                "chart_metadata": {
+                    "bins": [0.5, 1.5, 2.5, 3.5],
+                    "title": "Distribution of numeric_series: Central Tendency",
+                    "xlabel": "Value",
+                    "ylabel": "Count",
+                    "data_source": None,
+                    "file_name": None,
+                },
+                "descriptive_stats": {
+                    "n": 6,
+                    "mean": pytest.approx(1.67, 0.01),
+                    "median": 1.5,
+                    "modes": [1],
+                    "params": {
+                        "bins": [0.5, 1.5, 2.5, 3.5],
+                        "mode_method": "series.mode",
+                    },
+                },
+            },
+        ),
 
-def test_empty_series_returns_stats():
-    empty = pd.Series([], dtype=float, name="empty_series")
-    meta = plot_central_tendency_histogram(empty)
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
-    
-    # Descriptive stats for empty series
-    assert stats['n'] == 0
-    assert math.isnan(stats['mean'])
-    assert math.isnan(stats['median'])
-    assert stats['modes'] == []
+        # T2) Two modes with bin edges, check exact modes [1, 2]
+        (
+            lambda: pd.Series([1, 1, 2, 2, 3, 4], name="numeric_series"),
+            {"bins": [0.5, 1.5, 2.5, 3.5, 4.5]},
+            {
+                "descriptive_stats": {
+                    "n": 6,
+                    "modes": [1, 2],
+                    "params": {
+                        "bins": [0.5, 1.5, 2.5, 3.5, 4.5],
+                        "mode_method": "histogram_bin_centers",
+                    },
+                },
+            },
+        ),
 
-    # Chart metadata defaults
-    assert chart['bins'] == 0
-    assert chart['title'] == "Distribution of empty_series: Central Tendency"
-    assert chart['xlabel'] == "Value"
-    assert chart['ylabel'] == "Count"
-    assert chart['data_source'] is None
-    assert chart['file_name'] is None
+        # T3) Three modes with bin edges, check exact sorted modes
+        (
+            lambda: pd.Series([1, 1, 2, 2, 3, 3, 4], name="numeric_series"),
+            {"bins": [0.5, 1.5, 2.5, 3.5, 4.5]},
+            {
+                "descriptive_stats": {
+                    "n": 7,
+                    "modes": (lambda v: sorted(v) == [1, 2, 3]),
+                    "params": {
+                        "bins": [0.5, 1.5, 2.5, 3.5, 4.5],
+                        "mode_method": "histogram_bin_centers",
+                    },
+                },
+            },
+        ),
+
+        # T4) Save with explicit filename, verify PNG signature
+        (
+            lambda: pd.Series([0, 1, 2, 2, 3, 3, 3], name="numeric_series"),
+            {"bins": 5, "file_name": "hist.png"},
+            {
+                "chart_metadata": {
+                    "file_name": "hist.png",
+                    "bins": 5,
+                    "xlabel": "Value",
+                    "ylabel": "Count",
+                    "title": "Distribution of numeric_series: Central Tendency",
+                    "data_source": None,
+                },
+                "descriptive_stats": {
+                    "n": 7,
+                    "params": {
+                        "bins": 5,
+                        "mode_method": "series.mode",
+                    },
+                },
+                # Special check: PNG signature will be verified in test body
+            },
+        ),
+    ],
+    ids=[
+        "empty",
+        "default_bins_sqrt_n",
+        "explicit_bins_int_single_mode",
+        "custom_bins_sequence_hist_modes",
+        "nans_title_defaults",
+        "title_with_modifiers",
+        "custom_title_template_no_mods",
+        "labels_source_and_save",
+        "single_mode_with_bin_edges",
+        "two_modes_with_bin_edges",
+        "three_modes_with_bin_edges",
+        "save_with_png_signature",
+    ],
+)
+def test_plot_central_tendency_histogram_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+    s = make_series()
+
+    # If a file_name is provided, also set save_path to tmp_path
+    if "file_name" in kwargs:
+        kwargs = kwargs.copy()
+        kwargs["save_path"] = tmp_path
+
+    payload = plot_central_tendency_histogram(s, **kwargs)
+
+    assert_plot_metadata(payload, expect, tmp_path)

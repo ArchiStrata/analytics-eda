@@ -128,6 +128,10 @@ def plot_central_tendency_histogram(
     if n == 0:
         return {
             'descriptive_stats': {
+                'params': {
+                    'bins': bins,
+                    'mode_method': None
+                },
                 'n': 0,
                 'mean': np.nan,
                 'median': np.nan,
@@ -214,6 +218,10 @@ def plot_central_tendency_histogram(
     # Return metadata
     return {
         'descriptive_stats': {
+            'params': {
+                'bins': bins,
+                'mode_method': ("series.mode" if len(raw_modes) == 1 else "histogram_bin_centers")
+            },
             'n': n,
             'mean': mean,
             'median': median,
