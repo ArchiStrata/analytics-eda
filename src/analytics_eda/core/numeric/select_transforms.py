@@ -16,7 +16,7 @@ from typing import Callable
 
 
 def select_transforms(
-    statistics: dict,
+    descriptive_stats: dict,
     normality_tests: dict | None = None
 ) -> list[str]:
     """
@@ -25,7 +25,7 @@ def select_transforms(
 
     Parameters
     ----------
-    statistics : dict
+    descriptive_stats : dict
         Output of descriptive statistics, must contain at least:
           - 'min'       (float)
           - 'skewness'  (float)
@@ -41,9 +41,9 @@ def select_transforms(
     """
 
     # pull out the few values we need
-    min_val   = statistics.get('min')
-    skew      = statistics.get('skewness', 0.0)
-    kurtosis  = statistics.get('kurtosis', 0.0)
+    min_val   = descriptive_stats.get('min')
+    skew      = descriptive_stats.get('skewness', 0.0)
+    kurtosis  = descriptive_stats.get('kurtosis', 0.0)
     tests     = normality_tests or {}
     reject_n  = bool(tests.get('reject_normality', False))
 

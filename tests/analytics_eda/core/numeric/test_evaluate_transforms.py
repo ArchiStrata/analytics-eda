@@ -9,7 +9,7 @@ from analytics_eda.core.numeric.select_transforms     import select_transforms
 def test_evaluate_transforms_invokes_analysis_per_candidate(monkeypatch, tmp_path):
     # 1) Prepare a simple series and stats/normality inputs
     series = pd.Series([1.0, 2.0, 3.0], name="x")
-    statistics = {'min': 1.0, 'skewness': 0.0, 'kurtosis': 0.0}
+    descriptive_stats = {'min': 1.0, 'skewness': 0.0, 'kurtosis': 0.0}
     normality_tests = {'reject_normality': False}
 
     # 2) Stub‐out numeric_distribution_analysis to capture calls and return dummy meta
@@ -29,7 +29,7 @@ def test_evaluate_transforms_invokes_analysis_per_candidate(monkeypatch, tmp_pat
     out = evaluate_transforms(
         series,
         is_discrete,
-        statistics,
+        descriptive_stats,
         normality_tests,
         report_path=tmp_path
     )
@@ -39,14 +39,14 @@ def test_evaluate_transforms_invokes_analysis_per_candidate(monkeypatch, tmp_pat
     transforms = out['transforms']
 
     # 5) Determine expected candidates from select_transforms
-    expected = select_transforms(statistics, normality_tests)
+    expected = select_transforms(descriptive_stats, normality_tests)
     assert set(transforms.keys()) == set(expected), "Should include exactly the selected transforms"
 
     # 6) Ensure analysis stub was called once per transform
     assert len(calls) == len(expected)
 
     # 7) For each candidate, check that:
-    for transform_name, (transformed_series, call_path) in zip(expected, calls):
+    for transform_name, (descriptive_stats, call_path) in zip(expected, calls):
         # a) numeric_distribution_analysis was called with the correct subdirectory
         expected_dir = tmp_path / transform_name
         assert call_path == expected_dir

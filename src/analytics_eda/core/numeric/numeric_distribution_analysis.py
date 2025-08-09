@@ -215,7 +215,7 @@ def numeric_distribution_analysis(
         transforms_meta = evaluate_transforms_fn(
             series=series,
             is_discrete=is_discrete,
-            statistics=descriptive_stats,
+            descriptive_stats=descriptive_stats,
             normality_tests=inferential_stats,
             report_path=report_path,
             report_log_id=report_log_id,

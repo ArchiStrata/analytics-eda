@@ -24,7 +24,7 @@ from .numeric_distribution_analysis import numeric_distribution_analysis
 def evaluate_transforms(
     series: pd.Series,
     is_discrete: bool,
-    statistics: Dict[str, Any],
+    descriptive_stats: Dict[str, Any],
     normality_tests: Dict[str, Any],
     report_path: Path,
     report_log_id: str | None = None,
@@ -46,7 +46,7 @@ def evaluate_transforms(
     ----------
     series : pd.Series
         Original numeric data.
-    statistics : dict
+    descriptive_stats : dict
         Descriptive statistics for `series`.
     normality_tests : dict
         Results of formal normality tests for `series`.
@@ -62,7 +62,7 @@ def evaluate_transforms(
     }
     """
     # Determine which transforms to try
-    candidates = select_transforms(statistics, normality_tests)
+    candidates = select_transforms(descriptive_stats, normality_tests)
     transforms: Dict[str, Any] = {}
 
     for transform_name in candidates:
