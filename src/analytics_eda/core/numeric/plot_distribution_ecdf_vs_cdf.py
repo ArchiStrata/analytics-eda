@@ -85,6 +85,9 @@ def plot_distribution_ecdf_vs_cdf(
                 'params': tuple
             },
             'inferential_stats': {
+               'params': {
+                    'alpha': float
+               },
                'ks': {
                     'statistic': float,
                     'p_value': float,
@@ -107,7 +110,6 @@ def plot_distribution_ecdf_vs_cdf(
                 'ylabel': str,
                 'data_source': str or None,
                 'distribution': str,
-                'alpha': float,
                 'file_name': str or None
             }
         }
@@ -130,13 +132,16 @@ def plot_distribution_ecdf_vs_cdf(
 
     default_metadata = {
             'descriptive_stats': {'n': n},
-            'inferential_stats': {},
+            'inferential_stats': {
+                'params': {
+                    'alpha': alpha
+                }
+            },
             'chart_metadata': {
                 'title': full_title,
                 'xlabel': xlabel,
                 'ylabel': ylabel,
                 'distribution': distribution_name,
-                'alpha': alpha,
                 'data_source': data_source,
                 'file_name': None
             }
@@ -169,6 +174,9 @@ def plot_distribution_ecdf_vs_cdf(
 
     # Tests
     tests = {}
+    tests['params'] = {
+        'alpha': alpha
+    }
 
     # 1. KS
     D, p_ks = stats.kstest(data, distribution_name, args=params)
@@ -227,6 +235,8 @@ def plot_distribution_ecdf_vs_cdf(
     ]
     # Append each test summary
     for name, info in tests.items():
+        if name == 'params':
+            continue
         if name == 'anderson':
             lines.append(f"AD stat = {info['statistic']:.3f}, crit = {info['critical_value']:.3f}, reject = {info['reject']}")
         else:
@@ -256,7 +266,6 @@ def plot_distribution_ecdf_vs_cdf(
             'ylabel': ylabel,
             'data_source': data_source,
             'distribution': distribution_name,
-            'alpha': alpha,
             'file_name': file_name
         }
     }

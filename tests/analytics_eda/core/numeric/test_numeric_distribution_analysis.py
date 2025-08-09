@@ -155,7 +155,7 @@ def test_numeric_distribution_analysis_basic_structure(
     assert isinstance(desc["params"], list)
 
     # tests: KS and CvM always, Anderson only for norm/expon
-    expected = {"ks", "cvm"}
+    expected = {'params', "ks", "cvm"}
     if has_anderson:
         expected.add("anderson")
     assert set(tests) == expected

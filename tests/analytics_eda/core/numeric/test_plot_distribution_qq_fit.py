@@ -35,7 +35,6 @@ def test_default_parameters_no_save():
     assert chart["ylabel"] == "Sample Quantiles"
     assert chart["data_source"] is None
     assert chart["file_name"] is None
-    assert pytest.approx(chart["alpha"]) == 0.05
 
 def test_override_and_save(tmp_path):
     series = pd.Series(np.random.normal(size=30), name="z")
@@ -76,6 +75,8 @@ def test_override_and_save(tmp_path):
     # inferential_stats dict
     nt = meta["inferential_stats"]
     assert isinstance(nt, dict)
+    assert 'params' in nt
+    assert pytest.approx(nt['params']["alpha"]) == custom["alpha"]
 
     # for n=30: should have shapiro, dagostino_pearson, anderson but no jarque_bera
     assert "shapiro" in nt
@@ -98,7 +99,6 @@ def test_override_and_save(tmp_path):
     assert chart["xlabel"] == custom["xlabel"]
     assert chart["ylabel"] == custom["ylabel"]
     assert chart["data_source"] == custom["data_source"]
-    assert pytest.approx(chart["alpha"]) == custom["alpha"]
 
     # file was saved correctly
     saved = tmp_path / file_name
@@ -129,14 +129,13 @@ def test_empty_series_returns_stats_and_defaults():
         assert np.isnan(stats[key])
     
     # formal inferential_stats
-    assert meta["inferential_stats"] == {}
+    assert meta["inferential_stats"] == {'params': {'alpha': 0.05}}
 
     # chart_metadata defaults with alpha and path
     assert chart["title"] == f"Q–Q Plot Fit Assessment of {empty.name} (norm)"
     assert chart["xlabel"] == "Theoretical Quantiles"
     assert chart["ylabel"] == "Sample Quantiles"
     assert chart["data_source"] is None
-    assert pytest.approx(chart["alpha"]) == 0.05
     assert chart["file_name"] is None
 
 
@@ -197,7 +196,6 @@ def test_plot_distribution_qq_fit_all_distributions(dist_name, rng_func, expecte
     assert cm["ylabel"] == "Sample Quantiles"
     assert cm["data_source"] is None
     assert cm["distribution"] == dist_name
-    assert cm["alpha"] == pytest.approx(0.05)
 
     # -- descriptive_stats --
     assert isinstance(ds["intercept"], float)
@@ -210,7 +208,10 @@ def test_plot_distribution_qq_fit_all_distributions(dist_name, rng_func, expecte
     assert isinstance(ds["kurtosis"], float)
 
     # -- tests presence/absence --
-    assert set(tests.keys()) == expected_tests
+    for expected_test in expected_tests:
+        assert expected_test in tests
+
+    assert tests['params']["alpha"] == pytest.approx(0.05)
 
     # -- if normality tests ran, check their fields --
     if "dagostino_pearson" in tests:

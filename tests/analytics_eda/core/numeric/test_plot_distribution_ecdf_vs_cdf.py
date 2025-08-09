@@ -20,7 +20,7 @@ def test_empty_series_returns_default_metadata():
     res = plot_distribution_ecdf_vs_cdf(s, "norm")
     # descriptive_stats and tests
     assert res["descriptive_stats"] == {"n": 0}
-    assert res["inferential_stats"] == {}
+    assert res["inferential_stats"] == {'params': {'alpha': 0.05}}
     # chart metadata defaults
     cm = res["chart_metadata"]
     assert cm["distribution"] == "norm"
@@ -33,7 +33,7 @@ def test_requires_positive_data_error(dist):
     ds = res["descriptive_stats"]
     assert ds["n"] == 3
     assert ds["error"] == "requires positive data"
-    assert res["inferential_stats"] == {}
+    assert res["inferential_stats"] == {'params': {'alpha': 0.05}}
 
 
 def test_requires_non_negative_data_error_expon():
@@ -42,7 +42,7 @@ def test_requires_non_negative_data_error_expon():
     ds = res["descriptive_stats"]
     assert ds["n"] == 3
     assert ds["error"] == "requires non-negative data"
-    assert res["inferential_stats"] == {}
+    assert res["inferential_stats"] == {'params': {'alpha': 0.05}}
 
 
 @pytest.mark.parametrize(
@@ -79,7 +79,6 @@ def test_all_distributions_and_save(dist_name, rng_func, has_ad, tmp_path):
 
     # chart metadata defaults
     assert cm["distribution"] == dist_name
-    assert cm["alpha"] == 0.05
     assert cm["title"] == f"ECDF vs. Theoretical CDF of {series.name} ({dist_name})"
     assert cm["xlabel"] == "Value"
     assert cm["ylabel"] == "CDF"
@@ -91,7 +90,7 @@ def test_all_distributions_and_save(dist_name, rng_func, has_ad, tmp_path):
     assert isinstance(ds["params"], tuple)
 
     # which tests should be present?
-    expected = {"ks", "cvm"} | ({"anderson"} if has_ad else set())
+    expected = {"params", "ks", "cvm"} | ({"anderson"} if has_ad else set())
     assert set(tests) == expected
 
     # basic types for each test

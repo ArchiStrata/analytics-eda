@@ -81,7 +81,7 @@ def plot_central_tendency_violin(
     Returns
     -------
     metadata : dict
-        Contains descriptive_stats, tests, and chart_metadata.
+        Contains descriptive_stats, inferential_stats, and chart_metadata.
     """
     # Validate input
     validate_numeric_named_series(series)
@@ -97,6 +97,14 @@ def plot_central_tendency_violin(
         title_template=title_template
     )
 
+    inferential_params = {
+        "alpha": alpha,
+        "bootstrap_samples": bootstrap_samples,
+        "popmean": popmean,
+        "popmedian": popmedian,
+        "popvariance": popvariance
+    }
+
     # If empty
     if n == 0:
         return {
@@ -107,14 +115,11 @@ def plot_central_tendency_violin(
                 'mean_ci': (np.nan, np.nan),
                 'median_ci': (np.nan, np.nan),
                 'mean_ci_method': mean_ci_method,
-                'median_ci_method': median_ci_method,
-                'alpha': alpha,
-                'bootstrap_samples': bootstrap_samples,
-                'popmean': popmean,
-                'popmedian': popmedian,
-                'popvariance': popvariance
+                'median_ci_method': median_ci_method
             },
-            'inferential_stats': {},
+            'inferential_stats': {
+                'params': inferential_params
+            },
             'chart_metadata': {
                 'title': title,
                 'xlabel': xlabel,
@@ -151,6 +156,8 @@ def plot_central_tendency_violin(
     # perform population tests
     stats_lines = []
     test_results: Dict[str, Any] = {}
+
+    test_results['params'] = inferential_params
 
     if popmean is not None:
         test_results['popmean'] = {}
@@ -267,12 +274,7 @@ def plot_central_tendency_violin(
             'mean_ci': (mean_ci_low, mean_ci_high),
             'median_ci': (med_ci_low, med_ci_high),
             'mean_ci_method': mean_ci_method,
-            'median_ci_method': median_ci_method,
-            'alpha': alpha,
-            'bootstrap_samples': bootstrap_samples,
-            'popmean': popmean,
-            'popmedian': popmedian,
-            'popvariance': popvariance
+            'median_ci_method': median_ci_method
         },
         'inferential_stats': test_results,
         'chart_metadata': {

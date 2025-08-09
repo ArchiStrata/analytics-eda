@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import pandas as pd
 import pytest
@@ -16,7 +15,15 @@ def test_empty_series_returns_metadata():
     assert np.isnan(ds["median"])
     assert ds["mean_ci"] == (np.nan, np.nan)
     assert ds["median_ci"] == (np.nan, np.nan)
-    assert result["inferential_stats"] == {}
+    assert result["inferential_stats"] == {
+        'params': {
+            'alpha': 0.05,
+                 'bootstrap_samples': 1000,
+                 'popmean': None,
+                 'popmedian': None,
+                 'popvariance': None
+            }
+    }
     assert "title" in cm and isinstance(cm["title"], str)
 
 def test_missing_series_name_raises_error():
@@ -115,10 +122,13 @@ def test_save_popmean(tmp_path):
     res = plot_central_tendency_violin(s, popmean=popmean, popvariance=popvariance, save_path=str(tmp_path), file_name=file_name)
 
     assert "descriptive_stats" in res
-    assert res["descriptive_stats"]["popmean"] == popmean
-    assert res["descriptive_stats"]["popvariance"] == popvariance
 
     tests = res["inferential_stats"]
+    assert 'params' in tests
+    inferential_params = tests['params']
+    assert inferential_params["popmean"] == popmean
+    assert inferential_params["popvariance"] == popvariance
+
     assert "popmean" in tests
     popmean_tests = tests["popmean"]
 
@@ -156,9 +166,11 @@ def test_save_popmedian(tmp_path):
     res = plot_central_tendency_violin(s, popmedian=popmedian, save_path=str(tmp_path), file_name=file_name)
 
     assert "descriptive_stats" in res
-    assert res["descriptive_stats"]["popmedian"] == popmedian
 
     tests = res["inferential_stats"]
+    assert 'params' in tests
+    inferential_params = tests['params']
+    assert inferential_params["popmedian"] == popmedian
 
     assert "popmedian" in tests
     popmedian_tests = tests["popmedian"]

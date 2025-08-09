@@ -149,14 +149,17 @@ def plot_distribution_qq_fit(
         }
         return {
             'descriptive_stats': empty_stats,
-            'inferential_stats': {},
+            'inferential_stats': {
+                'params': {
+                    'alpha': alpha
+                }
+            },
             'chart_metadata': {
                 'title': full_title,
                 'xlabel': xlabel,
                 'ylabel': ylabel,
                 'data_source': data_source,
-                'file_name': None,
-                'alpha': alpha
+                'file_name': None
             }
         }
 
@@ -194,6 +197,9 @@ def plot_distribution_qq_fit(
     kurtosis = float(stats.kurtosis(data, fisher=True, bias=False))
 
     tests = {}
+    tests['params'] = {
+        'alpha': alpha
+    }
 
     # normality tests per size rules
     if distribution_name == 'norm':
@@ -256,6 +262,8 @@ def plot_distribution_qq_fit(
     if distribution_name == 'norm' and tests:
         lines.append("")  # blank line before tests
         for name, info in tests.items():
+            if name == 'params':
+                continue
             if name == 'reject_normality':
                 # final summary flag
                 lines.append(f"Overall reject: {info}")
@@ -297,7 +305,6 @@ def plot_distribution_qq_fit(
             'ylabel': ylabel,
             'data_source': data_source,
             'file_name': file_name,
-            'distribution': distribution_name,
-            'alpha': alpha
+            'distribution': distribution_name
         }
     }
