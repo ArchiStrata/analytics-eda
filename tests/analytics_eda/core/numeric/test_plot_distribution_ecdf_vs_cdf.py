@@ -5,10 +5,24 @@ import pytest
 
 from analytics_eda.core.numeric import plot_distribution_ecdf_vs_cdf
 
-def test_missing_series_name_raises_error():
-    series = pd.Series([1, 2, 3])  # name is None
-    with pytest.raises(ValueError):
-        plot_distribution_ecdf_vs_cdf(series, "norm")
+@pytest.mark.parametrize(
+    "series_factory, expected_exc, match",
+    [
+        # Not a Series
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        # Non-numeric Series
+        (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
+        # Missing name
+        (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
+        # Blank/whitespace name
+        (lambda: pd.Series([1, 2, 3], name="   "), ValueError, r"must have a non-empty 'name'"),
+    ],
+    ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
+)
+def test_validate_numeric_named_series_errors(series_factory, expected_exc, match):
+    obj = series_factory()
+    with pytest.raises(expected_exc, match=match):
+        plot_distribution_ecdf_vs_cdf(obj, "norm")
 
 def test_invalid_distribution_name_raises_value_error():
     s = pd.Series([1, 2, 3], dtype=float, name="x")

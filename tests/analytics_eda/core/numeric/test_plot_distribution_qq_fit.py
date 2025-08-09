@@ -5,6 +5,26 @@ import pytest
 
 from analytics_eda.core.numeric import plot_distribution_qq_fit
 
+@pytest.mark.parametrize(
+    "series_factory, expected_exc, match",
+    [
+        # Not a Series
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        # Non-numeric Series
+        (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
+        # Missing name
+        (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
+        # Blank/whitespace name
+        (lambda: pd.Series([1, 2, 3], name="   "), ValueError, r"must have a non-empty 'name'"),
+    ],
+    ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
+)
+def test_validate_numeric_named_series_errors(series_factory, expected_exc, match):
+    obj = series_factory()
+    with pytest.raises(expected_exc, match=match):
+        plot_distribution_qq_fit(obj, "norm")
+
+
 def test_default_parameters_no_save():
     # small sample for default behavior (n < 50)
     series = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0], name="x")
@@ -107,11 +127,6 @@ def test_override_and_save(tmp_path):
         sig = f.read(8)
     assert sig == b'\x89PNG\r\n\x1a\n'
     assert os.path.basename(chart["file_name"]) == file_name
-
-def test_missing_series_name_raises_error():
-    unnamed = pd.Series([0, 1, 2, 3])
-    with pytest.raises(ValueError):
-        plot_distribution_qq_fit(unnamed, 'norm')
 
 def test_empty_series_returns_stats_and_defaults():
     empty = pd.Series([], dtype=float, name="empty")

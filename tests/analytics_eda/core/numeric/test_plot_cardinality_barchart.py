@@ -18,7 +18,7 @@ from analytics_eda.core.numeric import plot_cardinality_barchart
     ],
     ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
 )
-def test_validate_categorical_named_series_errors(series_factory, expected_exc, match):
+def test_validate_numeric_named_series_errors(series_factory, expected_exc, match):
     obj = series_factory()
     with pytest.raises(expected_exc, match=match):
         plot_cardinality_barchart(obj)

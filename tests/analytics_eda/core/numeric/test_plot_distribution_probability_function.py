@@ -5,6 +5,26 @@ import numpy as np
 
 from analytics_eda.core.numeric import plot_distribution_probability_function
 
+@pytest.mark.parametrize(
+    "series_factory, expected_exc, match",
+    [
+        # Not a Series
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        # Non-numeric Series
+        (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
+        # Missing name
+        (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
+        # Blank/whitespace name
+        (lambda: pd.Series([1, 2, 3], name="   "), ValueError, r"must have a non-empty 'name'"),
+    ],
+    ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
+)
+def test_validate_numeric_named_series_errors(series_factory, expected_exc, match):
+    obj = series_factory()
+    with pytest.raises(expected_exc, match=match):
+        plot_distribution_probability_function(obj, is_discrete=True)
+
+
 def test_pmf_descriptive_stats_and_chart_metadata_and_file(tmp_path):
     # discrete data with known values
     series = pd.Series([0, 1, 1, 2, 2, 2], name="cnts")

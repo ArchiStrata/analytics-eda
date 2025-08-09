@@ -5,6 +5,27 @@ import pandas as pd
 
 from analytics_eda.core.numeric import plot_dispersion_boxplot
 
+
+@pytest.mark.parametrize(
+    "series_factory, expected_exc, match",
+    [
+        # Not a Series
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        # Non-numeric Series
+        (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
+        # Missing name
+        (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
+        # Blank/whitespace name
+        (lambda: pd.Series([1, 2, 3], name="   "), ValueError, r"must have a non-empty 'name'"),
+    ],
+    ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
+)
+def test_validate_numeric_named_series_errors(series_factory, expected_exc, match):
+    obj = series_factory()
+    with pytest.raises(expected_exc, match=match):
+        plot_dispersion_boxplot(obj)
+
+
 def test_default_parameters_no_save():
     # A simple series
     series = pd.Series([1, 2, 3, 4, 5], name="numeric_series")
@@ -141,11 +162,6 @@ def test_save_defaults_and_metadata(tmp_path):
     # The returned file_name should end with the filename
     rel = chart['file_name']
     assert os.path.basename(rel) == filename
-
-def test_missing_series_name_raises_error():
-    missing_name = pd.Series(dtype=float)
-    with pytest.raises(ValueError):
-        plot_dispersion_boxplot(missing_name)
 
 def test_empty_series_returns_stats_and_defaults_dispersion():
     empty = pd.Series([], dtype=float, name="empty_series")

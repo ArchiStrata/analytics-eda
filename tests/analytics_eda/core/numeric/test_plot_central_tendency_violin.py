@@ -4,6 +4,39 @@ import pytest
 
 from analytics_eda.core.numeric import plot_central_tendency_violin
 
+
+def test_mean_ci_method_invalid():
+    s = pd.Series([1, 2, 3], name="C")
+    with pytest.raises(ValueError):
+        plot_central_tendency_violin(s, mean_ci_method="invalid")
+
+
+def test_median_ci_method_invalid():
+    s = pd.Series([1, 2, 3], name="E")
+    with pytest.raises(ValueError):
+        plot_central_tendency_violin(s, median_ci_method="invalid")  # must be 'bootstrap' or None
+
+
+@pytest.mark.parametrize(
+    "series_factory, expected_exc, match",
+    [
+        # Not a Series
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        # Non-numeric Series
+        (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
+        # Missing name
+        (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
+        # Blank/whitespace name
+        (lambda: pd.Series([1, 2, 3], name="   "), ValueError, r"must have a non-empty 'name'"),
+    ],
+    ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
+)
+def test_validate_numeric_named_series_errors(series_factory, expected_exc, match):
+    obj = series_factory()
+    with pytest.raises(expected_exc, match=match):
+        plot_central_tendency_violin(obj)
+
+
 def test_empty_series_returns_metadata():
     s = pd.Series([], dtype=float, name="empty")
     result = plot_central_tendency_violin(s)
@@ -25,11 +58,6 @@ def test_empty_series_returns_metadata():
             }
     }
     assert "title" in cm and isinstance(cm["title"], str)
-
-def test_missing_series_name_raises_error():
-    s = pd.Series([1, 2, 3], dtype=float)  # no name
-    with pytest.raises(ValueError):
-        plot_central_tendency_violin(s)
 
 def test_override_chart_labels_and_source():
     s = pd.Series([1, 2, 3], dtype=float, name="X")
@@ -75,11 +103,6 @@ def test_save_mean_ci_methods(method, tmp_path):
         sig = f.read(8)
     assert sig == b'\x89PNG\r\n\x1a\n'
 
-def test_mean_ci_method_invalid():
-    s = pd.Series([1, 2, 3], name="C")
-    with pytest.raises(ValueError):
-        plot_central_tendency_violin(s, mean_ci_method="invalid")
-
 @pytest.mark.parametrize("method", [("bootstrap")])
 def test_save_median_ci_methods(method, tmp_path):
     s = pd.Series([5, 6, 7, 8, 9], name="D")
@@ -104,11 +127,6 @@ def test_save_median_ci_methods(method, tmp_path):
     with open(saved, 'rb') as f:
         sig = f.read(8)
     assert sig == b'\x89PNG\r\n\x1a\n'
-
-def test_median_ci_method_invalid():
-    s = pd.Series([1, 2, 3], name="E")
-    with pytest.raises(ValueError):
-        plot_central_tendency_violin(s, median_ci_method="invalid")  # must be 'bootstrap' or None
 
 def test_save_popmean(tmp_path):
     rng = np.random.default_rng(0)

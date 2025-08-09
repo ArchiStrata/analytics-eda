@@ -6,6 +6,26 @@ import pytest
 from analytics_eda.core.numeric import plot_distribution_density
 from analytics_eda.core.numeric.binning_rules import sturges_bins, scott_bins, freedman_diaconis_bins, doane_bins
 
+@pytest.mark.parametrize(
+    "series_factory, expected_exc, match",
+    [
+        # Not a Series
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        # Non-numeric Series
+        (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
+        # Missing name
+        (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
+        # Blank/whitespace name
+        (lambda: pd.Series([1, 2, 3], name="   "), ValueError, r"must have a non-empty 'name'"),
+    ],
+    ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
+)
+def test_validate_numeric_named_series_errors(series_factory, expected_exc, match):
+    obj = series_factory()
+    with pytest.raises(expected_exc, match=match):
+        plot_distribution_density(obj)
+
+
 def test_default_parameters_no_save():
     # simple unimodal series
     series = pd.Series([1, 2, 2, 3, 4], name="test_series")
@@ -95,12 +115,6 @@ def test_save_defaults_and_metadata(tmp_path):
     saved = tmp_path / filename
     assert saved.exists()
     assert saved.stat().st_size > 0
-
-def test_missing_series_name_raises_error():
-    # Series without a name should trigger validation error
-    unnamed = pd.Series([1,2,3])
-    with pytest.raises(ValueError):
-        plot_distribution_density(unnamed)
 
 def test_empty_series_returns_stats_and_defaults():
     empty = pd.Series([], dtype=float, name="empty")

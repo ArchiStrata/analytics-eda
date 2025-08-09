@@ -5,6 +5,26 @@ import pandas as pd
 
 from analytics_eda.core.numeric import plot_central_tendency_histogram
 
+@pytest.mark.parametrize(
+    "series_factory, expected_exc, match",
+    [
+        # Not a Series
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        # Non-numeric Series
+        (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
+        # Missing name
+        (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
+        # Blank/whitespace name
+        (lambda: pd.Series([1, 2, 3], name="   "), ValueError, r"must have a non-empty 'name'"),
+    ],
+    ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
+)
+def test_validate_numeric_named_series_errors(series_factory, expected_exc, match):
+    obj = series_factory()
+    with pytest.raises(expected_exc, match=match):
+        plot_central_tendency_histogram(obj)
+
+
 def test_single_mode():
     data = pd.Series([1, 1, 1, 2, 2, 3], name='numeric_series')
     bins = [0.5, 1.5, 2.5, 3.5]
@@ -138,11 +158,6 @@ def test_override_chart_labels_and_source(tmp_path):
 
     # Metadata path is a relative path ending with the filename
     assert os.path.basename(chart['file_name']) == filename
-
-def test_missing_series_name_raises_error():
-    missing_name = pd.Series(dtype=float)
-    with pytest.raises(ValueError):
-        plot_central_tendency_histogram(missing_name)
 
 def test_empty_series_returns_stats():
     empty = pd.Series([], dtype=float, name="empty_series")
