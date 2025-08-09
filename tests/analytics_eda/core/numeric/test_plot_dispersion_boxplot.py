@@ -1,4 +1,4 @@
-import os
+import math
 import pytest
 import numpy as np
 import pandas as pd
@@ -26,251 +26,226 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
         plot_dispersion_boxplot(obj)
 
 
-def test_default_parameters_no_save():
-    # A simple series
-    series = pd.Series([1, 2, 3, 4, 5], name="numeric_series")
-    meta = plot_dispersion_boxplot(series)
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
+@pytest.mark.parametrize(
+    "make_series, kwargs, expect",
+    [
+        # 0) EMPTY → all stats NaN/0; params carries std_outlier_multiplier
+        (
+            lambda: pd.Series([], dtype="float64", name="nums"),
+            {},
+            {
+                "chart_metadata": {
+                    "title": "Dispersion of nums (IQR & Outliers)",
+                    "ylabel": "Value",
+                    "data_source": None,
+                    "file_name": None,
+                },
+                "descriptive_stats": {
+                    "params": {"std_outlier_multiplier": 4.0},
+                    "n": 0,
+                    "mean": (lambda v: np.isnan(v)),
+                    "std":  (lambda v: np.isnan(v)),
+                    "var":  (lambda v: np.isnan(v)),
+                    "min":  (lambda v: np.isnan(v)),
+                    "max":  (lambda v: np.isnan(v)),
+                    "range":(lambda v: np.isnan(v)),
+                    "mad":  (lambda v: np.isnan(v)),
+                    "cv":   (lambda v: np.isnan(v)),
+                    "pct_10": (lambda v: np.isnan(v)),
+                    "pct_25": (lambda v: np.isnan(v)),
+                    "pct_75": (lambda v: np.isnan(v)),
+                    "pct_90": (lambda v: np.isnan(v)),
+                    "iqr":    (lambda v: np.isnan(v)),
+                    "extreme_lower_count": 0,
+                    "extreme_upper_count": 0,
+                },
+            },
+        ),
 
-    # Expected values
-    expected_n    = series.size
-    expected_std  = series.std()
-    expected_var  = series.var()
-    expected_min  = series.min()
-    expected_max  = series.max()
-    expected_range= expected_max - expected_min
-    expected_mad  = (series - series.mean()).abs().mean()
-    expected_cv   = expected_std / series.mean()
-    expected_p10  = series.quantile(0.10)
-    expected_p25  = series.quantile(0.25)
-    expected_p75  = series.quantile(0.75)
-    expected_p90  = series.quantile(0.90)
+        # 1) SIMPLE DEFAULTS → check n, key percentiles & IQR
+        (
+            lambda: pd.Series([1, 2, 3, 4], name="simple"),
+            {},
+            {
+                "chart_metadata": {
+                    "title": "Dispersion of simple (IQR & Outliers)",
+                    "ylabel": "Value",
+                },
+                "descriptive_stats": {
+                    "n": 4,
+                    "min": 1,
+                    "max": 4,
+                    "range": 3,
+                    "pct_25": (lambda v: math.isclose(v, 1.75, rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_75": (lambda v: math.isclose(v, 3.25, rel_tol=1e-12, abs_tol=1e-12)),
+                    "iqr":   (lambda v: math.isclose(v, 1.5,  rel_tol=1e-12, abs_tol=1e-12)),
+                },
+            },
+        ),
 
-    # Descriptive stats
-    assert stats['n']      == expected_n
-    assert stats['std']    == pytest.approx(expected_std)
-    assert stats['var']    == pytest.approx(expected_var)
-    assert stats['min']    == expected_min
-    assert stats['max']    == expected_max
-    assert stats['range']  == expected_range
-    assert stats['mad']    == pytest.approx(expected_mad)
-    assert stats['cv']     == pytest.approx(expected_cv)
-    assert stats['pct_10'] == pytest.approx(expected_p10)
-    assert stats['pct_25'] == pytest.approx(expected_p25)
-    assert stats['pct_75'] == pytest.approx(expected_p75)
-    assert stats['pct_90'] == pytest.approx(expected_p90)
+        # 2) FULL STATS DEFAULTS → match full baseline computation
+        (
+            lambda: pd.Series([1, 2, 3, 4, 5], name="numeric_series"),
+            {},
+            {
+                "chart_metadata": {
+                    "title": "Dispersion of numeric_series (IQR & Outliers)",
+                    "ylabel": "Value",
+                    "data_source": None,
+                    "file_name": None,
+                },
+                "descriptive_stats": {
+                    "n": 5,
+                    "std": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.std(), rel_tol=1e-12, abs_tol=1e-12)),
+                    "var": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.var(), rel_tol=1e-12, abs_tol=1e-12)),
+                    "min": 1,
+                    "max": 5,
+                    "range": 4,
+                    "mad": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, (s - s.mean()).abs().mean(), rel_tol=1e-12, abs_tol=1e-12)),
+                    "cv":  (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.std()/s.mean(), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_10": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.quantile(0.10), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_25": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.quantile(0.25), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_75": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.quantile(0.75), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_90": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.quantile(0.90), rel_tol=1e-12, abs_tol=1e-12)),
+                },
+            },
+        ),
 
-    # Chart metadata
-    assert chart['title']         == "Dispersion of numeric_series (IQR & Outliers)"
-    assert chart['ylabel']        == "Value"
-    assert chart['data_source'] is None
-    assert chart['file_name'] is None
+        # 3) NaNs CLEANING → n counts non‑NaN; min/max/range on cleaned data
+        (
+            lambda: pd.Series([1.0, np.nan, 2.0, 5.0, np.nan, -1.0], name="with_nans"),
+            {},
+            {
+                "chart_metadata": {"title": "Dispersion of with_nans (IQR & Outliers)"},
+                "descriptive_stats": {
+                    "n": 4,  # [1.0, 2.0, 5.0, -1.0]
+                    "min": -1.0,
+                    "max": 5.0,
+                    "range": 6.0,
+                },
+            },
+        ),
 
-def test_override_and_save(tmp_path):
-    # Prepare a small series
-    series = pd.Series([10, 20, 20, 30], name="numeric_series")
-    custom_title   = "My Custom Dispersion Plot"
-    custom_ylabel  = "Custom Y Label"
-    custom_source  = "UnitTest Source"
-    filename       = "dispersion.png"
+        # 4) CV WHEN MEAN==0 → cv is NaN
+        (
+            lambda: pd.Series([-1, 0, 1], name="zero_mean"),
+            {},
+            {
+                "descriptive_stats": {
+                    "n": 3,
+                    "mean": 0.0,
+                    "cv": (lambda v: np.isnan(v)),
+                },
+            },
+        ),
 
-    # Call with overrides and saving enabled
-    meta = plot_dispersion_boxplot(
-        series,
-        title_template=custom_title,
-        ylabel=custom_ylabel,
-        data_source=custom_source,
-        figsize=(12, 8),
-        save_path=str(tmp_path),
-        file_name=filename
-    )
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
+        # 5) OUTLIER UPPER FLAG → custom k=1.0 should flag the single upper extreme
+        #    s=[0,0,0,0,10], mean=2, std≈4.472; upper bound≈6.47 → one upper outlier
+        (
+            lambda: pd.Series([0, 0, 0, 0, 10], name="spike"),
+            {"std_outlier_multiplier": 1.0},
+            {
+                "descriptive_stats": {
+                    "params": {"std_outlier_multiplier": 1.0},
+                    "n": 5,
+                    "extreme_lower_count": 0,
+                    "extreme_upper_count": 1,
+                },
+            },
+        ),
 
-    # Expected values
-    expected_n     = series.size
-    expected_std   = series.std()
-    expected_var   = series.var()
-    expected_min   = series.min()
-    expected_max   = series.max()
-    expected_range = expected_max - expected_min
-    expected_mad   = (series - series.mean()).abs().mean()
-    expected_cv    = expected_std / series.mean()
-    expected_p10   = series.quantile(0.10)
-    expected_p25   = series.quantile(0.25)
-    expected_p75   = series.quantile(0.75)
-    expected_p90   = series.quantile(0.90)
+        # 6) TITLE WITH MODIFIERS → name override + filter/transform in title
+        (
+            lambda: pd.Series([10, 20, 30], name="ignored"),
+            {"name": "Price", "filter_desc": "NY only", "transform_desc": "winsorized"},
+            {
+                "chart_metadata": {
+                    "title": "Dispersion of Price (NY only, winsorized) (IQR & Outliers)",
+                },
+                "descriptive_stats": {"n": 3},
+            },
+        ),
 
-    # Descriptive stats
-    assert stats['n']      == expected_n
-    assert stats['std']    == pytest.approx(expected_std)
-    assert stats['var']    == pytest.approx(expected_var)
-    assert stats['min']    == expected_min
-    assert stats['max']    == expected_max
-    assert stats['range']  == expected_range
-    assert stats['mad']    == pytest.approx(expected_mad)
-    assert stats['cv']     == pytest.approx(expected_cv)
-    assert stats['pct_10'] == pytest.approx(expected_p10)
-    assert stats['pct_25'] == pytest.approx(expected_p25)
-    assert stats['pct_75'] == pytest.approx(expected_p75)
-    assert stats['pct_90'] == pytest.approx(expected_p90)
+        # 7) LABELS/SOURCE & SAVE → override labels/source, save with filename
+        (
+            lambda: pd.Series([2, 4, 6, 8, 10], name="even"),
+            {"ylabel": "Score", "data_source": "UnitTest", "file_name": "box.png"},
+            {
+                "chart_metadata": {
+                    "ylabel": "Score",
+                    "data_source": "UnitTest",
+                    "file_name": "box.png",
+                },
+                "descriptive_stats": {"n": 5},
+            },
+        ),
 
-    # Chart metadata overrides
-    assert chart['title']        == custom_title
-    assert chart['ylabel']       == custom_ylabel
-    assert chart['data_source']  == custom_source
+        # 8) BOTH‑TAIL EXTREMES → tiny k flags both tails; also save
+        (
+            lambda: pd.Series([-10, 0, 1, 2, 100], name="x"),
+            {"std_outlier_multiplier": 0.3, "file_name": "dispersion.png"},
+            {
+                "chart_metadata": {"file_name": "dispersion.png"},
+                "descriptive_stats": {
+                    "n": 5,
+                    "params": {"std_outlier_multiplier": 0.3},
+                    "extreme_lower_count": 4,
+                    "extreme_upper_count": 1,
+                },
+            },
+        ),
 
-    # Saved file exists and is a non-empty PNG
-    saved_path = tmp_path / filename
-    assert saved_path.exists() and saved_path.stat().st_size > 0
+        # 9) VIOLIN OUTLIERS & SAVE → outliers on both sides; iqr is float; saved
+        (
+            lambda: pd.Series(
+                np.concatenate([np.random.default_rng(0).normal(loc=0, scale=1, size=100), [5, -5]]),
+                name="x"
+            ),
+            {
+                "std_outlier_multiplier": 2.0,
+                "file_name": "violin_dispersion.png",
+                "title_template": "Violin Dispersion Test",
+                "ylabel": "Units",
+                "data_source": "UnitTest",
+            },
+            {
+                "chart_metadata": {
+                    "title": "Violin Dispersion Test",
+                    "ylabel": "Units",
+                    "data_source": "UnitTest",
+                    "file_name": "violin_dispersion.png",
+                },
+                "descriptive_stats": {
+                    "n": (lambda v, s_len=102: v == s_len),
+                    "iqr": (lambda v: isinstance(v, float)),
+                    "extreme_lower_count": (lambda v: v >= 1),
+                    "extreme_upper_count": (lambda v: v >= 1),
+                    "params": {"std_outlier_multiplier": 2.0},
+                },
+            },
+        ),
+    ],
+    ids=[
+        "0_empty",
+        "1_defaults_simple_series",
+        "2_defaults_full_stats_simple_series",
+        "3_nans_cleaning",
+        "4_cv_nan_when_mean_zero",
+        "5_outlier_upper_flag_k1",
+        "6_title_with_modifiers",
+        "7_labels_source_and_save",
+        "8_both_tail_extremes_small_k",
+        "9_violin_outliers_and_save",
+    ],
+)
+def test_plot_dispersion_boxplot_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+    s = make_series()
 
-    with open(saved_path, 'rb') as f:
-        header = f.read(8)
-    assert header == b'\x89PNG\r\n\x1a\n'
+    # If a file_name is provided, also set save_path to tmp_path
+    if "file_name" in kwargs:
+        kwargs = kwargs.copy()
+        kwargs["save_path"] = tmp_path
 
-    # Metadata path ends with filename
-    assert os.path.basename(chart['file_name']) == filename
+    payload = plot_dispersion_boxplot(s, **kwargs)
 
-def test_save_defaults_and_metadata(tmp_path):
-    # Prepare a simple numeric series
-    series = pd.Series([5, 10, 15, 20], name="numeric_series")
-    filename = "dispersion.png"
-
-    # Call with only save_path and file_name, using all defaults
-    meta = plot_dispersion_boxplot(
-        series,
-        save_path=str(tmp_path),
-        file_name=filename
-    )
-    chart = meta['chart_metadata']
-
-    # Verify default chart metadata
-    assert chart['title'] == "Dispersion of numeric_series (IQR & Outliers)"
-    assert chart['ylabel'] == "Value"
-    assert chart['data_source'] is None
-
-    # Verify that the image file was created and is a valid PNG
-    saved_path = tmp_path / filename
-    assert saved_path.exists() and saved_path.is_file()
-    assert saved_path.stat().st_size > 0
-
-    with open(saved_path, 'rb') as f:
-        header = f.read(8)
-    assert header == b'\x89PNG\r\n\x1a\n'
-
-    # The returned file_name should end with the filename
-    rel = chart['file_name']
-    assert os.path.basename(rel) == filename
-
-def test_empty_series_returns_stats_and_defaults_dispersion():
-    empty = pd.Series([], dtype=float, name="empty_series")
-    meta = plot_dispersion_boxplot(empty)
-    stats = meta['descriptive_stats']
-    chart = meta['chart_metadata']
-
-    # Descriptive stats for empty series
-    assert stats['n'] == 0
-    assert np.isnan(stats['std'])
-    assert np.isnan(stats['var'])
-    assert np.isnan(stats['min'])
-    assert np.isnan(stats['max'])
-    assert np.isnan(stats['range'])
-    assert np.isnan(stats['mad'])
-    assert np.isnan(stats['cv'])
-    assert np.isnan(stats['pct_10'])
-    assert np.isnan(stats['pct_25'])
-    assert np.isnan(stats['pct_75'])
-    assert np.isnan(stats['pct_90'])
-
-    # Chart metadata defaults
-    assert chart['title'] == "Dispersion of empty_series (IQR & Outliers)"
-    assert chart['ylabel'] == "Value"
-    assert chart['data_source'] is None
-    assert chart['file_name'] is None
-
-def test_override_and_save_extreme_bounds(tmp_path):
-    # Construct a series with clear upper and lower extremes
-    data = [-10, 0, 1, 2, 100]
-    series = pd.Series(data, name="x")
-
-    # Override parameters: use a small multiplier to flag both tails
-    overrides = {
-        "std_outlier_multiplier": 0.3,
-        "title_template": "Custom Dispersion",
-        "ylabel": "Units",
-        "data_source": "UnitTest",
-        "file_name": "dispersion.png"
-    }
-
-    meta = plot_dispersion_boxplot(
-        series,
-        **overrides,
-        save_path=str(tmp_path)
-    )
-    desc  = meta["descriptive_stats"]
-    chart = meta["chart_metadata"]
-
-    # Basic counts
-    assert desc["n"] == len(data)
-    # With multiplier=0.3, lower bound ≈ mean−0.3σ flags 4 values, upper bound flags 1 value
-    assert desc["extreme_lower_count"] == 4
-    assert desc["extreme_upper_count"] == 1
-
-    # Chart metadata
-    assert chart["title"]       == overrides["title_template"]
-    assert chart["ylabel"]      == overrides["ylabel"]
-    assert chart["data_source"] == overrides["data_source"]
-    assert pytest.approx(chart["std_outlier_multiplier"]) == overrides["std_outlier_multiplier"]
-
-    # File saved correctly
-    saved = tmp_path / overrides["file_name"]
-    assert saved.exists() and saved.stat().st_size > 0
-    with open(saved, "rb") as f:
-        header = f.read(8)
-    assert header == b'\x89PNG\r\n\x1a\n'
-
-    # file_name ends with the file name
-    assert os.path.basename(chart["file_name"]) == overrides["file_name"]
-
-
-def test_violin_silhouette_and_save(tmp_path):
-    # Prepare a series with some outliers
-    rng = np.random.default_rng(0)
-    data = np.concatenate([rng.normal(loc=0, scale=1, size=100), [5, -5]])
-    series = pd.Series(data, name="x")
-
-    # Override parameters and enable saving
-    overrides = {
-        "std_outlier_multiplier": 2.0,
-        "title_template": "Violin Dispersion Test",
-        "ylabel": "Units",
-        "data_source": "UnitTest",
-        "file_name": "violin_dispersion.png"
-    }
-    meta = plot_dispersion_boxplot(
-        series,
-        **overrides,
-        save_path=str(tmp_path)
-    )
-    desc  = meta["descriptive_stats"]
-    chart = meta["chart_metadata"]
-
-    # Descriptive stats metadata
-    assert desc["n"] == len(series)
-    assert "iqr" in desc and isinstance(desc["iqr"], float)
-    assert desc["extreme_lower_count"] >= 1
-    assert desc["extreme_upper_count"] >= 1
-
-    # Chart metadata overrides
-    assert chart["title"]       == overrides["title_template"]
-    assert chart["ylabel"]      == overrides["ylabel"]
-    assert chart["data_source"] == overrides["data_source"]
-    assert pytest.approx(chart["std_outlier_multiplier"]) == overrides["std_outlier_multiplier"]
-
-    # Verify file was saved as a non-empty PNG
-    saved = tmp_path / overrides["file_name"]
-    assert saved.exists() and saved.stat().st_size > 0
-    with open(saved, "rb") as f:
-        header = f.read(8)
-    assert header == b'\x89PNG\r\n\x1a\n'
+    assert_plot_metadata(payload, expect, tmp_path)

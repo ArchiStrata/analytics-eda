@@ -83,6 +83,9 @@ def plot_dispersion_boxplot(
     metadata : dict
         {
             'descriptive_stats': {
+                'params': {
+                  'std_outlier_multiplier': float
+                }
                 'n': int,           # see table below
                 'mean': float,
                 'std': float,
@@ -104,8 +107,7 @@ def plot_dispersion_boxplot(
                 'title': str,
                 'ylabel': str,
                 'data_source': str or None,
-                'file_name': str or None,
-                'std_outlier_multiplier': float
+                'file_name': str or None
             }
         }
 
@@ -140,6 +142,9 @@ def plot_dispersion_boxplot(
     # Early return on empty series
     if n == 0:
         empty_stats = {
+            'params': {
+                'std_outlier_multiplier': std_outlier_multiplier
+            },
             'n': 0,
             'mean': np.nan,
             'std': np.nan,
@@ -163,8 +168,7 @@ def plot_dispersion_boxplot(
                 'title': title,
                 'ylabel': ylabel,
                 'data_source': data_source,
-                'file_name': None,
-                'std_outlier_multiplier': std_outlier_multiplier
+                'file_name': None
             }
         }
 
@@ -303,6 +307,9 @@ def plot_dispersion_boxplot(
 
     return {
         'descriptive_stats': {
+            'params': {
+                'std_outlier_multiplier': std_outlier_multiplier
+            },
             'n': n,
             'mean': mean,
             'std': std,
@@ -324,7 +331,6 @@ def plot_dispersion_boxplot(
             'title': title,
             'ylabel': ylabel,
             'data_source': data_source,
-            'file_name': file_name,
-            'std_outlier_multiplier': std_outlier_multiplier,
+            'file_name': file_name
         }
     }
