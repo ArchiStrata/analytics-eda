@@ -113,6 +113,20 @@ from analytics_eda.univariate.categorical.univariate_categorical_analysis import
                                     "warning": "Some expected counts are below 5; chi-square test results may not be reliable."
                                 }
                             },
+                        },
+                        "lorenz_curve": {
+                            "descriptive_stats": {
+                                "total": 10,
+                                "k": 4,
+                                "gini_index": 0.25
+                            },
+                            "chart_metadata": {
+                                "title": "Lorenz Curve of pets",
+                                "xlabel": "Cumulative share of categories",
+                                "ylabel": "Cumulative share of counts",
+                                "data_source": "UnitTest",
+                                "file_name": "Lorenz Curve of pets.png"
+                            }
                         }
                     },
                 },

@@ -22,6 +22,7 @@ from .validate_categorical_named_series import validate_categorical_named_series
 
 from .plot_frequency_pareto import plot_frequency_pareto
 from .plot_chi2_gof_uniform import plot_chi2_gof_uniform
+from .plot_balance_lorenz_curve import plot_balance_lorenz_curve
 
 from ..numeric import plot_distribution_density, plot_dispersion_boxplot
 from ..reporting import write_json_report
@@ -37,7 +38,8 @@ def categorical_distribution_analysis(
     plot_frequency_pareto_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_density_overrides: Optional[Dict[str, Any]] = None,
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
-    plot_chi2_gof_uniform_overrides: Optional[Dict[str, Any]] = None
+    plot_chi2_gof_uniform_overrides: Optional[Dict[str, Any]] = None,
+    plot_balance_lorenz_curve_overrides: Optional[Dict[str, Any]] = None
 ) -> dict:
     """
     Analyze a categorical pandas Series and produce a structured report with summary
@@ -122,7 +124,15 @@ def categorical_distribution_analysis(
         data_source=data_source,
     )
 
-    # TODO: Lorenz curve with Gini index
+    # Lorenz curve with Gini index
+    lorenz_curve_over = (plot_balance_lorenz_curve_overrides or {}).copy()
+    balance['lorenz_curve'] = call_plot_with_overrides(
+        plot_balance_lorenz_curve,
+        series,
+        overrides=lorenz_curve_over,
+        save_path=report_path,
+        data_source=data_source,
+    )
 
     # compile report
     distribution_report = {
