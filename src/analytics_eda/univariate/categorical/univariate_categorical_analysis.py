@@ -28,7 +28,8 @@ def univariate_categorical_analysis(
     data_source: Optional[str] = None,
     plot_frequency_pareto_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_density_overrides: Optional[Dict[str, Any]] = None,
-    plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None
+    plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
+    plot_chi2_gof_uniform_overrides: Optional[Dict[str, Any]] = None
 ) -> Path:
     """
     Run a full univariate analysis on a named categorical pandas Series and save results.
@@ -96,6 +97,7 @@ def univariate_categorical_analysis(
         plot_frequency_pareto_overrides=plot_frequency_pareto_overrides,
         plot_distribution_density_overrides=plot_distribution_density_overrides,
         plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
+        plot_chi2_gof_uniform_overrides=plot_chi2_gof_uniform_overrides,
     )
 
     # Generate report

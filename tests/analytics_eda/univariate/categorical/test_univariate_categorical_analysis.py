@@ -27,23 +27,93 @@ from analytics_eda.univariate.categorical.univariate_categorical_analysis import
                 "distribution": {
                     "frequency_distribution": {
                         "pareto": {
-                            "chart_metadata": {
+                            "chart_metadata":  {
+                                "title": "Pareto Chart of pets",
                                 "xlabel": "Value",
                                 "ylabel": "Count",
-                                "data_source": "UnitTest"
+                                "data_source": "UnitTest",
+                                "file_name": "Pareto Chart of pets.png"
                             },
-                            "descriptive_stats": {},  # nothing specific to assert
+                            "descriptive_stats": {
+                                "mode": "C",
+                                "total_count": 10,
+                                "n_categories": 4,
+                                "cumulative_count_at_80pct": 9
+                            },
                         },
                     },
                     "balance": {
                         "density": {
-                            "chart_metadata": {"xlabel": "Frequency", "data_source": "UnitTest"},
-                            "descriptive_stats": {},  # optionally assert keys like {"n": lambda v: v > 0}
+                            "chart_metadata":  {
+                                "title": "Distribution Density of count",
+                                "xlabel": "Frequency",
+                                "ylabel": "Density",
+                                "data_source": "UnitTest",
+                                "file_name": "Distribution Density of count.png"
+                            },
+                            "descriptive_stats": {
+                                "n": 4,
+                                "entropy_bits": 1.9999999999942293,
+                                "skewness": 0.0,
+                                "kurtosis": -1.1999999999999993,
+                                "modes_count": 1,
+                                "quartile_skew": 0.0,
+                                "pct_10": 1.3,
+                                "pct_25": 1.75,
+                                "pct_50": 2.5,
+                                "pct_75": 3.25,
+                                "pct_90": 3.7
+                            },
                         },
                         "boxplot": {
-                            "chart_metadata": {"ylabel": "Frequency", "data_source": "UnitTest"},
-                            "descriptive_stats": {},
+                            "chart_metadata":  {
+                                "title": "Dispersion of count (IQR & Outliers)",
+                                "ylabel": "Frequency",
+                                "data_source": "UnitTest",
+                                "file_name": "Dispersion of count (IQR & Outliers).png",
+                                "std_outlier_multiplier": 4.0
+                            },
+                            "descriptive_stats": {
+                                "n": 4,
+                                "mean": 2.5,
+                                "std": 1.2909944487358056,
+                                "var": 1.6666666666666667,
+                                "min": 1,
+                                "max": 4,
+                                "range": 3,
+                                "mad": 1.0,
+                                "cv": 0.5163977794943222,
+                                "pct_10": 1.3,
+                                "pct_25": 1.75,
+                                "pct_75": 3.25,
+                                "pct_90": 3.7,
+                                "iqr": 1.5,
+                                "extreme_lower_count": 0,
+                                "extreme_upper_count": 0
+                            },
                         },
+                        "chi2_gof_uniform": {
+                            "chart_metadata":  {
+                                "title": "Chi-Square Goodness-of-Fit: pets",
+                                "xlabel": "Frequency",
+                                "ylabel": "Frequency",
+                                "data_source": "UnitTest",
+                                "file_name": "Chi-Square Goodness-of-Fit: pets.png"
+                            },
+                            "descriptive_stats": {
+                                "total": 10,
+                                "k": 4
+                            },
+                            "tests": {
+                                "chi2_gof_null_uniform": {
+                                    "statistic": 2.0,
+                                    "p_value": 0.5724067044708798,
+                                    "alpha": 0.05,
+                                    "reject": False,
+                                    "warning": "Some expected counts are below 5; chi-square test results may not be reliable."
+                                }
+                            },
+                        }
                     },
                 },
             },

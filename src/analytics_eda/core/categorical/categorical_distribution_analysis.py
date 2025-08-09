@@ -21,6 +21,7 @@ import pandas as pd
 from .validate_categorical_named_series import validate_categorical_named_series
 
 from .plot_frequency_pareto import plot_frequency_pareto
+from .plot_chi2_gof_uniform import plot_chi2_gof_uniform
 
 from ..numeric import plot_distribution_density, plot_dispersion_boxplot
 from ..reporting import write_json_report
@@ -35,7 +36,8 @@ def categorical_distribution_analysis(
     data_source: Optional[str] = None,
     plot_frequency_pareto_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_density_overrides: Optional[Dict[str, Any]] = None,
-    plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None
+    plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
+    plot_chi2_gof_uniform_overrides: Optional[Dict[str, Any]] = None
 ) -> dict:
     """
     Analyze a categorical pandas Series and produce a structured report with summary
@@ -109,7 +111,16 @@ def categorical_distribution_analysis(
 
     # TODO: Rare categories (e.g. <1% of total) - bar chart
 
-    # TODO: Side-by-side bar chart with Chi-square goodness-of-fit against a uniform distribution
+    # Chi-square goodness-of-fit against a uniform distribution
+    chi2_gof_uniform_over = (plot_chi2_gof_uniform_overrides or {}).copy()
+    chi2_gof_uniform_over.setdefault('xlabel', 'Frequency')
+    balance['chi2_gof_uniform'] = call_plot_with_overrides(
+        plot_chi2_gof_uniform,
+        series,
+        overrides=chi2_gof_uniform_over,
+        save_path=report_path,
+        data_source=data_source,
+    )
 
     # TODO: Lorenz curve with Gini index
 
