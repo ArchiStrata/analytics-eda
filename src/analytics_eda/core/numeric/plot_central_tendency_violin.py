@@ -109,13 +109,15 @@ def plot_central_tendency_violin(
     if n == 0:
         return {
             'descriptive_stats': {
+                'params': {
+                    'mean_ci_method': mean_ci_method,
+                    'median_ci_method': median_ci_method
+                },
                 'n': 0,
                 'mean': np.nan,
                 'median': np.nan,
                 'mean_ci': (np.nan, np.nan),
-                'median_ci': (np.nan, np.nan),
-                'mean_ci_method': mean_ci_method,
-                'median_ci_method': median_ci_method
+                'median_ci': (np.nan, np.nan)
             },
             'inferential_stats': {
                 'params': inferential_params
@@ -268,13 +270,15 @@ def plot_central_tendency_violin(
     # Return metadata
     return {
         'descriptive_stats': {
+            'params': {
+                'mean_ci_method': mean_ci_method,
+                'median_ci_method': median_ci_method
+            },
             'n': n,
             'mean': sample_mean,
             'median': sample_median,
             'mean_ci': (mean_ci_low, mean_ci_high),
-            'median_ci': (med_ci_low, med_ci_high),
-            'mean_ci_method': mean_ci_method,
-            'median_ci_method': median_ci_method
+            'median_ci': (med_ci_low, med_ci_high)
         },
         'inferential_stats': test_results,
         'chart_metadata': {

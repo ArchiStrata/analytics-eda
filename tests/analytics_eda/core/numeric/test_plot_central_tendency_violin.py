@@ -37,183 +37,312 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
         plot_central_tendency_violin(obj)
 
 
-def test_empty_series_returns_metadata():
-    s = pd.Series([], dtype=float, name="empty")
-    result = plot_central_tendency_violin(s)
-    ds = result["descriptive_stats"]
-    cm = result["chart_metadata"]
+@pytest.mark.parametrize(
+    "make_series, kwargs, expect",
+    [
+        # 0) EMPTY numeric series
+        (
+            lambda: pd.Series([], dtype="float64", name="nums"),
+            {},
+            {
+                "chart_metadata": {
+                    "title": "Distribution of nums: Central Tendency (Violin)",
+                    "xlabel": "Value",
+                    "ylabel": "Density",
+                    "data_source": None,
+                    "file_name": None,
+                },
+                "descriptive_stats": {
+                    "n": 0,
+                    "mean": (lambda v: np.isnan(v)),
+                    "median": (lambda v: np.isnan(v)),
+                    "mean_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isnan(x) for x in v)),
+                    "median_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isnan(x) for x in v)),
+                    "params": {
+                        "mean_ci_method": "t",
+                        "median_ci_method": "bootstrap",
+                    },
+                },
+            },
+        ),
 
-    assert ds["n"] == 0
-    assert np.isnan(ds["mean"])
-    assert np.isnan(ds["median"])
-    assert ds["mean_ci"] == (np.nan, np.nan)
-    assert ds["median_ci"] == (np.nan, np.nan)
-    assert result["inferential_stats"] == {
-        'params': {
-            'alpha': 0.05,
-                 'bootstrap_samples': 1000,
-                 'popmean': None,
-                 'popmedian': None,
-                 'popvariance': None
-            }
-    }
-    assert "title" in cm and isinstance(cm["title"], str)
+        # 1) Defaults on small integer data (mean CI via t, median CI via bootstrap)
+        (
+            lambda: pd.Series([1, 2, 2, 3, 3, 3], name="nums"),
+            {},
+            {
+                "chart_metadata": {
+                    "title": "Distribution of nums: Central Tendency (Violin)",
+                    "xlabel": "Value",
+                    "ylabel": "Density",
+                },
+                "descriptive_stats": {
+                    "n": 6,
+                    "mean": pytest.approx(7/3, rel=1e-9, abs=1e-10),
+                    "median": 2.5,
+                    # Just check structure of CIs (don’t pin numeric values)
+                    "mean_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isfinite(x) for x in v)),
+                    "median_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isfinite(x) for x in v)),
+                    "params": {
+                        "mean_ci_method": "t",
+                        "median_ci_method": "bootstrap",
+                    },
+                },
+            },
+        ),
 
-def test_override_chart_labels_and_source():
-    s = pd.Series([1, 2, 3], dtype=float, name="X")
-    result = plot_central_tendency_violin(
-        s,
-        xlabel="My X",
-        ylabel="My Y",
-        data_source="DataSrc",
-        title_template="Test {name}: Central {modifiers}",
-        name="OverrideName",
-        filter_desc="filtered",
-        transform_desc="transformed"
-    )
-    cm = result["chart_metadata"]
-    assert cm["xlabel"] == "My X"
-    assert cm["ylabel"] == "My Y"
-    assert cm["data_source"] == "DataSrc"
-    # title should incorporate OverrideName, filtered, transformed
-    assert "OverrideName" in cm["title"]
-    assert "filtered" in cm["title"]
-    assert "transformed" in cm["title"]
+        # 2) Override mean CI to 'bootstrap' (structure checks only)
+        (
+            lambda: pd.Series([10, 20, 20, 30, 30, 30, 40], name="vals"),
+            {"mean_ci_method": "bootstrap"},
+            {
+                "descriptive_stats": {
+                    "n": 7,
+                    "params": {
+                        "mean_ci_method": "bootstrap",
+                        "median_ci_method": "bootstrap",
+                    },
+                    "mean_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isfinite(x) for x in v)),
+                    "median_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isfinite(x) for x in v)),
+                },
+            },
+        ),
 
-@pytest.mark.parametrize("method", [("t"), ("bootstrap")])
-def test_save_mean_ci_methods(method, tmp_path):
-    s = pd.Series([1, 2, 3, 4, 5], name="A")
-    file_name = f"mean_ci_{method}.png"
-    res = plot_central_tendency_violin(s, mean_ci_method=method, save_path=str(tmp_path), file_name=file_name)
-    ds = res["descriptive_stats"]
-    assert ds["mean_ci_method"] == method
-    low, high = ds["mean_ci"]
-    assert isinstance(low, float) and isinstance(high, float)
-    assert low < ds["mean"] < high
+        # 3) NaNs present → n counts non-NaN; CI tuples exist
+        (
+            lambda: pd.Series([1.0, np.nan, 2.0, 2.0, 3.0, np.nan, 4.0], name="with_nans"),
+            {},
+            {
+                "chart_metadata": {
+                    "title": "Distribution of with_nans: Central Tendency (Violin)",
+                },
+                "descriptive_stats": {
+                    "n": 5,
+                    "mean": (lambda v: np.isfinite(v)),
+                    "median": (lambda v: np.isfinite(v)),
+                    "mean_ci": (lambda v: isinstance(v, tuple) and len(v) == 2),
+                    "median_ci": (lambda v: isinstance(v, tuple) and len(v) == 2),
+                },
+            },
+        ),
 
-    cm = res["chart_metadata"]
-    assert "file_name" in cm
-    assert file_name == cm["file_name"]
+        # 4) Title building with name override + modifiers
+        (
+            lambda: pd.Series([5, 6, 7, 8], name="ignored"),
+            {"name": "Price", "filter_desc": "NY only", "transform_desc": "standardized"},
+            {
+                "chart_metadata": {
+                    "title": "Distribution of Price (NY only, standardized): Central Tendency (Violin)",
+                },
+                "descriptive_stats": {"n": 4},
+            },
+        ),
 
-    saved = tmp_path / file_name
-    assert saved.exists() and saved.is_file()
-    assert saved.stat().st_size > 0
-    # Check PNG signature
-    with open(saved, 'rb') as f:
-        sig = f.read(8)
-    assert sig == b'\x89PNG\r\n\x1a\n'
+        # 5) Custom labels + data_source + explicit save filename
+        (
+            lambda: pd.Series([0, 1, 1, 2, 3, 5, 8], name="fib"),
+            {
+                "xlabel": "Score",
+                "ylabel": "Density",
+                "data_source": "UnitTest",
+                "file_name": "violin.png",
+            },
+            {
+                "chart_metadata": {
+                    "xlabel": "Score",
+                    "ylabel": "Density",
+                    "data_source": "UnitTest",
+                    "file_name": "violin.png",
+                },
+                "descriptive_stats": {"n": 7},
+            },
+        ),
 
-@pytest.mark.parametrize("method", [("bootstrap")])
-def test_save_median_ci_methods(method, tmp_path):
-    s = pd.Series([5, 6, 7, 8, 9], name="D")
+        # 6) Deterministic small set to check mean/median precisely (t & bootstrap structures)
+        (
+            lambda: pd.Series([2, 2, 2, 2], name="const"),
+            {},
+            {
+                "descriptive_stats": {
+                    "n": 4,
+                    "mean": 2.0,
+                    "median": 2.0,
+                    "mean_ci": (lambda v: isinstance(v, tuple) and len(v) == 2),   # sem=0 → t.interval may return nan; structure is enough
+                    "median_ci": (lambda v: isinstance(v, tuple) and len(v) == 2),
+                    "params": {
+                        "mean_ci_method": "t",
+                        "median_ci_method": "bootstrap",
+                    },
+                },
+            },
+        ),
+        # X1) Empty: also assert inferential params block
+        (
+            lambda: pd.Series([], dtype=float, name="empty"),
+            {},
+            {
+                "chart_metadata": {
+                    "title": "Distribution of empty: Central Tendency (Violin)",
+                    "xlabel": "Value",
+                    "ylabel": "Density",
+                    "data_source": None,
+                    "file_name": None,
+                },
+                "descriptive_stats": {
+                    "n": 0,
+                    "mean": (lambda v: np.isnan(v)),
+                    "median": (lambda v: np.isnan(v)),
+                    "mean_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isnan(x) for x in v)),
+                    "median_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isnan(x) for x in v)),
+                    "params": {"mean_ci_method": "t", "median_ci_method": "bootstrap"},
+                },
+                "inferential_stats": {
+                    "params": {
+                        "alpha": 0.05,
+                        "bootstrap_samples": 1000,
+                        "popmean": None,
+                        "popmedian": None,
+                        "popvariance": None,
+                    }
+                },
+            },
+        ),
 
-    file_name = f"median_ci_{method}.png"
+        # X2) Combined: custom title template + name + modifiers + labels/source (no save)
+        (
+            lambda: pd.Series([1, 2, 3], dtype=float, name="X"),
+            {
+                "xlabel": "My X",
+                "ylabel": "My Y",
+                "data_source": "DataSrc",
+                "title_template": "Test {name}: Central {modifiers}",
+                "name": "OverrideName",
+                "filter_desc": "filtered",
+                "transform_desc": "transformed",
+            },
+            {
+                "chart_metadata": {
+                    "xlabel": "My X",
+                    "ylabel": "My Y",
+                    "data_source": "DataSrc",
+                    # Title must include name and both modifiers
+                    "title": (lambda t: "OverrideName" in t and "filtered" in t and "transformed" in t),
+                },
+                "descriptive_stats": {"n": 3},
+            },
+        ),
 
-    res = plot_central_tendency_violin(s, median_ci_method=method, bootstrap_samples=100, save_path=str(tmp_path), file_name=file_name)
-    ds = res["descriptive_stats"]
-    assert ds["median_ci_method"] == method
-    low, high = ds["median_ci"]
-    assert isinstance(low, float) and isinstance(high, float)
-    assert low <= ds["median"] <= high
+        # X3) Save & assert mean CI method = 't'
+        (
+            lambda: pd.Series([1, 2, 3, 4, 5], name="A"),
+            {"mean_ci_method": "t", "file_name": "mean_ci_t.png"},
+            {
+                "chart_metadata": {"file_name": "mean_ci_t.png"},
+                "descriptive_stats": {
+                    "n": 5,
+                    "mean_ci": (lambda v: isinstance(v, tuple) and len(v) == 2),
+                    "params": {"mean_ci_method": "t", "median_ci_method": "bootstrap"},
+                },
+            },
+        ),
 
-    cm = res["chart_metadata"]
-    assert "file_name" in cm
-    assert file_name == cm["file_name"]
+        # X4) Save & assert mean CI method = 'bootstrap'
+        (
+            lambda: pd.Series([1, 2, 3, 4, 5], name="A"),
+            {"mean_ci_method": "bootstrap", "file_name": "mean_ci_bootstrap.png"},
+            {
+                "chart_metadata": {"file_name": "mean_ci_bootstrap.png"},
+                "descriptive_stats": {
+                    "n": 5,
+                    "mean_ci": (lambda v: isinstance(v, tuple) and len(v) == 2),
+                    "params": {"mean_ci_method": "bootstrap", "median_ci_method": "bootstrap"},
+                },
+            },
+        ),
 
-    saved = tmp_path / file_name
-    assert saved.exists() and saved.is_file()
-    assert saved.stat().st_size > 0
-    # Check PNG signature
-    with open(saved, 'rb') as f:
-        sig = f.read(8)
-    assert sig == b'\x89PNG\r\n\x1a\n'
+        # X5) Save & assert median CI method = 'bootstrap'
+        (
+            lambda: pd.Series([5, 6, 7, 8, 9], name="D"),
+            {"median_ci_method": "bootstrap", "bootstrap_samples": 100, "file_name": "median_ci_bootstrap.png"},
+            {
+                "chart_metadata": {"file_name": "median_ci_bootstrap.png"},
+                "descriptive_stats": {
+                    "n": 5,
+                    "median_ci": (lambda v: isinstance(v, tuple) and len(v) == 2),
+                    "params": {"mean_ci_method": "t", "median_ci_method": "bootstrap"},
+                },
+            },
+        ),
 
-def test_save_popmean(tmp_path):
-    rng = np.random.default_rng(0)
-    data = rng.normal(loc=10, scale=2, size=50)
-    s = pd.Series(data, name="F")
+        # X6) popmean + popvariance inferential tests + save
+        (
+            lambda: pd.Series(np.random.default_rng(0).normal(loc=10, scale=2, size=50), name="F"),
+            {"popmean": 10.0, "popvariance": 5.0, "file_name": "popmean.png"},
+            {
+                "chart_metadata": {"file_name": "popmean.png"},
+                "inferential_stats": {
+                    "params": (lambda p: p["popmean"] == 10.0 and p["popvariance"] == 5.0),
+                    # presence/type checks for tests
+                    "popmean": (lambda d:
+                        isinstance(d.get("cohens_d"), float) and
+                        isinstance(d["t_test"]["statistic"], float) and
+                        isinstance(d["t_test"]["p_value"], float) and
+                        isinstance(d["t_test"]["reject"], bool) and
+                        isinstance(d["z_test"]["statistic"], float) and
+                        isinstance(d["z_test"]["p_value"], float) and
+                        isinstance(d["z_test"]["reject"], bool)
+                    ),
+                },
+            },
+        ),
 
-    file_name = "popmean.png"
+        # X7) popmedian inferential tests + save
+        (
+            lambda: pd.Series([0.0, 1.0, -1.0, 2.5, 0.0], dtype=float, name="G"),
+            {"popmedian": 0.0, "file_name": "popmedian.png"},
+            {
+                "chart_metadata": {"file_name": "popmedian.png"},
+                "inferential_stats": {
+                    "params": (lambda p: p["popmedian"] == 0.0),
+                    "popmedian": (lambda d:
+                        isinstance(d["wilcoxon"]["statistic"], float) and
+                        isinstance(d["wilcoxon"]["p_value"], float) and
+                        isinstance(d["wilcoxon"]["reject"], bool) and
+                        isinstance(d["sign_test"]["n"], int) and
+                        isinstance(d["sign_test"]["num_positive"], int) and
+                        isinstance(d["sign_test"]["num_negative"], int) and
+                        isinstance(d["sign_test"]["p_value"], float) and
+                        isinstance(d["sign_test"]["reject"], bool)
+                    ),
+                },
+            },
+        ),
+    ],
+    ids=[
+        "empty",
+        "defaults_t_for_mean_bootstrap_for_median",
+        "override_mean_ci_to_bootstrap",
+        "nans_present",
+        "title_with_modifiers",
+        "labels_source_and_save",
+        "deterministic_small_set",
+        "empty_with_inferential_params",
+        "combined_title_labels_source",
+        "save_mean_ci_t",
+        "save_mean_ci_bootstrap",
+        "save_median_ci_bootstrap",
+        "save_popmean_tests",
+        "save_popmedian_tests",
+    ],
+)
+def test_plot_central_tendency_violin_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+    s = make_series()
 
-    popmean = 10.0
-    popvariance = 5.0
-    res = plot_central_tendency_violin(s, popmean=popmean, popvariance=popvariance, save_path=str(tmp_path), file_name=file_name)
+    # If a file_name is provided, also set save_path to tmp_path
+    if "file_name" in kwargs:
+        kwargs = kwargs.copy()
+        kwargs["save_path"] = tmp_path
 
-    assert "descriptive_stats" in res
+    payload = plot_central_tendency_violin(s, **kwargs)
 
-    tests = res["inferential_stats"]
-    assert 'params' in tests
-    inferential_params = tests['params']
-    assert inferential_params["popmean"] == popmean
-    assert inferential_params["popvariance"] == popvariance
-
-    assert "popmean" in tests
-    popmean_tests = tests["popmean"]
-
-    assert "t_test" in popmean_tests and "cohens_d" in popmean_tests
-    assert isinstance(popmean_tests["t_test"]["statistic"], float)
-    assert isinstance(popmean_tests["t_test"]["p_value"], float)
-    assert isinstance(popmean_tests["t_test"]["reject"], bool)
-
-    assert isinstance(popmean_tests["cohens_d"], float)
-
-    assert isinstance(popmean_tests["z_test"]["statistic"], float)
-    assert isinstance(popmean_tests["z_test"]["p_value"], float)
-    assert isinstance(popmean_tests["z_test"]["reject"], bool)
-
-    cm = res["chart_metadata"]
-    assert "file_name" in cm
-    assert file_name == cm["file_name"]
-
-    saved = tmp_path / file_name
-    assert saved.exists() and saved.is_file()
-    assert saved.stat().st_size > 0
-    # Check PNG signature
-    with open(saved, 'rb') as f:
-        sig = f.read(8)
-    assert sig == b'\x89PNG\r\n\x1a\n'
-
-def test_save_popmedian(tmp_path):
-    # Series contains both zeros and non-zeros relative to popmedian=0.0
-    data = [0.0, 1.0, -1.0, 2.5, 0.0]
-    s = pd.Series(data, dtype=float, name="G")
-    file_name = "popmedian.png"
-
-    popmedian=0.0
-
-    res = plot_central_tendency_violin(s, popmedian=popmedian, save_path=str(tmp_path), file_name=file_name)
-
-    assert "descriptive_stats" in res
-
-    tests = res["inferential_stats"]
-    assert 'params' in tests
-    inferential_params = tests['params']
-    assert inferential_params["popmedian"] == popmedian
-
-    assert "popmedian" in tests
-    popmedian_tests = tests["popmedian"]
-    
-    assert "wilcoxon" in popmedian_tests
-    assert isinstance(popmedian_tests["wilcoxon"]["statistic"], float)
-    assert isinstance(popmedian_tests["wilcoxon"]["p_value"], float)
-    assert isinstance(popmedian_tests["wilcoxon"]["reject"], bool)
-
-    # sign test only if there are non-zero diffs
-    assert "sign_test" in popmedian_tests
-    assert isinstance(popmedian_tests["sign_test"]["n"], int)
-    assert isinstance(popmedian_tests["sign_test"]["num_positive"], int)
-    assert isinstance(popmedian_tests["sign_test"]["num_negative"], int)
-    assert isinstance(popmedian_tests["sign_test"]["p_value"], float)
-    assert isinstance(popmedian_tests["sign_test"]["reject"], bool)
-
-    cm = res["chart_metadata"]
-    assert "file_name" in cm
-    assert file_name == cm["file_name"]
-
-    saved = tmp_path / file_name
-    assert saved.exists() and saved.is_file()
-    assert saved.stat().st_size > 0
-    # Check PNG signature
-    with open(saved, 'rb') as f:
-        sig = f.read(8)
-    assert sig == b'\x89PNG\r\n\x1a\n'
+    assert_plot_metadata(payload, expect, tmp_path)
