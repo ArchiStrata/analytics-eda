@@ -94,7 +94,7 @@ from analytics_eda.core.categorical.categorical_distribution_analysis import cat
                             "total": 10,
                             "k": 4
                         },
-                        "tests": {
+                        "inferential_stats": {
                             "chi2_gof_null_uniform": {
                                 "statistic": 2.0,
                                 "p_value": 0.5724067044708798,

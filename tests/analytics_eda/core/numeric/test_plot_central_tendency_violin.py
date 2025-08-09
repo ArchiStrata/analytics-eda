@@ -16,7 +16,7 @@ def test_empty_series_returns_metadata():
     assert np.isnan(ds["median"])
     assert ds["mean_ci"] == (np.nan, np.nan)
     assert ds["median_ci"] == (np.nan, np.nan)
-    assert result["tests"] == {}
+    assert result["inferential_stats"] == {}
     assert "title" in cm and isinstance(cm["title"], str)
 
 def test_missing_series_name_raises_error():
@@ -118,7 +118,7 @@ def test_save_popmean(tmp_path):
     assert res["descriptive_stats"]["popmean"] == popmean
     assert res["descriptive_stats"]["popvariance"] == popvariance
 
-    tests = res["tests"]
+    tests = res["inferential_stats"]
     assert "popmean" in tests
     popmean_tests = tests["popmean"]
 
@@ -158,7 +158,7 @@ def test_save_popmedian(tmp_path):
     assert "descriptive_stats" in res
     assert res["descriptive_stats"]["popmedian"] == popmedian
 
-    tests = res["tests"]
+    tests = res["inferential_stats"]
 
     assert "popmedian" in tests
     popmedian_tests = tests["popmedian"]

@@ -210,13 +210,13 @@ def numeric_distribution_analysis(
     # optionally evaluate transforms on the 'norm' residuals
     if evaluate_transforms_fn and 'norm' in distribution_fits:
         norm_qq = distribution_fits['norm']['qq']
-        stats   = norm_qq['descriptive_stats']
-        tests   = norm_qq.get('tests', {})
+        descriptive_stats   = norm_qq['descriptive_stats']
+        inferential_stats   = norm_qq.get('inferential_stats', {})
         transforms_meta = evaluate_transforms_fn(
             series=series,
             is_discrete=is_discrete,
-            statistics=stats,
-            normality_tests=tests,
+            statistics=descriptive_stats,
+            normality_tests=inferential_stats,
             report_path=report_path,
             report_log_id=report_log_id,
             data_source=data_source,

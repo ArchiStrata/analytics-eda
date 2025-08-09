@@ -114,7 +114,7 @@ def plot_central_tendency_violin(
                 'popmedian': popmedian,
                 'popvariance': popvariance
             },
-            'tests': {},
+            'inferential_stats': {},
             'chart_metadata': {
                 'title': title,
                 'xlabel': xlabel,
@@ -274,7 +274,7 @@ def plot_central_tendency_violin(
             'popmedian': popmedian,
             'popvariance': popvariance
         },
-        'tests': test_results,
+        'inferential_stats': test_results,
         'chart_metadata': {
             'title': title,
             'xlabel': xlabel,

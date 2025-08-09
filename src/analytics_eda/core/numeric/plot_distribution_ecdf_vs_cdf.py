@@ -84,7 +84,7 @@ def plot_distribution_ecdf_vs_cdf(
                 'distribution': str,
                 'params': tuple
             },
-            'tests': {
+            'inferential_stats': {
                'ks': {
                     'statistic': float,
                     'p_value': float,
@@ -130,7 +130,7 @@ def plot_distribution_ecdf_vs_cdf(
 
     default_metadata = {
             'descriptive_stats': {'n': n},
-            'tests': {},
+            'inferential_stats': {},
             'chart_metadata': {
                 'title': full_title,
                 'xlabel': xlabel,
@@ -249,7 +249,7 @@ def plot_distribution_ecdf_vs_cdf(
             'distribution': distribution_name,
             'params': params_float
         },
-        'tests': tests,
+        'inferential_stats': tests,
         'chart_metadata': {
             'title': full_title,
             'xlabel': xlabel,

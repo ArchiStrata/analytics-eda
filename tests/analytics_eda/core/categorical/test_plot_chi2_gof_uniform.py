@@ -32,7 +32,7 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
 @pytest.mark.parametrize(
     "make_series, kwargs, expect",
     [
-        # 0) Empty series returns early with no tests
+        # 0) Empty series returns early with no inferential_stats
         (
             lambda: pd.Series(pd.Categorical([], categories=["A", "B"]), name="testvar"),
             {},
@@ -41,7 +41,7 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
                     "total": 0,
                     "k": 0
                 },
-                "tests": {},
+                "inferential_stats": {},
                 "chart_metadata": {
                     "file_name": None,
                     "xlabel": "Value",
@@ -61,7 +61,7 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
                     "total": 6,
                     "k": 3
                 },
-                "tests": {
+                "inferential_stats": {
                     "chi2_gof_null_uniform": {
                         "reject": False,
                         'statistic': 0.0,
@@ -84,7 +84,7 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
                     "total": 13,
                     "k": 3
                 },
-                "tests": {
+                "inferential_stats": {
                     "chi2_gof_null_uniform": {
                         'statistic': 11.230769230769232,
                         'p_value': 0.003641408886883208,

@@ -104,7 +104,7 @@ from analytics_eda.univariate.categorical.univariate_categorical_analysis import
                                 "total": 10,
                                 "k": 4
                             },
-                            "tests": {
+                            "inferential_stats": {
                                 "chi2_gof_null_uniform": {
                                     "statistic": 2.0,
                                     "p_value": 0.5724067044708798,

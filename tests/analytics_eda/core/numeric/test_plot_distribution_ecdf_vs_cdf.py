@@ -20,7 +20,7 @@ def test_empty_series_returns_default_metadata():
     res = plot_distribution_ecdf_vs_cdf(s, "norm")
     # descriptive_stats and tests
     assert res["descriptive_stats"] == {"n": 0}
-    assert res["tests"] == {}
+    assert res["inferential_stats"] == {}
     # chart metadata defaults
     cm = res["chart_metadata"]
     assert cm["distribution"] == "norm"
@@ -33,7 +33,7 @@ def test_requires_positive_data_error(dist):
     ds = res["descriptive_stats"]
     assert ds["n"] == 3
     assert ds["error"] == "requires positive data"
-    assert res["tests"] == {}
+    assert res["inferential_stats"] == {}
 
 
 def test_requires_non_negative_data_error_expon():
@@ -42,7 +42,7 @@ def test_requires_non_negative_data_error_expon():
     ds = res["descriptive_stats"]
     assert ds["n"] == 3
     assert ds["error"] == "requires non-negative data"
-    assert res["tests"] == {}
+    assert res["inferential_stats"] == {}
 
 
 @pytest.mark.parametrize(
@@ -112,4 +112,4 @@ def test_all_distributions_and_save(dist_name, rng_func, has_ad, tmp_path):
 def _fit_and_collect(series, dist, **kwargs):
     """Run the function and split out its parts."""
     res = plot_distribution_ecdf_vs_cdf(series, dist, **kwargs)
-    return res["descriptive_stats"], res["tests"], res["chart_metadata"]
+    return res["descriptive_stats"], res["inferential_stats"], res["chart_metadata"]

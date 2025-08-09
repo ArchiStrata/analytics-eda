@@ -70,7 +70,7 @@ def plot_chi2_gof_uniform(
     Returns:
         dict: Metadata and test results including:
             - 'descriptive_stats': {'total', 'k'}
-            - 'tests': {'chi2_gof_null_uniform': {statistic, p_value, alpha, reject, warning (if any)}}
+            - 'inferential_stats': {'chi2_gof_null_uniform': {statistic, p_value, alpha, reject, warning (if any)}}
             - 'chart_metadata': {title, xlabel, ylabel, data_source, file_name}
     """
     # Prepare data
@@ -94,7 +94,7 @@ def plot_chi2_gof_uniform(
                 'total': 0,
                 'k': 0
             },
-            'tests': {},
+            'inferential_stats': {},
             'chart_metadata': {
                 'title': title,
                 'xlabel': xlabel,
@@ -168,7 +168,7 @@ def plot_chi2_gof_uniform(
             'total': total,
             'k': k
         },
-        'tests': {
+        'inferential_stats': {
             'chi2_gof_null_uniform': {
                 'statistic': float(chi2_stat),
                 'p_value': float(p_val),

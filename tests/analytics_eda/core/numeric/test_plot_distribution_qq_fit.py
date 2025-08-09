@@ -23,8 +23,8 @@ def test_default_parameters_no_save():
                 "skewness", "kurtosis"]:
         assert key in stats
 
-    # tests present and correct keys for n < 50
-    nt = meta["tests"]
+    # inferential_stats present and correct keys for n < 50
+    nt = meta["inferential_stats"]
     assert isinstance(nt, dict)
     assert "shapiro" in nt
     assert "reject_normality" in nt
@@ -73,8 +73,8 @@ def test_override_and_save(tmp_path):
     assert isinstance(desc["skewness"], float)
     assert isinstance(desc["kurtosis"], float)
 
-    # tests dict
-    nt = meta["tests"]
+    # inferential_stats dict
+    nt = meta["inferential_stats"]
     assert isinstance(nt, dict)
 
     # for n=30: should have shapiro, dagostino_pearson, anderson but no jarque_bera
@@ -128,8 +128,8 @@ def test_empty_series_returns_stats_and_defaults():
                 "skewness", "kurtosis"]:
         assert np.isnan(stats[key])
     
-    # formal tests
-    assert meta["tests"] == {}
+    # formal inferential_stats
+    assert meta["inferential_stats"] == {}
 
     # chart_metadata defaults with alpha and path
     assert chart["title"] == f"Q–Q Plot Fit Assessment of {empty.name} (norm)"
@@ -182,7 +182,7 @@ def test_plot_distribution_qq_fit_all_distributions(dist_name, rng_func, expecte
     )
 
     ds = result["descriptive_stats"]
-    tests = result["tests"]
+    tests = result["inferential_stats"]
     cm = result["chart_metadata"]
 
     # -- file saved correctly --

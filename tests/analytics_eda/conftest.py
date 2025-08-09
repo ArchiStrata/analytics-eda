@@ -50,10 +50,10 @@ def assert_plot_metadata():
         _assert_mapping(cm, expect.get("chart_metadata", {}), "chart_metadata")
         _assert_mapping(ds, expect.get("descriptive_stats", {}), "descriptive_stats")
 
-        if "tests" in expect:
-            assert "tests" in payload, "payload must contain 'tests'"
-            tests = payload["tests"]
-            _assert_mapping(tests, expect.get("tests", {}), "tests")
+        if "inferential_stats" in expect:
+            assert "inferential_stats" in payload, "payload must contain 'inferential_stats'"
+            inferential_stats = payload["inferential_stats"]
+            _assert_mapping(inferential_stats, expect.get("inferential_stats", {}), "inferential_stats")
 
         # File check logic
         exp_file_in_expect = "file_name" in (expect.get("chart_metadata") or {})

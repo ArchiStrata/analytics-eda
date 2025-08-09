@@ -100,7 +100,7 @@ def plot_distribution_qq_fit(
                 'kurtosis': float,
                 'min': float
             },
-            'tests': {
+            'inferential_stats': {
                 # only present if distribution_name == 'norm'
                     'shapiro': {...},               # present if n < 50
                     'dagostino_pearson': {...},     # present if n ≥ 20
@@ -149,7 +149,7 @@ def plot_distribution_qq_fit(
         }
         return {
             'descriptive_stats': empty_stats,
-            'tests': {},
+            'inferential_stats': {},
             'chart_metadata': {
                 'title': full_title,
                 'xlabel': xlabel,
@@ -290,7 +290,7 @@ def plot_distribution_qq_fit(
             'kurtosis': kurtosis,
             'min': data.min() # return min to support selecting transforms
         },
-        'tests': tests,
+        'inferential_stats': tests,
         'chart_metadata': {
             'title': full_title,
             'xlabel': xlabel,

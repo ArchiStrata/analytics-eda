@@ -146,7 +146,7 @@ def test_numeric_distribution_analysis_basic_structure(
     # ECDF vs. CDF
     ecdf_meta = fit["ecdf_vs_cdf"]
     desc = ecdf_meta["descriptive_stats"]
-    tests = ecdf_meta["tests"]
+    tests = ecdf_meta["inferential_stats"]
     ecdf_cm    = ecdf_meta["chart_metadata"]
 
     # descriptive_stats
