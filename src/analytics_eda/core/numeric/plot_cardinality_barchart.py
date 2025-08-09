@@ -89,7 +89,9 @@ def plot_cardinality_barchart(
     metadata : dict
         {
             'descriptive_stats': {
+                'total': int # total number of values
                 'nunique': int   # number of distinct values
+                'uniqueness_ratio': float # ratio of distinct values to total
                 'is_discrete': bool
             },
             'chart_metadata': {
@@ -104,9 +106,33 @@ def plot_cardinality_barchart(
     """
     validate_numeric_named_series(series)
     clean = series.copy().dropna()
-    nunique = int(clean.nunique())
 
-    # TODO: Include Uniqueness Ratio = nunique / total_rows: Shows how many values are unique vs repeated.
+    label = name or getattr(series, "name", None) or "Value"
+    title = title_template.format(name=label, top_k=top_k)
+
+    # Early return if empty
+    if clean.size == 0:
+        return {
+            'descriptive_stats': {
+                'total': clean.size,
+                'nunique': 0,
+                'uniqueness_ratio': 0,
+                'is_discrete': None
+            },
+            'chart_metadata': {
+                'title': title,
+                'xlabel': xlabel,
+                'ylabel': ylabel,
+                'data_source': data_source,
+                'top_k': top_k,
+                'max_unique_fraction': max_unique_fraction,
+                'max_unique_values': max_unique_values,
+                'integer_tolerance': integer_tolerance,
+                'file_name': file_name
+            }
+        }
+    nunique = int(clean.nunique())
+    uniqueness_ratio = nunique / len(series) # Shows how many values are unique vs repeated.
 
     is_discrete = is_discrete_numeric(
         clean,
@@ -114,9 +140,6 @@ def plot_cardinality_barchart(
         max_unique_values=max_unique_values,
         integer_tolerance=integer_tolerance
     )
-
-    label = name or getattr(series, "name", None) or "Value"
-    title = title_template.format(name=label, top_k=top_k)
 
     # Compute top-k frequencies
     counts = clean.value_counts().head(top_k)
@@ -128,8 +151,11 @@ def plot_cardinality_barchart(
     fig, ax = plt.subplots(figsize=figsize)
     sns.barplot(x=labels, y=values, ax=ax)
 
-    subtitle = "Discrete" if is_discrete else "Continuous"
-    ax.set_title(f"{title}  ({subtitle})")
+    subtitle = (
+        f"{'Discrete' if is_discrete else 'Continuous'} "
+        f"| Unique: {nunique:,} ({uniqueness_ratio:.1%})"
+    )
+    ax.set_title(f"{title}\n{subtitle}")
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
@@ -152,7 +178,9 @@ def plot_cardinality_barchart(
 
     return {
         'descriptive_stats': {
+            'total': clean.size,
             'nunique': nunique,
+            'uniqueness_ratio': uniqueness_ratio,
             'is_discrete': is_discrete,
         },
         'chart_metadata': {
