@@ -12,228 +12,191 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-from matplotlib import pyplot as plt
+from dataclasses import dataclass
+from typing import Dict, Any, Optional
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
-from .validate_categorical_named_series import validate_categorical_named_series
+from ..utils.base_plot import BasePlot, PlotContext
+from .validate_categorical_named_series import CategoricalSeriesMixin
 
-from ..utils.build_chart_title import build_chart_title
+@dataclass
+class ParetoPlotContext(PlotContext):
+    title_template: str = "Pareto Chart of {name}{modifiers}"
+    xlabel: str = "Value"
+    ylabel: str = "Count"
+    min_value: Optional[int] = None          # threshold to collapse small categories into "Others"
+    horizontal: bool = False                 # draw horizontal bars if True
+
+class FrequencyParetoCategoricalPlot(CategoricalSeriesMixin, BasePlot):
+    """
+    Pareto chart for categorical frequency distribution.
+    Returns BasePlot.run() schema:
+      {
+        "descriptive_stats": {
+            "mode", "total_count", "n_categories", "cumulative_count_at_80pct"
+        },
+        "inferential_stats": {},
+        "chart_metadata": {...}
+      }
+    """
+
+    # (2) defaults when input is empty
+    def default_descriptive(self) -> Dict[str, Any]:
+        return {
+            "mode": None,
+            "total_count": 0,
+            "n_categories": 0,
+            "cumulative_count_at_80pct": 0,
+            # payload to keep draw() simple (all empty)
+            "counts_index": [],
+            "counts_values": np.array([], dtype=float),
+            "rel_freq": np.array([], dtype=float),
+            "cumperc": np.array([], dtype=float),
+            "threshold_idx": -1,
+            "threshold_count": 0,
+        }
+
+    # (3) descriptive stats (+ payload for drawing)
+    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+        counts = s.value_counts()
+
+        # Group small categories into "Others", if requested
+        min_value = getattr(self.ctx, "min_value", None)
+        if min_value is not None:
+            small = counts[counts < int(min_value)]
+            if not small.empty:
+                counts = counts[counts >= int(min_value)]
+                counts["Others"] = int(small.sum())
+
+        # Relative freq (%) and cumulative %
+        rel_freq = counts / counts.sum() * 100.0
+        cumperc = rel_freq.cumsum()
+
+        # First index where cumulative >= 80%
+        # (Pareto principle—there will always be one since cumperc[-1] == 100)
+        threshold_idx = int(np.argmax(cumperc.values >= 80.0))
+        threshold_count = int(counts.values[: threshold_idx + 1].sum())
+
+        desc = {
+            "mode": counts.index[0] if len(counts) > 0 else None,
+            "total_count": int(counts.sum()),
+            "n_categories": int(len(counts)),
+            "cumulative_count_at_80pct": threshold_count,
+            # payload for draw()
+            "counts_index": counts.index.tolist(),
+            "counts_values": counts.values.astype(float),
+            "rel_freq": rel_freq.values.astype(float),
+            "cumperc": cumperc.values.astype(float),
+            "threshold_idx": threshold_idx,
+            "threshold_count": threshold_count,
+        }
+        return desc
+
+    # (4) no inferential stats for Pareto
+    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        return {}
+
+    # (5) draw
+    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
+        title = chart_metadata["title"]
+        xlabel = chart_metadata["xlabel"] or "Value"
+        ylabel = chart_metadata["ylabel"] or "Count"
+
+        # Colors
+        muted = "#999999"
+        accent = "#0072B2"
+
+        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+
+        idx = desc["counts_index"]
+        vals = desc["counts_values"]
+        rel = desc["rel_freq"]
+        cum = desc["cumperc"]
+        thr_i = desc["threshold_idx"]
+        thr_count = desc["threshold_count"]
+
+        n = len(idx)
+        ticks = np.arange(n)
+
+        # Choose bar orientation
+        if getattr(self.ctx, "horizontal", False):
+            # Colors: highlight bars up to threshold_idx inclusive
+            bar_colors = [accent if i <= thr_i else muted for i in range(n)]
+            bars = ax.barh(idx, vals, color=bar_colors, edgecolor="black")
+
+            # Count + % annotations
+            for bar, count, pct in zip(bars, vals, rel):
+                width = bar.get_width()
+                ax.text(width, bar.get_y() + bar.get_height() / 2,
+                        f"{int(count)} ({pct:.1f}%)", ha="left", va="center")
+
+            # Axes & labels
+            ax.set_xlabel(ylabel)
+            ax.set_ylabel(xlabel)
+
+            # Cumulative % on the top axis
+            ax2 = ax.twiny()
+            ax2.plot(cum, ticks, marker="o", linestyle="-", color="black")
+            ax2.set_xlabel("Cumulative %")
+            ax2.set_xlim(0, 110)
+            ax2.axvline(80, color=accent, linestyle="--")
+            if n > 0:
+                ax2.text(80, ticks[-1], "80% threshold", ha="left", va="top", color=accent)
+
+        else:
+            bar_colors = [accent if i <= thr_i else muted for i in range(n)]
+            bars = ax.bar(idx, vals, color=bar_colors, edgecolor="black")
+
+            # Count + % annotations
+            for bar, count, pct in zip(bars, vals, rel):
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width() / 2, height,
+                        f"{int(count)}\n({pct:.1f}%)", ha="center", va="bottom")
+
+            # Axes & labels
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
+            ax.set_xticks(ticks)
+            ax.set_xticklabels(idx, rotation=45, ha="right")
+
+            # Cumulative % on right axis
+            ax2 = ax.twinx()
+            ax2.plot(ticks, cum, marker="o", linestyle="-", color="black")
+            ax2.set_ylabel("Cumulative %")
+            ax2.set_ylim(0, 110)
+            if n > 0:
+                ax2.axhline(80, color=accent, linestyle="--")
+                ax2.text(ticks[-1], 80, "80% threshold", ha="right", va="bottom", color=accent)
+
+        # Title
+        ax.set_title(title)
+
+        # Footnote + (BasePlot.run adds data_source footer if provided)
+        fig.text(0.99, 0.01, f"Cumulative count at 80%: {thr_count}",
+                 ha="right", va="bottom", fontsize=8, color="gray")
+
+        return fig, ax
+
 
 def plot_frequency_pareto(
     series: pd.Series,
-    min_value: int = None,
-    title_template: str = "Pareto Chart of {name}{modifiers}",
-    name: str = None,
-    filter_desc: str = None,
-    transform_desc: str = None,
-    xlabel: str = "Value",
-    ylabel: str ='Count',
-    data_source: str = None,
-    figsize: tuple = (10, 6),
-    horizontal: bool = False,
-    save_path: str = None,
-    file_name: str = None
-):
+    /,
+    *,
+    ctx: Optional[ParetoPlotContext] = None,
+    **kwargs: Dict[str, Any],
+) -> Dict[str, Any]:
     """
-    Plot a Pareto chart to analyze the categorical distribution of a variable and identify the most impactful categories.
-
-    Why this is important:
-        The Pareto chart highlights the most frequent categories in descending order and shows their cumulative contribution. 
-        This helps identify the “vital few” that account for the majority of occurrences — a core principle of the 80/20 rule 
-        (Pareto Principle). It supports data-driven prioritization and effective decision-making.
-
-    What it does:
-        - Plots a bar chart of sorted category counts with percentage annotations
-        - Overlays a cumulative percentage line and highlights the 80% threshold
-        - Groups infrequent categories into "Others" based on a count threshold (optional)
-        - Optionally displays the data source and saves the chart
-
-    Parameters
-    ----------
-    series : pd.Series
-        Categorical data to plot.
-    min_value : int, optional
-        Minimum count to show as its own bar; smaller categories are grouped into 'Others'.
-    title_template : str, default "Pareto Chart of {name}{modifiers}"
-        Template for the chart title; supports placeholders for series name and optional descriptors.
-    name : str, optional
-        Human-readable variable name to display in the title.
-    filter_desc : str, optional
-        Text describing any filters applied to the data.
-    transform_desc : str, optional
-        Text describing any transformations applied to the data.
-    xlabel, ylabel : str
-        Axis labels.
-    data_source : str, optional
-        Text displayed in the chart footer to identify the data source.
-    figsize : tuple, default (10, 6)
-        Figure size in inches.
-    horizontal : bool, default False
-        If True, plots horizontal bars; otherwise, vertical bars.
-    save_path : str, optional
-        Directory path where the figure should be saved.
-    file_name : str, optional
-        File name to use when saving the chart.
-
-    Returns
-    -------
-    dict
-        {
-        'descriptive_stats': {
-            'mode': str or None,  # Most frequent category
-            'total_count': int,   # Total number of values
-            'n_categories': int,  # Number of unique categories shown
-            'cumulative_count_at_80pct': int  # Count at which cumulative frequency reaches 80%
-        },
-        'chart_metadata': {
-            'title': str,
-            'xlabel': str,
-            'ylabel': str,
-            'data_source': str or None,
-            'file_name': str or None
-        }
-        }
+    Back-compat wrapper that delegates to the class-based implementation.
+    - If `ctx` is provided, it's used (optionally overridden by kwargs).
+    - Otherwise we construct ParetoPlotContext(**kwargs).
     """
-    # Prepare data
-    validate_categorical_named_series(series)
-    data = series.copy().dropna().astype(str)
-    counts = data.value_counts()
-
-    # Build chart title
-    title = build_chart_title(
-        name=name,
-        series=series,
-        filter_desc=filter_desc,
-        transform_desc=transform_desc,
-        title_template=title_template
-    )
-
-    # Early return if empty
-    if data.empty:
-        return {
-            'descriptive_stats': {
-                'mode': None,
-                'total_count': 0,
-                'n_categories': 0,
-                'cumulative_count_at_80pct': 0
-            },
-            'chart_metadata': {
-                'title': title,
-                'xlabel': xlabel,
-                'ylabel': ylabel,
-                'data_source': data_source,
-                'file_name': file_name
-            }
-        }
-
-    # Group small categories into 'Others' if min_value is set
-    if min_value is not None:
-        small_categories = counts[counts < min_value]
-        if not small_categories.empty:
-            counts = counts[counts >= min_value]
-            counts['Others'] = small_categories.sum()
-
-    # Calculate relative frequency and cumulative %
-    rel_freq = counts / counts.sum() * 100
-    cumperc = rel_freq.cumsum()
-
-    # Determine first bar to reach or exceed 80%
-    threshold_idx = int(np.argmax(cumperc.values >= 80))
-    threshold_count = counts.values[:threshold_idx + 1].sum()
-
-    # Compute descriptive stats
-    descriptive_stats = {
-        'mode': counts.index[0] if len(counts) > 0 else None,
-        'total_count': int(counts.sum()),
-        'n_categories': int(len(counts)),
-        'cumulative_count_at_80pct': int(threshold_count)
-    }
-
-    # Colors: muted grey and colorblind-friendly accent
-    muted = '#999999'
-    accent = '#0072B2'  # colorblind-friendly blue
-
-    # Highlight bars up to threshold_idx inclusive
-    bar_colors = [accent if i <= threshold_idx else muted for i in range(len(counts))]
-
-    # Create plot
-    fig, ax = plt.subplots(figsize=figsize)
-
-    if horizontal:
-        bars = ax.barh(counts.index, counts.values, color=bar_colors, edgecolor='black')
-        # Annotations
-        for bar, count, pct in zip(bars, counts.values, rel_freq.values):
-            width = bar.get_width()
-            ax.text(width, bar.get_y() + bar.get_height()/2,
-                    f'{int(count)} ({pct:.1f}%)',
-                    ha='left', va='center')
-        # Axes
-        ax.set_xlabel(ylabel)
-        ax.set_ylabel(xlabel)
-        ticks = np.arange(counts.size)
-        ax.set_yticks(ticks)
-        ax.set_yticklabels(counts.index)
-        # Cumulative % on top axis
-        ax2 = ax.twiny()
-        ax2.plot(cumperc.values, ticks, marker='o', linestyle='-', color='black')
-        ax2.set_xlabel('Cumulative %')
-        ax2.set_xlim(0, 110)
-        ax2.axvline(80, color=accent, linestyle='--')
-        ax2.text(80, ticks[-1], '80% threshold', ha='left', va='top', color=accent)
+    if ctx is None:
+        ctx = ParetoPlotContext(**kwargs)
     else:
-        bars = ax.bar(counts.index, counts.values, color=bar_colors, edgecolor='black')
-        # Annotations
-        for bar, count, pct in zip(bars, counts.values, rel_freq.values):
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2, height,
-                    f'{int(count)}\n({pct:.1f}%)',
-                    ha='center', va='bottom')
-        # Axes
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ticks = np.arange(counts.size)
-        ax.set_xticks(ticks)
-        ax.set_xticklabels(counts.index, rotation=45, ha='right')
-        # Cumulative % on right axis
-        ax2 = ax.twinx()
-        ax2.plot(ticks, cumperc.values, marker='o', linestyle='-', color='black')
-        ax2.set_ylabel('Cumulative %')
-        ax2.set_ylim(0, 110)
-        ax2.axhline(80, color=accent, linestyle='--')
-        ax2.text(ticks[-1], 80, '80% threshold', ha='right', va='bottom', color=accent)
+        for k, v in kwargs.items():
+            setattr(ctx, k, v)
 
-    # Optional data source annotation
-    if data_source:
-        fig.text(
-            0.01, 0.01, f"Source: {data_source}",
-            ha='left', va='bottom',
-            fontsize='small', color='gray'
-        )
-
-    # Footnote with cumulative count at 80%
-    fig.text(0.99, 0.01, f"Cumulative count at 80%: {threshold_count}",
-             ha='right', va='bottom', fontsize=8, color='gray')
-
-    fig.tight_layout()
-
-    # Optional save
-    if save_path:
-        if file_name is None:
-            file_name = f"{title}.png"
-        os.makedirs(save_path, exist_ok=True)
-        abs_path = os.path.join(save_path, file_name)
-        fig.savefig(abs_path, bbox_inches='tight')
-
-    # Return metadata
-    return {
-        'descriptive_stats': descriptive_stats,
-        'chart_metadata': {
-            'title': title,
-            'xlabel': xlabel,
-            'ylabel': ylabel,
-            'data_source': data_source,
-            'file_name': file_name
-        }
-    }
+    plot = FrequencyParetoCategoricalPlot(ctx)
+    return plot.run(series)
