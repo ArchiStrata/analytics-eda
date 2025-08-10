@@ -103,6 +103,10 @@ def plot_distribution_density(
     metadata : dict
         {
             'descriptive_stats': {
+                'params': {
+                    'bins': int,
+                    'bin_method': str
+                },
                 'n': int,               
                 'entropy_bits': float,   
                 'skewness': float,         
@@ -153,6 +157,10 @@ def plot_distribution_density(
             quartile_skew=np.nan, pct_10=np.nan, pct_25=np.nan,
             pct_50=np.nan, pct_75=np.nan, pct_90=np.nan
         )
+        empty_stats['params'] = {
+            'bins': bins,
+            'bin_method': bin_method
+        }
         return {
             'descriptive_stats': empty_stats,
             'chart_metadata': dict(
@@ -284,6 +292,10 @@ def plot_distribution_density(
 
     return {
         'descriptive_stats': {
+            'params': {
+                'bins': bins,
+                'bin_method': bin_method
+            },
             'n': n,
             'entropy_bits': entropy_bits,
             'skewness': skewness,

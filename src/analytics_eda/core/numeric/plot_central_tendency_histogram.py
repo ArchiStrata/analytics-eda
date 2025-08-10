@@ -83,6 +83,10 @@ def plot_central_tendency_histogram(
     metadata : dict
         {
             'descriptive_stats': {
+                'params': {
+                    'bins': int,
+                    'mode_method': str # series.mode or histogram_bin_centers
+                },
                 'n': int,                        # see table below
                 'mean': float,
                 'median': float,
