@@ -19,12 +19,19 @@ import pandas as pd
 from scipy.stats import gaussian_kde
 
 from .validate_numeric_named_series import validate_numeric_named_series
+from ..utils.build_chart_title import build_chart_title
+
 
 def plot_distribution_probability_function(
     series: pd.Series,
     is_discrete: bool,
     bw_method='scott',
+    title_template: str = "PMF of {name}{modifiers}" if True else "PDF estimate of {name}{modifiers}",
     name: str = None,
+    filter_desc: str = None,
+    transform_desc: str = None,
+    xlabel: str = "Value",
+    ylabel: str = None,  # Set based on discrete/continuous
     data_source: str = None,
     figsize: tuple = (10, 6),
     save_path: str = None,
@@ -55,15 +62,43 @@ def plot_distribution_probability_function(
     validate_numeric_named_series(series)
     vals = series.copy().dropna()
 
-    # Determine xlabel
-    xlabel = name or series.name or "Value"
+    # Decide ylabel based on discrete or continuous
+    if ylabel is None:
+        ylabel = "Probability P(X = x)" if is_discrete else "Density f(x)"
 
-    # Prepare plot
-    sns.set_palette("colorblind")
-    fig, ax = plt.subplots(figsize=figsize)
+    # Build chart title
+    chart_title = build_chart_title(
+        name=name or series.name or "Value",
+        series=series,
+        filter_desc=filter_desc,
+        transform_desc=transform_desc,
+        title_template=title_template
+    )
 
-    title = None
-    ylabel = None
+    # If no valid values, return defaults
+    if vals.empty:
+        return {
+            'descriptive_stats': {
+                'n': 0,
+                'mean': np.nan,
+                'median': np.nan,
+                'mode': np.nan,
+                'variance': np.nan,
+                'std': np.nan,
+                'iqr': np.nan,
+                'skewness': np.nan,
+                'kurtosis': np.nan,
+                'min': np.nan,
+                'max': np.nan
+            },
+            'chart_metadata': {
+                'title': chart_title,
+                'xlabel': xlabel,
+                'ylabel': ylabel,
+                'data_source': data_source,
+                'file_name': None
+            }
+        }
 
     descriptive_stats = {
         'n':          int(vals.size),
@@ -79,33 +114,23 @@ def plot_distribution_probability_function(
         'max':        float(vals.max()),
     }
 
+    # Prepare plot
+    sns.set_palette("colorblind")
+    fig, ax = plt.subplots(figsize=figsize)
+
     if is_discrete:
-        # Discrete: compute PMF explicitly
         counts = vals.value_counts().sort_index()
         pmf = counts / counts.sum()
-
         ax.bar(pmf.index, pmf.values, edgecolor='black')
-        ax.set_xlabel(xlabel)
-
-        ylabel = "Probability P(X = x)"
-        ax.set_ylabel(ylabel)
-
-        title = f"PMF of {xlabel}"
-        ax.set_title(title)
     else:
-        # Continuous: kernel density estimate for PDF
         kde = gaussian_kde(vals, bw_method=bw_method)
         x_grid = np.linspace(vals.min(), vals.max(), 200)
         pdf_vals = kde(x_grid)
-
         ax.plot(x_grid, pdf_vals, linewidth=1.5)
-        ax.set_xlabel(xlabel)
 
-        ylabel = "Density f(x)"
-        ax.set_ylabel(ylabel)
-
-        title = f"PDF estimate of {xlabel}"
-        ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(chart_title)
 
     # Optional data source annotation
     if data_source:
@@ -120,7 +145,7 @@ def plot_distribution_probability_function(
     # Optional save
     if save_path:
         if file_name is None:
-            file_name = f"{title}.png"
+            file_name = f"{chart_title}.png"
         os.makedirs(save_path, exist_ok=True)
         abs_path = os.path.join(save_path, file_name)
         fig.savefig(abs_path, bbox_inches='tight')
@@ -129,7 +154,7 @@ def plot_distribution_probability_function(
     return {
         'descriptive_stats': descriptive_stats,
         'chart_metadata': {
-            'title': title,
+            'title': chart_title,
             'xlabel': xlabel,
             'ylabel': ylabel,
             'data_source': data_source,
