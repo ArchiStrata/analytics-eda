@@ -12,176 +12,143 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import matplotlib.pyplot as plt
-import seaborn as sns
+from dataclasses import dataclass
+from typing import Dict, Any, Optional
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 from scipy.stats import chisquare
 
-from analytics_eda.core.categorical import validate_categorical_named_series
-from analytics_eda.core.utils import build_chart_title
+from ..utils.base_plot import BasePlot, PlotContext
+from .validate_categorical_named_series import CategoricalSeriesMixin
+
+@dataclass
+class Chi2GOFUniformContext(PlotContext):
+    title_template: str = "Chi-Square Goodness-of-Fit: {name}{modifiers}"
+    xlabel: str = "Value"
+    ylabel: str = "Frequency"
+    alpha: float = 0.05
+
+class ChiSquareUniformCategoricalPlot(CategoricalSeriesMixin, BasePlot):
+    """
+    Chi-square goodness-of-fit vs. uniform for a categorical series.
+    Returns BasePlot.run() schema:
+      {
+        "descriptive_stats": {"total", "k", "categories", "observed", "expected"},
+        "inferential_stats": {
+            "chi2_gof_null_uniform": {
+                "statistic", "p_value", "alpha", "reject", "warning?"}
+        },
+        "chart_metadata": {...}
+      }
+    """
+
+    # (2) default response for empty data
+    def default_descriptive(self) -> Dict[str, Any]:
+        return {"total": 0, "k": 0, "categories": [], "observed": [], "expected": []}
+
+    # (3) descriptive stats
+    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+        freq = s.value_counts()
+        categories = sorted(freq.index.tolist())
+        observed = [int(freq[c]) for c in categories]
+        total = int(sum(observed))
+        k = int(len(categories))
+        expected = [total / k] * k if k > 0 else []
+
+        return {
+            "total": total,
+            "k": k,
+            "categories": categories,
+            "observed": observed,
+            "expected": expected,
+        }
+
+    # (4) inferential stats
+    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        inf: Dict[str, Any] = {}
+        k = desc["k"]
+        if k == 0:
+            return inf
+
+        warning = None
+        expected = desc["expected"]
+        if any(e < 5 for e in expected):
+            warning = "Some expected counts are below 5; chi-square test results may not be reliable."
+
+        chi2_stat, p_val = chisquare(f_obs=desc["observed"], f_exp=expected)
+
+        res = {
+            "chi2_gof_null_uniform": {
+                "statistic": float(chi2_stat),
+                "p_value": float(p_val),
+                "alpha": float(getattr(self.ctx, "alpha", 0.05)),
+                "reject": bool(p_val < getattr(self.ctx, "alpha", 0.05)),
+            }
+        }
+        if warning:
+            res["chi2_gof_null_uniform"]["warning"] = warning
+        return res
+
+    # (5) draw
+    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
+        sns.set_palette("colorblind")
+
+        title = chart_metadata["title"]
+        xlabel = chart_metadata["xlabel"] or "Value"
+        ylabel = chart_metadata["ylabel"] or "Frequency"
+
+        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+        cats = desc["categories"]
+        x = range(len(cats))
+        width = 0.35
+
+        ax.bar([i - width / 2 for i in x], desc["observed"], width, label="Observed")
+        ax.bar([i + width / 2 for i in x], desc["expected"], width, label="Expected")
+
+        ax.set_xticks(list(x))
+        ax.set_xticklabels(cats, rotation=45, ha="right")
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        ax.legend()
+
+        # annotation
+        res = inf.get("chi2_gof_null_uniform")
+        if res:
+            ann = "\n".join((
+                rf"$\chi^2$ = {res['statistic']:.2f}",
+                rf"$p$ = {res['p_value']:.3f}",
+                rf"$\alpha$ = {res['alpha']:.2f}",
+                "Decision: " + ("Reject H₀" if res["reject"] else "Fail to Reject H₀"),
+            ))
+            ax.text(
+                0.95, 0.95, ann, transform=ax.transAxes,
+                va="top", ha="right",
+                bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+            )
+
+        return fig, ax
 
 
 def plot_chi2_gof_uniform(
     series: pd.Series,
-    alpha: float = 0.05,
-    title_template: str = "Chi-Square Goodness-of-Fit: {name}{modifiers}",
-    name: str = None,
-    filter_desc: str = None,
-    transform_desc: str = None,
-    xlabel: str = "Value",
-    ylabel: str = "Frequency",
-    data_source: str = None,
-    figsize: tuple = (10, 6),
-    save_path: str = None,
-    file_name: str = None
-) -> dict:
+    /,
+    *,
+    ctx: Optional[Chi2GOFUniformContext] = None,
+    **kwargs: Dict[str, Any],
+) -> Dict[str, Any]:
     """
-    Performs a Chi-Square Goodness-of-Fit test against a uniform distribution and 
-    visualizes observed vs. expected categorical frequencies using a side-by-side bar chart.
-
-    Why this is important:
-        The Chi-Square Goodness-of-Fit test assesses whether the observed distribution 
-        of a single categorical variable significantly deviates from a uniform (equal probability) distribution.
-        This helps identify category imbalance or concentration.
-
-    What it does:
-        - Computes expected frequencies assuming uniform distribution.
-        - Runs a chi-square test of goodness-of-fit.
-        - Warns if expected counts violate assumptions (e.g., < 5).
-        - Plots observed vs. expected counts for intuitive comparison.
-        - Annotates the statistical result on the chart.
-        - Optionally saves the plot and includes metadata.
-
-    Parameters:
-        series (pd.Series): Categorical data series.
-        alpha (float): Significance level for hypothesis testing.
-        title_template (str): Template for dynamic chart title generation.
-        name (str): Optional variable name override.
-        filter_desc (str): Optional filter descriptor for title context.
-        transform_desc (str): Optional transformation descriptor for title context.
-        xlabel (str): X-axis label.
-        ylabel (str): Y-axis label.
-        data_source (str): Optional data source for footer annotation.
-        figsize (tuple): Size of the chart figure.
-        save_path (str): Optional directory to save the chart.
-        file_name (str): Optional filename for saved chart.
-
-    Returns:
-        dict: Metadata and test results including:
-            - 'descriptive_stats': {'total', 'k'}
-            - 'inferential_stats': {'chi2_gof_null_uniform': {statistic, p_value, alpha, reject, warning (if any)}}
-            - 'chart_metadata': {title, xlabel, ylabel, data_source, file_name}
+    Backward-compatible wrapper that delegates to the class-based implementation.
+    - If `ctx` is given, it’s used (with optional overrides from kwargs).
+    - Else, we construct Chi2GOFUniformContext(**kwargs).
+    This avoids duplicating defaults in the wrapper.
     """
-    # Prepare data
-    validate_categorical_named_series(series)
-    data = series.copy().dropna().astype(str)
-    freq_table = data.value_counts()
+    if ctx is None:
+        ctx = Chi2GOFUniformContext(**kwargs)
+    else:
+        for k, v in kwargs.items():
+            setattr(ctx, k, v)
 
-    # Build chart title
-    title = build_chart_title(
-        name=name,
-        series=series,
-        filter_desc=filter_desc,
-        transform_desc=transform_desc,
-        title_template=title_template
-    )
-
-    # Early return if empty
-    if data.empty:
-        return {
-            'descriptive_stats': {
-                'total': 0,
-                'k': 0
-            },
-            'inferential_stats': {},
-            'chart_metadata': {
-                'title': title,
-                'xlabel': xlabel,
-                'ylabel': ylabel,
-                'data_source': data_source,
-                'file_name': file_name
-            }
-        }
-
-    # Compute stats
-    categories = sorted(freq_table.keys())
-    observed = [freq_table[cat] for cat in categories]
-    total = sum(observed)
-    k = len(categories)
-    expected = [total / k] * k
-
-    warning = None
-    if any(e < 5 for e in expected):
-        warning = "Some expected counts are below 5; chi-square test results may not be reliable."
-
-    chi2_stat, p_val = chisquare(f_obs=observed, f_exp=expected)
-
-    # Plotting
-    sns.set_palette("colorblind")
-    fig, ax = plt.subplots(figsize=figsize)
-    x = range(len(categories))
-    width = 0.35
-
-    ax.bar([i - width / 2 for i in x], observed, width, label='Observed')
-    ax.bar([i + width / 2 for i in x], expected, width, label='Expected')
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(categories, rotation=45, ha='right')
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    ax.legend()
-
-    # Annotate test results
-    annotation = '\n'.join((
-        rf"$\chi^2$ = {chi2_stat:.2f}",
-        rf"$p$ = {p_val:.3f}",
-        rf"$\alpha$ = {alpha:.2f}",
-        f"Decision: {'Reject H₀' if p_val < alpha else 'Fail to Reject H₀'}"
-    ))
-    props = dict(boxstyle='round', facecolor='white', alpha=0.8)
-    ax.text(0.95, 0.95, annotation, transform=ax.transAxes,
-            verticalalignment='top', horizontalalignment='right', bbox=props)
-
-    # Optional data source annotation
-    if data_source:
-        fig.text(
-            0.01, 0.01, f"Source: {data_source}",
-            ha='left', va='bottom',
-            fontsize='small', color='gray'
-        )
-
-    fig.tight_layout()
-
-    # Optional save
-    if save_path:
-        if file_name is None:
-            file_name = f"{title}.png"
-        os.makedirs(save_path, exist_ok=True)
-        abs_path = os.path.join(save_path, file_name)
-        fig.savefig(abs_path, bbox_inches='tight')
-
-    # Return metadata and results
-    return {
-        'descriptive_stats': {
-            'total': total,
-            'k': k
-        },
-        'inferential_stats': {
-            'chi2_gof_null_uniform': {
-                'statistic': float(chi2_stat),
-                'p_value': float(p_val),
-                'alpha': float(alpha),
-                'reject': bool(p_val < alpha),
-                **({'warning': warning} if warning else {})
-            }
-        },
-        'chart_metadata': {
-            'title': title,
-            'xlabel': xlabel,
-            'ylabel': ylabel,
-            'data_source': data_source,
-            'file_name': file_name
-        }
-    }
+    plot = ChiSquareUniformCategoricalPlot(ctx)
+    return plot.run(series)
