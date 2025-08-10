@@ -1,5 +1,5 @@
-from .validate_categorical_named_series import validate_categorical_named_series
+from .validate_categorical_named_series import validate_categorical_named_series, CategoricalSeriesMixin
 from .categorical_distribution_analysis import categorical_distribution_analysis
 from .plot_frequency_pareto import plot_frequency_pareto
 from .plot_chi2_gof_uniform import plot_chi2_gof_uniform
-from .plot_balance_lorenz_curve import plot_balance_lorenz_curve
+from .plot_balance_lorenz_curve import plot_balance_lorenz_curve, LorenzCurveCategoricalPlot, LorenzPlotContext

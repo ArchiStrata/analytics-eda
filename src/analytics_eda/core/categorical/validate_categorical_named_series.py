@@ -41,3 +41,8 @@ def validate_categorical_named_series(
     if require_name and (series.name is None or str(series.name).strip() == ""):
         raise ValueError("Series must have a non-empty 'name' attribute.")
     return series
+
+class CategoricalSeriesMixin:
+    def validate(self, series: pd.Series) -> pd.Series:
+        validate_categorical_named_series(series)
+        return series.copy().dropna().astype(str)
