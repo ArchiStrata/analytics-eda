@@ -88,6 +88,9 @@ def plot_distribution_ecdf_gap(
     metadata : dict
         {
             'descriptive_stats': {
+                'params': {
+                    'threshold': float or None,
+                }
                 'n': int,                    # number of observations
                 'n_unique': int,             # number of distinct values
                 'gaps': list of float,       # all raw gap sizes g_i
@@ -105,7 +108,6 @@ def plot_distribution_ecdf_gap(
                 'xlabel': str,
                 'ylabel': str,
                 'data_source': str or None,
-                'threshold': float or None,
                 'file_name': str or None
             }
         }
@@ -124,9 +126,6 @@ def plot_distribution_ecdf_gap(
     """
     validate_numeric_named_series(series)
     clean = series.copy().dropna().sort_values()
-    n = clean.size
-    unique_vals = clean.unique()
-    n_unique = unique_vals.size
 
     title = build_chart_title(
                     name=name, series=series,
@@ -134,8 +133,37 @@ def plot_distribution_ecdf_gap(
                     transform_desc=transform_desc,
                     title_template=title_template
                 )
+    
+    # Early return if no valid data
+    if clean.size == 0:
+        return {
+            'descriptive_stats': {
+                'params': {'threshold': threshold},
+                'n': 0,
+                'n_unique': 0,
+                'gaps': [],
+                'max_gap': np.nan,
+                'median_gap': np.nan,
+                'pct10_gap': np.nan,
+                'pct50_gap': np.nan,
+                'pct90_gap': np.nan,
+                'n_gaps_above_thr': None if threshold is None else 0,
+                'total_gap_prop': np.nan,
+                'max_gap_loc': np.nan
+            },
+            'chart_metadata': {
+                'title': title,
+                'xlabel': xlabel,
+                'ylabel': ylabel,
+                'data_source': data_source,
+                'file_name': file_name
+            }
+        }
 
-    # Compute gaps
+    # Compute descriptive stats
+    n = clean.size
+    unique_vals = clean.unique()
+    n_unique = unique_vals.size
     if n_unique >= 2:
         gaps = np.diff(unique_vals)
         gaps_list = gaps.tolist()
@@ -157,13 +185,13 @@ def plot_distribution_ecdf_gap(
         max_gap = median_gap = pct10_gap = pct50_gap = pct90_gap = total_gap_prop = max_gap_loc = np.nan
         n_gaps_above = 0 if threshold is not None else None
 
-    # Build ECDF
-    ecdf_x = clean.values
-    ecdf_y = np.arange(1, n+1) / n if n > 0 else np.array([])
-
     # Plot
     sns.set_palette("colorblind")
     fig, ax = plt.subplots(figsize=figsize)
+
+    # Build ECDF
+    ecdf_x = clean.values
+    ecdf_y = np.arange(1, n+1) / n if n > 0 else np.array([])
     if n > 0:
         ax.step(ecdf_x, ecdf_y, where='post', label='ECDF')
     ax.set_title(title)
@@ -220,6 +248,9 @@ def plot_distribution_ecdf_gap(
 
     return {
         'descriptive_stats': {
+            'params': {
+                'threshold': threshold,
+            },
             'n': n,
             'n_unique': n_unique,
             'gaps': gaps_list,
@@ -237,7 +268,6 @@ def plot_distribution_ecdf_gap(
             'xlabel': xlabel,
             'ylabel': ylabel,
             'data_source': data_source,
-            'threshold': threshold,
             'file_name': file_name
         }
     }
