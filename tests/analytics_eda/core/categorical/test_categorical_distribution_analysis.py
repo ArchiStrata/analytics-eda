@@ -60,10 +60,12 @@ from analytics_eda.core.categorical.categorical_distribution_analysis import cat
                             "title": "Dispersion of count (IQR & Outliers)",
                             "ylabel": "Frequency",
                             "data_source": "UnitTest",
-                            "file_name": "Dispersion of count (IQR & Outliers).png",
-                            "std_outlier_multiplier": 4.0
+                            "file_name": "Dispersion of count (IQR & Outliers).png"
                         },
                         "descriptive_stats": {
+                            "params": {
+                                "std_outlier_multiplier": 4.0
+                            },
                             "n": 4,
                             "mean": 2.5,
                             "std": 1.2909944487358056,

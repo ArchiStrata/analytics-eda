@@ -81,8 +81,10 @@ def plot_distribution_ecdf_vs_cdf(
         {
             'descriptive_stats': {
                 'n': int,
-                'distribution': str,
-                'params': tuple
+                'params': { 
+                    'distribution_fit': tuple,
+                    'distribution_name': str
+                }
             },
             'inferential_stats': {
                'params': {
@@ -109,7 +111,6 @@ def plot_distribution_ecdf_vs_cdf(
                 'xlabel': str,
                 'ylabel': str,
                 'data_source': str or None,
-                'distribution': str,
                 'file_name': str or None
             }
         }
@@ -131,7 +132,7 @@ def plot_distribution_ecdf_vs_cdf(
     full_title = f"{title} ({distribution_name})"
 
     default_metadata = {
-            'descriptive_stats': {'n': n},
+            'descriptive_stats': {'n': n, 'params': {'distribution_name': distribution_name }},
             'inferential_stats': {
                 'params': {
                     'alpha': alpha
@@ -141,7 +142,6 @@ def plot_distribution_ecdf_vs_cdf(
                 'title': full_title,
                 'xlabel': xlabel,
                 'ylabel': ylabel,
-                'distribution': distribution_name,
                 'data_source': data_source,
                 'file_name': None
             }
@@ -162,15 +162,15 @@ def plot_distribution_ecdf_vs_cdf(
 
     # fit distribution
     dist = getattr(stats, distribution_name)
-    params = dist.fit(data)
-    params_float = tuple(float(np.round(p, 3)) for p in params)
+    fit_params = dist.fit(data)
+    fit_params_float = tuple(float(np.round(p, 3)) for p in fit_params)
 
     # compute ECDF
     x = np.sort(data)
     ecdf = np.arange(1, n + 1) / n
 
     # theoretical CDF
-    cdf_theo = dist.cdf(x, *params)
+    cdf_theo = dist.cdf(x, *fit_params)
 
     # Tests
     tests = {}
@@ -179,7 +179,7 @@ def plot_distribution_ecdf_vs_cdf(
     }
 
     # 1. KS
-    D, p_ks = stats.kstest(data, distribution_name, args=params)
+    D, p_ks = stats.kstest(data, distribution_name, args=fit_params)
     tests['ks'] = {'statistic': float(D), 'p_value': float(p_ks), 'reject': bool(p_ks < alpha)}
 
     # 2. Anderson–Darling (only norm & expon)
@@ -198,7 +198,7 @@ def plot_distribution_ecdf_vs_cdf(
         }
 
     # 3. Cramér–von Mises
-    cvm_res = stats.cramervonmises(data, distribution_name, args=params)
+    cvm_res = stats.cramervonmises(data, distribution_name, args=fit_params)
     tests['cvm'] = {
         'statistic': float(cvm_res.statistic),
         'p_value': float(cvm_res.pvalue),
@@ -231,7 +231,7 @@ def plot_distribution_ecdf_vs_cdf(
     # Stats textbox
     lines = [
         f"n = {n}",
-        f"params = {params_float}",
+        f"params = {fit_params_float}",
     ]
     # Append each test summary
     for name, info in tests.items():
@@ -256,8 +256,10 @@ def plot_distribution_ecdf_vs_cdf(
     return {
         'descriptive_stats': {
             'n': n,
-            'distribution': distribution_name,
-            'params': params_float
+            'params': {
+                'distribution_fit': fit_params_float,
+                'distribution_name': distribution_name,
+            }
         },
         'inferential_stats': tests,
         'chart_metadata': {
@@ -265,7 +267,6 @@ def plot_distribution_ecdf_vs_cdf(
             'xlabel': xlabel,
             'ylabel': ylabel,
             'data_source': data_source,
-            'distribution': distribution_name,
             'file_name': file_name
         }
     }
