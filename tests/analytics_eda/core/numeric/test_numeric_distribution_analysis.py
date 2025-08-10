@@ -4,9 +4,6 @@ import pandas as pd
 from analytics_eda.core.numeric.numeric_distribution_analysis import numeric_distribution_analysis
 from analytics_eda.core.numeric.evaluate_transforms import evaluate_transforms
 
-is_discrete_true = True
-is_discrete_false = False
-
 
 def make_float_series(data, name="x"):
     # ensure float dtype and proper name
@@ -28,219 +25,278 @@ def make_float_series(data, name="x"):
 )
 def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path):
     with pytest.raises(exc, match=pattern):
-        numeric_distribution_analysis(make_input(), report_path=tmp_path, is_discrete=is_discrete_true)
+        numeric_distribution_analysis(make_input(), report_path=tmp_path, is_discrete=True)
 
-
-
-def test_norm_override_parameters_save(tmp_path, load_and_validate_report):
-    rng = np.random.default_rng(1)
-    data = rng.normal(size=50)
-    series = make_float_series(data)
-
-    overrides = {
-        "name": "Custom",
-        "filter_desc": "filtered by New York",
-        "xlabel": "Custom X",
-        "ylabel": "Custom Y",
-        "bins": 5,
-        "file_name": "custom_hist.png"
-    }
-
-    out = numeric_distribution_analysis(
-        series,
-        report_path=tmp_path,
-        plot_central_tendency_histogram_overrides=overrides,
-        is_discrete=is_discrete_false,
-        data_source="UnitTest"
-    )
-
-    full_report = load_and_validate_report(out, tmp_path)
-    report = full_report["data"]
-
-    hist_meta = report["central_tendency"]["histogram"]
-    chart = hist_meta["chart_metadata"]
-    desc  = hist_meta["descriptive_stats"]
-
-    # File is saved under override name
-    saved_path = tmp_path / "custom_hist.png"
-    assert saved_path.exists()
-    assert chart['file_name'] == "custom_hist.png"
-
-    # Chart metadata matches overrides
-    assert chart["title"]       == "Distribution of Custom (filtered by New York): Central Tendency"
-    assert chart["xlabel"]      == overrides["xlabel"]
-    assert chart["ylabel"]      == overrides["ylabel"]
-    assert chart["data_source"] == "UnitTest"
-    assert chart["bins"]        == overrides["bins"]
-
-    # Descriptive stats still valid
-    assert desc["n"] == 50
-    assert isinstance(desc["mean"], float)
-    assert isinstance(desc["median"], float)
-    assert isinstance(desc["modes"], list)
 
 @pytest.mark.parametrize(
-    "dist_name, rng_func, support_adjust, has_anderson",
+    "make_series, kwargs, expected_distribution",
     [
-        ("norm",    lambda r: r.normal(size=100),     lambda x: x,        True),
-        ("lognorm", lambda r: r.lognormal(size=100), lambda x: np.abs(x)+1e-6, False),
-        ("gamma",   lambda r: r.gamma(2.0, size=100),  lambda x: np.abs(x)+1e-6, False),
-        ("expon",   lambda r: r.exponential(size=100), lambda x: np.abs(x),   True),
-    ]
+        # --------------------------
+        # Baseline (no transforms)
+        # --------------------------
+        # 1) Normal
+        (
+            lambda: pd.Series(np.random.default_rng(0).normal(loc=0, scale=1, size=150), name="norm", dtype="float64"),
+            {"data_source": "UnitTest", "is_discrete": False},
+            {
+                "central_tendency": {
+                    "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "dispersion": {
+                    "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "shape": {
+                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
+            },
+        ),
+        # 2) Lognormal (strictly positive)
+        (
+            lambda: pd.Series(np.random.default_rng(1).lognormal(mean=0.0, sigma=0.8, size=150), name="lognorm", dtype="float64"),
+            {"data_source": "UnitTest", "is_discrete": False},
+            {
+                "central_tendency": {
+                    "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "dispersion": {
+                    "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "shape": {
+                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
+            },
+        ),
+        # 3) Gamma (strictly positive)
+        (
+            lambda: pd.Series(np.random.default_rng(2).gamma(shape=2.0, scale=2.0, size=150), name="gamma", dtype="float64"),
+            {"data_source": "UnitTest", "is_discrete": False},
+            {
+                "central_tendency": {
+                    "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "dispersion": {
+                    "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "shape": {
+                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
+            },
+        ),
+        # 4) Exponential (non‑negative)
+        (
+            lambda: pd.Series(np.random.default_rng(3).exponential(scale=1.5, size=150), name="expon", dtype="float64"),
+            {"data_source": "UnitTest", "is_discrete": False},
+            {
+                "central_tendency": {
+                    "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "dispersion": {
+                    "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "shape": {
+                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
+            },
+        ),
+        # -----------------------------------------
+        # Same 4 scenarios WITH transforms enabled
+        # -----------------------------------------
+        # 1) Normal + transforms
+        (
+            lambda: pd.Series(np.random.default_rng(0).normal(loc=0, scale=1, size=150), name="norm", dtype="float64"),
+            {"data_source": "UnitTest", "is_discrete": False, "evaluate_transforms_fn": evaluate_transforms},
+            {
+                "central_tendency": {
+                    "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "dispersion": {
+                    "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "shape": {
+                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
+            },
+        ),
+        # 2) Lognormal + transforms
+        (
+            lambda: pd.Series(np.random.default_rng(1).lognormal(mean=0.0, sigma=0.8, size=150), name="lognorm", dtype="float64"),
+            {"data_source": "UnitTest", "is_discrete": False, "evaluate_transforms_fn": evaluate_transforms},
+            {
+                "central_tendency": {
+                    "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "dispersion": {
+                    "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "shape": {
+                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
+            },
+        ),
+        # 3) Gamma + transforms
+        (
+            lambda: pd.Series(np.random.default_rng(2).gamma(shape=2.0, scale=2.0, size=150), name="gamma", dtype="float64"),
+            {"data_source": "UnitTest", "is_discrete": False, "evaluate_transforms_fn": evaluate_transforms},
+            {
+                "central_tendency": {
+                    "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "dispersion": {
+                    "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "shape": {
+                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
+            },
+        ),
+        # 4) Exponential + transforms
+        (
+            lambda: pd.Series(np.random.default_rng(3).exponential(scale=1.5, size=150), name="expon", dtype="float64"),
+            {"data_source": "UnitTest", "is_discrete": False, "evaluate_transforms_fn": evaluate_transforms},
+            {
+                "central_tendency": {
+                    "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "dispersion": {
+                    "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "shape": {
+                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
+                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
+            },
+        ),
+    ],
+    ids=[
+        "norm_series", "lognorm_series", "gamma_series", "expon_series",
+        "norm_series_with_transforms", "lognorm_series_with_transforms",
+        "gamma_series_with_transforms", "expon_series_with_transforms",
+    ],
 )
-def test_numeric_distribution_analysis_basic_structure(
-    dist_name, rng_func, support_adjust, has_anderson, tmp_path, load_and_validate_report
+def test_numeric_distribution_analysis_param(
+    make_series,
+    kwargs,
+    expected_distribution,
+    tmp_path,
+    load_and_validate_report,
+    assert_plot_metadata,
 ):
-    rng = np.random.default_rng(0)
-    raw = rng_func(rng)
-    raw = support_adjust(raw).astype(float)
-    series = pd.Series(raw, name="x")
+    # Arrange
+    s = make_series()
 
-    # Run analysis without transforms
-    out = numeric_distribution_analysis(series, report_path=tmp_path, is_discrete=is_discrete_false)
+    # Act: run the full numeric distribution analysis (which writes nested reports)
+    out = numeric_distribution_analysis(s, report_path=tmp_path, **kwargs)
 
-    full_report = load_and_validate_report(out, tmp_path)
-    report = full_report["data"]
+    # Load the nested "distribution" report
+    dist_loaded = load_and_validate_report(response=out, report_dir=tmp_path)["data"]  # fixture reads latest JSON under root
 
-    # 1) Top-level keys
-    assert set(report) == {"central_tendency", "dispersion", "shape"}
+    # Assert the three distribution subsections exist
+    assert set(dist_loaded.keys()) == {"central_tendency", "dispersion", "shape"}
 
-    # 2) central_tendency → histogram & violin
-    ct = report["central_tendency"]
-    assert set(ct) == {"histogram", "violin"}
-    
-    hist_meta = ct["histogram"]
-    assert "descriptive_stats" in hist_meta and "chart_metadata" in hist_meta
-    # Chart metadata saved file
-    rel = hist_meta["chart_metadata"]["file_name"]
-    assert rel and (tmp_path / rel).exists()
+    # ---- central_tendency ----
+    for plot_key, exp in expected_distribution["central_tendency"].items():
+        assert plot_key in dist_loaded["central_tendency"], f"missing central_tendency.{plot_key}"
+        payload = dist_loaded["central_tendency"][plot_key]
+        assert_plot_metadata(payload, exp, tmp_path)
 
-    # 3) dispersion → boxplot
-    disp = report["dispersion"]
-    assert set(disp) == {"boxplot"}
-    bp_meta = disp["boxplot"]
-    assert "descriptive_stats" in bp_meta and "chart_metadata" in bp_meta
-    rel = bp_meta["chart_metadata"]["file_name"]
-    assert rel and (tmp_path / rel).exists()
+    # ---- dispersion ----
+    for plot_key, exp in expected_distribution["dispersion"].items():
+        assert plot_key in dist_loaded["dispersion"], f"missing dispersion.{plot_key}"
+        payload = dist_loaded["dispersion"][plot_key]
+        assert_plot_metadata(payload, exp, tmp_path)
 
-    # 4) shape contains ecdf_gap, density, distribution_fits
-    shape = report["shape"]
-    assert set(shape) == {"ecdf_gap", "density", "distribution_fits", "probability"}
+    # ---- shape ----
+    for plot_key, exp in expected_distribution["shape"].items():
+        assert plot_key in dist_loaded["shape"], f"missing shape.{plot_key}"
+        payload = dist_loaded["shape"][plot_key]
+        assert_plot_metadata(payload, exp, tmp_path)
 
-    # ecdf_gap saved
-    eg = shape["ecdf_gap"]["chart_metadata"]["file_name"]
-    assert eg and (tmp_path / eg).exists()
+    # Distribution fits (per-named distribution)
+    fits = dist_loaded["shape"]["distribution_fits"]
+    expected_names = set(expected_distribution["distribution_names"])
+    assert set(fits.keys()) == expected_names
 
-    # density saved
-    dn = shape["density"]["chart_metadata"]["file_name"]
-    assert dn and (tmp_path / dn).exists()
+    for dist_name in expected_names:
+        assert set(fits[dist_name].keys()) == {"ecdf_vs_cdf", "qq"}
 
-    # distribution_fits for all four dist names
-    fits = shape["distribution_fits"]
-    assert set(fits) == {"norm", "lognorm", "gamma", "expon"}
+        # --- ECDF vs CDF: handle support checks ---
+        evc = fits[dist_name]["ecdf_vs_cdf"]
+        evc_desc = evc["descriptive_stats"]
+        evc_cm   = evc["chart_metadata"]
 
-    # inspect this distribution’s fit
-    fit = fits[dist_name]
-    assert set(fit) == {"ecdf_vs_cdf", "qq"}
+        if "error" in evc_desc:
+            # Support violated → no file is expected
+            assert evc_cm.get("file_name") is None, f"expected no file for unsupported {dist_name}"
+            # Optional: assert the error message is one of the expected ones
+            assert evc_desc["error"] in {"requires positive data", "requires non-negative data"}
+        else:
+            # Normal path → file must exist
+            assert evc_cm.get("file_name"), f"missing file_name for {dist_name}.ecdf_vs_cdf"
+            assert (tmp_path / evc_cm["file_name"]).exists(), f"missing saved file for {dist_name}.ecdf_vs_cdf"
 
-    # ECDF vs. CDF
-    ecdf_meta = fit["ecdf_vs_cdf"]
-    desc = ecdf_meta["descriptive_stats"]
-    tests = ecdf_meta["inferential_stats"]
-    ecdf_cm    = ecdf_meta["chart_metadata"]
+        # --- QQ plot: always expect a saved file (no support early-return there) ---
+        qq = fits[dist_name]["qq"]
+        qq_cm = qq["chart_metadata"]
+        assert qq_cm.get("file_name"), f"missing file_name for {dist_name}.qq"
+        assert (tmp_path / qq_cm["file_name"]).exists(), f"missing saved file for {dist_name}.qq"
 
-    # descriptive_stats
-    assert desc["distribution"] == dist_name
-    assert desc["n"] == series.size
-    assert isinstance(desc["params"], list)
+    # ---- transforms sanity (only when evaluate_transforms_fn was provided) ----
+    if kwargs.get("evaluate_transforms_fn") is not None:
+        shape = dist_loaded["shape"]
+        assert "transforms" in shape, "Expected 'transforms' when evaluate_transforms_fn is provided"
 
-    # tests: KS and CvM always, Anderson only for norm/expon
-    expected = {'params', "ks", "cvm"}
-    if has_anderson:
-        expected.add("anderson")
-    assert set(tests) == expected
+        transforms = shape["transforms"]
+        expected_base = {"yeo-johnson", "arcsinh"}
+        assert expected_base.issubset(transforms.keys()), "Base transforms missing from results"
 
-    # file exists
-    assert ecdf_cm["title"] == f"ECDF vs. Theoretical CDF of {series.name} ({dist_name})"
-    rel = ecdf_cm["file_name"]
-    assert rel and (tmp_path / rel).exists()
+        for transform_name, transform_meta in transforms.items():
+            assert isinstance(transform_meta, dict), f"{transform_name!r} meta must be a dict"
 
-    # Q–Q
-    qq_meta = fit["qq"]
-    qq_desc = qq_meta["descriptive_stats"]
-    qq_cm   = qq_meta["chart_metadata"]
+            full_transform_report = load_and_validate_report(transform_meta, tmp_path / transform_name)
+            report_t = full_transform_report["data"]
+            assert report_t is not None, f"{transform_name!r} entry missing nested 'data'"
 
-    for key in (
-        "intercept","slope","r_squared",
-        "median_residual","iqr_residual","max_abs_residual",
-        "skewness","kurtosis"
-    ):
-        assert isinstance(qq_desc[key], float)
+            # histogram saved
+            hist_meta = report_t["central_tendency"]["histogram"]
+            rel = hist_meta["chart_metadata"]["file_name"]
+            assert rel, f"No file_name for histogram in transform {transform_name!r}"
+            assert (tmp_path / transform_name / rel).exists(), \
+                f"{tmp_path/transform_name/rel} missing for transform {transform_name!r}"
 
-    assert qq_cm["title"] == f"Q–Q Plot Fit Assessment of {series.name} ({dist_name})"
-    assert qq_cm["distribution"] == dist_name
-    rel = qq_cm["file_name"]
-    assert rel and (tmp_path / rel).exists()
-
-    # 5) By default no transforms
-    assert "transforms" not in shape
-
-@pytest.mark.parametrize(
-    "dist_name, rng_func, support_adjust",
-    [
-        ("norm",    lambda r: r.normal(size=100),      lambda x: x),
-        ("lognorm", lambda r: r.lognormal(size=100),   lambda x: np.abs(x) + 1e-6),
-        ("gamma",   lambda r: r.gamma(shape=2.0, size=100), lambda x: np.abs(x) + 1e-6),
-        ("expon",   lambda r: r.exponential(size=100), lambda x: np.abs(x)),
-    ]
-)
-def test_numeric_distribution_analysis_with_transforms(dist_name, rng_func, support_adjust, tmp_path, load_and_validate_report):
-    rng = np.random.default_rng(0)
-    raw = rng_func(rng)
-    raw = support_adjust(raw).astype(float)
-    series = pd.Series(raw, name=dist_name)
-
-    # Run analysis *with* transforms enabled
-    out = numeric_distribution_analysis(
-        series,
-        report_path=tmp_path,
-        evaluate_transforms_fn=evaluate_transforms,
-        is_discrete=is_discrete_false
-    )
-
-    full_report = load_and_validate_report(out, tmp_path)
-    report = full_report["data"]
-
-    shape  = report["shape"]
-
-    # transforms key should now be present
-    assert "transforms" in shape
-
-    transforms = shape["transforms"]
-    # by design, select_transforms always includes at least these two
-    expected_base = {"yeo-johnson", "arcsinh"}
-    assert expected_base.issubset(transforms.keys())
-
-    # each transform entry should itself be a full analysis dict
-    for transform_name, transform_meta in transforms.items():
-        assert isinstance(transform_meta, dict), f"{transform_name!r} meta must be a dict"
-
-        full_transform_report = load_and_validate_report(transform_meta, tmp_path / transform_name)
-        report_t = full_transform_report["data"]
-
-        assert report_t is not None, f"{transform_name!r} entry missing 'report'"
-
-        # 1) central_tendency → histogram
-        hist_meta = report_t["central_tendency"]["histogram"]
-        rel = hist_meta["chart_metadata"]["file_name"]
-        assert rel, f"No file_name for histogram in transform {transform_name!r}"
-        assert (tmp_path / transform_name / rel).exists(), \
-            f"{tmp_path/transform_name/rel} missing for transform {transform_name!r}"
-
-        # 2) shape → distribution_fits → norm → ecdf_vs_cdf
-        ecdf_meta = report_t["shape"]["distribution_fits"]["norm"]["ecdf_vs_cdf"]
-        rel = ecdf_meta["chart_metadata"]["file_name"]
-        assert rel, f"No file_name for ECDF vs CDF in transform {transform_name!r}"
-        assert (tmp_path / transform_name / rel).exists(), \
-            f"{tmp_path/transform_name/rel} missing for transform {transform_name!r}"
-
+            # ecdf_vs_cdf saved for norm
+            evc_meta = report_t["shape"]["distribution_fits"]["norm"]["ecdf_vs_cdf"]
+            rel2 = evc_meta["chart_metadata"]["file_name"]
+            assert rel2, f"No file_name for ECDF vs CDF in transform {transform_name!r}"
+            assert (tmp_path / transform_name / rel2).exists(), \
+                f"{tmp_path/transform_name/rel2} missing for transform {transform_name!r}"

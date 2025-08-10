@@ -156,6 +156,7 @@ def test_univariate_numeric_analysis_report_data_driven(
         }
         assert_plot_metadata(fits[dist_name]["qq"], qq_exp, top_dir)
 
+
 @pytest.mark.parametrize(
     "make_input, exc, pattern",
     [

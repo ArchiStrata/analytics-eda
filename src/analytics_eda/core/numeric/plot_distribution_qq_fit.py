@@ -101,6 +101,10 @@ def plot_distribution_qq_fit(
                 'min': float
             },
             'inferential_stats': {
+                'params': {
+                    'alpha': float
+                    'distribution_name': str
+                }
                 # only present if distribution_name == 'norm'
                     'shapiro': {...},               # present if n < 50
                     'dagostino_pearson': {...},     # present if n ≥ 20
@@ -112,9 +116,7 @@ def plot_distribution_qq_fit(
                 'xlabel': str,
                 'ylabel': str,
                 'data_source': str or None,
-                'file_name': str or None,
-                'distribution': str,
-                'alpha': float
+                'file_name': str or None
             }
         }
     """
@@ -151,7 +153,8 @@ def plot_distribution_qq_fit(
             'descriptive_stats': empty_stats,
             'inferential_stats': {
                 'params': {
-                    'alpha': alpha
+                    'alpha': alpha,
+                    'distribution_name': distribution_name
                 }
             },
             'chart_metadata': {
@@ -198,7 +201,8 @@ def plot_distribution_qq_fit(
 
     tests = {}
     tests['params'] = {
-        'alpha': alpha
+        'alpha': alpha,
+        'distribution_name': distribution_name
     }
 
     # normality tests per size rules
@@ -304,7 +308,6 @@ def plot_distribution_qq_fit(
             'xlabel': xlabel,
             'ylabel': ylabel,
             'data_source': data_source,
-            'file_name': file_name,
-            'distribution': distribution_name
+            'file_name': file_name
         }
     }
