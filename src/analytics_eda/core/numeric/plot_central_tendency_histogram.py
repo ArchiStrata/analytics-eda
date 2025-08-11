@@ -11,30 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
+from dataclasses import dataclass
+from typing import Dict, Any, Optional, Tuple, List
 import math
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from ..utils.build_chart_title import build_chart_title
-from .validate_numeric_named_series import validate_numeric_named_series
+from ..utils.base_plot import BasePlot, PlotContext
+from .validate_numeric_named_series import NumericSeriesMixin
 
-def plot_central_tendency_histogram(
-    series: pd.Series,
-    bins: int = None,
-    title_template: str = "Distribution of {name}{modifiers}: Central Tendency",
-    name: str = None,
-    filter_desc: str = None,
-    transform_desc: str = None,
-    xlabel: str = "Value",
-    ylabel: str = "Count",
-    data_source: str = None,
-    figsize: tuple = (10, 6),
-    save_path: str = None,
-    file_name: str = None
-):
+@dataclass
+class CentralTendencyHistContext(PlotContext):
+    title_template: str = "Distribution of {name}{modifiers}: Central Tendency"
+    xlabel: str = "Value"
+    ylabel: str = "Count"
+    figsize: Tuple[int, int] = (10, 6)
+
+    # plot-specific knob
+    bins: Optional[int] = None  # if None, use sqrt rule (ceil(sqrt(n)))
+
+class CentralTendencyHistogramPlot(NumericSeriesMixin, BasePlot):
     """
     Generate a histogram that effectively communicates the central tendency of a numeric variable.
 
@@ -47,196 +45,134 @@ def plot_central_tendency_histogram(
         - Optionally saves the figure to disk.
         - Returns descriptive statistics and chart metadata for reporting or reproducibility.
 
-    How:
-        - Operates on a cleaned copy of the data (missing values dropped).
-        - Uses the Square-Root Choice rule to determine bin count when unspecified. ceil(sqrt(n)).
-        - Computes central tendency statistics and overlays them on the histogram.
-        - Allows customization of chart titles, labels, data source, and export options.
-
-    Parameters
-    ----------
-    series : pd.Series
-        Numeric dataset to plot. Missing values will be dropped.
-    bins : int or sequence, optional
-        Number of histogram bins or explicit bin edges. Defaults to Square-Root Choice ceil(sqrt(n)).
-    title_template: A Python format-string with placeholders:
-      - {name}:        series name or label
-      - {modifiers}:   combined filter/transform text, empty if none
-    name:                Optional override for series.name
-    filter_desc:         e.g. "filtered by New York"
-    transform_desc:      e.g. "log-transformed"
-    xlabel : str, default="Value"
-        Label for the x-axis.
-    ylabel : str, default="Count"
-        Label for the y-axis.
-    data_source : str, optional
-        Text annotation to show the source of the data in the chart.
-    figsize : tuple, default=(10, 6)
-        Width and height of the figure in inches. Useful for layout control.
-    save_path : str or Path, optional
-        Directory where the plot image will be saved. Created if it doesn't exist.
-    file_name : str, optional
-        Name of the image file (e.g., "histogram.png"). Must be used with `save_path`.
-
-    Returns
-    -------
-    metadata : dict
-        {
-            'descriptive_stats': {
-                'params': {
-                    'bins': int,
-                    'mode_method': str # series.mode or histogram_bin_centers
-                },
-                'n': int,                        # see table below
-                'mean': float,
-                'median': float,
-                'modes': list of float
-            },
-            'chart_metadata': {
-                'title': str,
-                'xlabel': str,
-                'ylabel': str,
-                'data_source': str or None,
-                'bins': int or sequence,
-                'file_name': str or None
-            }
-        }
-
-    Key Descriptive Statistics
-    --------------------------
-    | Statistic | What it tells you                                            |
-    |-----------|--------------------------------------------------------------|
-    | `n`       | Sample size – number of observations                         |
-    | `mean`    | Arithmetic average – balance point of the distribution       |
-    | `median`  | 50th percentile – midpoint, robust to outliers               |
-    | `modes`   | Most frequent value(s)                                       |
-    """
-    validate_numeric_named_series(series)
-    series_clean = series.copy().dropna()
-    n = series_clean.size
-
-    # Build chart title
-    title = build_chart_title(
-        name=name,
-        series=series,
-        filter_desc=filter_desc,
-        transform_desc=transform_desc,
-        title_template=title_template
-    )
-
-    # Determine bins via Square-Root choice if not specified
-    if bins is None:
-        bins = math.ceil(math.sqrt(n))
-
-    # If no data after cleaning, return defaults
-    if n == 0:
-        return {
-            'descriptive_stats': {
-                'params': {
-                    'bins': bins,
-                    'mode_method': None
-                },
-                'n': 0,
-                'mean': np.nan,
-                'median': np.nan,
-                'modes': []
-            },
-            'chart_metadata': {
-                'title': title,
-                'xlabel': xlabel,
-                'ylabel': ylabel,
-                'data_source': data_source,
-                'bins': bins,
-                'file_name': file_name
-            }
-        }
-
-    # Compute descriptive statistics
-    mean = series_clean.mean()
-    median = series_clean.median()
-
-    raw_modes = series_clean.mode().tolist()
-    if len(raw_modes) == 1:
-        # A clear single mode in the data → use it
-        mode_vals = raw_modes
-    else:
-        # Ambiguous or multimodal → use histogram‐based bin centers
-        # Calculate mode based on most frequent bins
-        counts, edges = np.histogram(series_clean, bins=bins, density=False)
-        first_top = np.argmax(counts)
-        max_count = counts[first_top]
-        top_bins = np.where(counts == max_count)[0]
-        mode_vals = [
-            0.5 * (edges[i] + edges[i+1])
-            for i in top_bins
-        ]
-
-    # Prepare plot
-    sns.set_palette("colorblind")
-    fig, ax = plt.subplots(figsize=figsize)
-    sns.histplot(series_clean, bins=bins, ax=ax)
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-
-    # Plot mean and median lines
-    ax.axvline(mean, color='black', linestyle='--', label=f"Mean = {mean:.2f}")
-    ax.axvline(median, color='firebrick', linestyle='-.', label=f"Median = {median:.2f}")
-
-    # Plot mode lines
-    for i, center in enumerate(mode_vals, start=1):
-        label = "Mode" if len(mode_vals) == 1 else f"Mode {i}"
-        ax.axvline(
-            x=center,
-            color='green',
-            linestyle=':',
-            linewidth=1,
-            label=f"{label} ≈ {center:.2f}"
-        )
-
-    # Optional data source annotation
-    if data_source:
-        fig.text(
-            0.01, 0.01, f"Source: {data_source}",
-            ha='left', va='bottom',
-            fontsize='small', color='gray'
-        )
-
-    # Sample size annotation in bottom-right
-    fig.text(
-        0.99, 0.01, f"n = {n}",
-        ha='right', va='bottom',
-        fontsize='small', color='gray'
-    )
-
-    ax.legend()
-
-    # Optional save
-    if save_path:
-        if file_name is None:
-            file_name = f"{title}.png"
-        os.makedirs(save_path, exist_ok=True)
-        abs_path = os.path.join(save_path, file_name)
-        fig.savefig(abs_path, bbox_inches='tight')
-
-    # Return metadata
-    return {
-        'descriptive_stats': {
-            'params': {
-                'bins': bins,
-                'mode_method': ("series.mode" if len(raw_modes) == 1 else "histogram_bin_centers")
-            },
-            'n': n,
-            'mean': mean,
-            'median': median,
-            'modes': mode_vals
+    Returns BasePlot.run() schema:
+      {
+        "descriptive_stats": {
+          "params": {"bins": int, "mode_method": str},
+          "n": int, "mean": float, "median": float, "modes": List[float]
         },
-        'chart_metadata': {
-            'title': title,
-            'xlabel': xlabel,
-            'ylabel': ylabel,
-            'data_source': data_source,
-            'bins': bins,
-            'file_name': file_name
+        "inferential_stats": {},
+        "chart_metadata": {..., "bins": int}
+      }
+    """
+
+    # (2) default when empty
+    def default_descriptive(self) -> Dict[str, Any]:
+        # decide bins using sqrt rule with n=0 -> 0 bins (or keep None)
+        chosen_bins = self.ctx.bins if self.ctx.bins is not None else 0
+        return {
+            "params": {"bins": int(chosen_bins), "mode_method": None},
+            "n": 0,
+            "mean": float("nan"),
+            "median": float("nan"),
+            "modes": [],
         }
-    }
+
+    # (3) descriptive stats (+ payload for drawing)
+    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+        n = int(s.size)
+        # Determine bins (ctx override > sqrt rule)
+        chosen_bins = self.ctx.bins if self.ctx.bins is not None else (int(math.ceil(math.sqrt(n))) if n > 0 else 0)
+
+        mean = float(s.mean()) if n else float("nan")
+        median = float(s.median()) if n else float("nan")
+
+        mode_method: Optional[str]
+        modes: List[float]
+
+        if n:
+            raw_modes = s.mode().tolist()
+            if len(raw_modes) == 1:
+                # A clear single mode in the data → use it
+                modes = [float(raw_modes[0])]
+                mode_method = "series.mode"
+            else:
+                # Ambiguous or multimodal → use histogram‐based bin centers
+                # Calculate mode based on most frequent bins
+            # use at least 1 bin when computing histogram; pass through edges if provided
+                hist_bins = chosen_bins if (isinstance(chosen_bins, (list, tuple, np.ndarray)) and len(chosen_bins) > 0) \
+                            else (max(int(chosen_bins), 1) if isinstance(chosen_bins, int) else 1)
+                counts, edges = np.histogram(s.to_numpy(), bins=hist_bins, density=False)
+                top = int(np.argmax(counts))
+                max_count = counts[top]
+                top_bins = np.where(counts == max_count)[0]
+                modes = [float(0.5 * (edges[i] + edges[i + 1])) for i in top_bins]
+                mode_method = "histogram_bin_centers"
+        else:
+            modes = []
+            mode_method = None
+
+        return {
+            "params": {"bins": chosen_bins, "mode_method": mode_method},
+            "n": n,
+            "mean": mean,
+            "median": median,
+            "modes": modes,
+        }
+
+    # (4) inferential: none
+    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        return {}
+
+    # (5) draw (also set chart_metadata['bins'] so the wrapper output matches legacy)
+    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
+        sns.set_palette("colorblind")
+
+        title = chart_metadata["title"]
+        xlabel = chart_metadata["xlabel"] or "Value"
+        ylabel = chart_metadata["ylabel"] or "Count"
+
+        chosen_bins = desc["params"]["bins"]
+        chart_metadata["bins"] = chosen_bins  # ensure returned metadata includes final bins
+
+        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+
+        if isinstance(chosen_bins, (list, tuple, np.ndarray)):
+            bins_arg = chosen_bins if len(chosen_bins) > 0 else 1
+        elif isinstance(chosen_bins, int):
+            bins_arg = max(chosen_bins, 1)
+        else:
+            bins_arg = 1
+        sns.histplot(s, bins=bins_arg, ax=ax)
+
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+
+        # Lines: mean & median
+        if desc["n"] > 0:
+            ax.axvline(desc["mean"], color="black", linestyle="--", label=f"Mean = {desc['mean']:.2f}")
+            ax.axvline(desc["median"], color="firebrick", linestyle="-.", label=f"Median = {desc['median']:.2f}")
+
+            # Modes
+            for i, center in enumerate(desc["modes"], start=1):
+                label = "Mode" if len(desc["modes"]) == 1 else f"Mode {i}"
+                ax.axvline(center, color="green", linestyle=":", linewidth=1, label=f"{label} ≈ {center:.2f}")
+
+        # Sample size footer (BasePlot will also add data_source if present)
+        fig.text(0.99, 0.01, f"n = {desc['n']}", ha="right", va="bottom", fontsize="small", color="gray")
+
+        ax.legend()
+        return fig, ax
+
+
+def plot_central_tendency_histogram(
+    series: pd.Series,
+    /,
+    *,
+    ctx: Optional[CentralTendencyHistContext] = None,
+    **kwargs: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Back-compat wrapper that delegates to the class-based implementation.
+    - If `ctx` is provided, it's used (optionally overridden by kwargs).
+    - Otherwise we construct CentralTendencyHistContext(**kwargs).
+    """
+    if ctx is None:
+        ctx = CentralTendencyHistContext(**kwargs)
+    else:
+        for k, v in kwargs.items():
+            setattr(ctx, k, v)
+
+    plot = CentralTendencyHistogramPlot(ctx)
+    return plot.run(series)

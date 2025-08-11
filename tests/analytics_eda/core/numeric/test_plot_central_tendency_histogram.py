@@ -37,7 +37,6 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "xlabel": "Value",
                     "ylabel": "Count",
                     "data_source": None,
-                    "bins": 0,
                     "file_name": None,
                 },
                 "descriptive_stats": {
