@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import pandas as pd
 import pytest
@@ -22,12 +21,12 @@ from analytics_eda.core.numeric import plot_distribution_ecdf_vs_cdf
 def test_validate_numeric_named_series_errors(series_factory, expected_exc, match):
     obj = series_factory()
     with pytest.raises(expected_exc, match=match):
-        plot_distribution_ecdf_vs_cdf(obj, "norm")
+        plot_distribution_ecdf_vs_cdf(obj, distribution_name="norm")
 
 def test_invalid_distribution_name_raises_value_error():
     s = pd.Series([1, 2, 3], dtype=float, name="x")
     with pytest.raises(ValueError):
-        plot_distribution_ecdf_vs_cdf(s, "invalid")
+        plot_distribution_ecdf_vs_cdf(s, distribution_name="invalid")
 
 
 @pytest.mark.parametrize(
