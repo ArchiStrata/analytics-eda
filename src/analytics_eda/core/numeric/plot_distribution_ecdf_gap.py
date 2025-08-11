@@ -11,29 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
+from dataclasses import dataclass
+from typing import Dict, Any, Optional, Tuple
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from .validate_numeric_named_series import validate_numeric_named_series
-from ..utils.build_chart_title import build_chart_title
+from ..utils.base_plot import BasePlot, PlotContext
+from .validate_numeric_named_series import NumericSeriesMixin
 
-def plot_distribution_ecdf_gap(
-    series: pd.Series,
-    title_template: str = "ECDF Gap Analysis of {name}{modifiers}",
-    name: str = None,
-    filter_desc: str = None,
-    transform_desc: str = None,
-    xlabel: str = "Value",
-    ylabel: str = "ECDF",
-    data_source: str = None,
-    threshold: float = None,
-    figsize: tuple = (10, 6),
-    save_path: str = None,
-    file_name: str = None
-):
+@dataclass
+class ECDFGapContext(PlotContext):
+    title_template: str = "ECDF Gap Analysis of {name}{modifiers}"
+    xlabel: str = "Value"
+    ylabel: str = "ECDF"
+    figsize: Tuple[int, int] = (10, 6)
+
+    # plot-specific knobs
+    threshold: Optional[float] = None
+
+class ECDFGapNumericPlot(NumericSeriesMixin, BasePlot):
     """
     Generate an Empirical Cumulative Distribution Function (ECDF) plot that highlights and quantifies gaps in a numeric distribution.
 
@@ -54,220 +52,196 @@ def plot_distribution_ecdf_gap(
         - Optionally annotates data source, and saves the figure.
         - Returns both the gap metrics and chart metadata.
 
-    How:
-        - Cleans the data by dropping missing values.
-        - Uses NumPy to sort unique values and compute diffs.
-        - Builds the ECDF via a step plot over all observations.
-        - Draws an arrow between the two values that form the largest gap.
-        - Places a stats textbox in the plot corner.
-        - Supports layout via figsize, and image export via save_path/file_name.
-
-    Parameters
-    ----------
-    series : pd.Series
-        Numeric dataset to analyze. Missing values will be dropped.
-    title : str, default="ECDF with Gap Analysis"
-        Plot title.
-    xlabel : str, default="Value"
-        Label for the x-axis.
-    ylabel : str, default="ECDF"
-        Label for the y-axis.
-    data_source : str, optional
-        Text annotation for the data source (bottom-left).
-    threshold : float, optional
-        Gap size threshold for counting large gaps.
-    figsize : tuple, default=(10, 6)
-        Figure size in inches.
-    save_path : str or Path, optional
-        Directory to save the plot image (created if needed).
-    file_name : str, optional
-        Filename (with extension) for saving. Requires `save_path`.
-
-    Returns
-    -------
-    metadata : dict
-        {
-            'descriptive_stats': {
-                'params': {
-                    'threshold': float or None,
-                }
-                'n': int,                    # number of observations
-                'n_unique': int,             # number of distinct values
-                'gaps': list of float,       # all raw gap sizes g_i
-                'max_gap': float,            # largest gap size
-                'median_gap': float,         # median gap size
-                'pct10_gap': float,          # 10th percentile of gaps
-                'pct50_gap': float,          # 50th percentile (median) of gaps
-                'pct90_gap': float,          # 90th percentile of gaps
-                'n_gaps_above_thr': int or None,  # count of gaps > threshold
-                'total_gap_prop': float,     # sum(gaps)/(max-min)
-                'max_gap_loc': float         # midpoint of largest gap
-            },
-            'chart_metadata': {
-                'title': str,
-                'xlabel': str,
-                'ylabel': str,
-                'data_source': str or None,
-                'file_name': str or None
-            }
-        }
-
-    Key Statistics
-    --------------
-    | Statistic            | What it tells you                                                         |
-    |----------------------|---------------------------------------------------------------------------|
-    | `gaps`               | All raw spacings between consecutive unique values                        |
-    | `max_gap`            | Largest single hole in your data range                                    |
-    | `median_gap`         | Typical gap size—indicates clumping vs. even spacing                      |
-    | `gap percentiles`    | P10, P50, P90 show distribution of gap sizes (small vs. extreme holes)    |
-    | `n_gaps_above_thr`   | Number of gaps exceeding a domain-relevant threshold                      |
-    | `total_gap_prop`     | Fraction of the overall range with no observations                        |
-    | `max_gap_loc`        | Midpoint location of the largest gap—where the biggest hole sits          |
+    Returns BasePlot.run() schema:
+      {
+        "descriptive_stats": {
+          "params": {"threshold": float|None},
+          "n","n_unique","gaps","max_gap","median_gap",
+          "pct10_gap","pct50_gap","pct90_gap",
+          "n_gaps_above_thr","total_gap_prop","max_gap_loc"
+        },
+        "inferential_stats": {},
+        "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
+      }
     """
-    validate_numeric_named_series(series)
-    clean = series.copy().dropna().sort_values()
 
-    title = build_chart_title(
-                    name=name, series=series,
-                    filter_desc=filter_desc,
-                    transform_desc=transform_desc,
-                    title_template=title_template
-                )
-    
-    # Early return if no valid data
-    if clean.size == 0:
+    # Chart metadata mirrors legacy keys
+    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
+        from ..utils.build_chart_title import build_chart_title
+        title = build_chart_title(
+            name=self.ctx.name,
+            series=series,
+            filter_desc=self.ctx.filter_desc,
+            transform_desc=self.ctx.transform_desc,
+            title_template=self.ctx.title_template,
+        )
         return {
-            'descriptive_stats': {
-                'params': {'threshold': threshold},
-                'n': 0,
-                'n_unique': 0,
-                'gaps': [],
-                'max_gap': np.nan,
-                'median_gap': np.nan,
-                'pct10_gap': np.nan,
-                'pct50_gap': np.nan,
-                'pct90_gap': np.nan,
-                'n_gaps_above_thr': None if threshold is None else 0,
-                'total_gap_prop': np.nan,
-                'max_gap_loc': np.nan
-            },
-            'chart_metadata': {
-                'title': title,
-                'xlabel': xlabel,
-                'ylabel': ylabel,
-                'data_source': data_source,
-                'file_name': file_name
-            }
+            "title": title,
+            "xlabel": self.ctx.xlabel,
+            "ylabel": self.ctx.ylabel,
+            "data_source": self.ctx.data_source,
+            "file_name": self.ctx.file_name,
         }
 
-    # Compute descriptive stats
-    n = clean.size
-    unique_vals = clean.unique()
-    n_unique = unique_vals.size
-    if n_unique >= 2:
-        gaps = np.diff(unique_vals)
-        gaps_list = gaps.tolist()
-        max_gap = float(gaps.max())
-        median_gap = float(np.median(gaps))
-        pct10_gap = float(np.percentile(gaps, 10))
-        pct50_gap = float(np.percentile(gaps, 50))
-        pct90_gap = float(np.percentile(gaps, 90))
-        total_gap_prop = float(gaps.sum() / (unique_vals[-1] - unique_vals[0]))
-        # location of max gap midpoint
-        idx = int(np.argmax(gaps))
-        max_gap_loc = float((unique_vals[idx] + unique_vals[idx+1]) / 2)
-        # threshold count
-        n_gaps_above = int((gaps > threshold).sum()) if threshold is not None else None
-    else:
-        # not enough distinct values
-        gaps = np.array([])
-        gaps_list = []
-        max_gap = median_gap = pct10_gap = pct50_gap = pct90_gap = total_gap_prop = max_gap_loc = np.nan
-        n_gaps_above = 0 if threshold is not None else None
+    # (2) default when empty
+    def default_descriptive(self) -> Dict[str, Any]:
+        return {
+            "params": {"threshold": self.ctx.threshold},
+            "n": 0,
+            "n_unique": 0,
+            "gaps": [],
+            "max_gap": float("nan"),
+            "median_gap": float("nan"),
+            "pct10_gap": float("nan"),
+            "pct50_gap": float("nan"),
+            "pct90_gap": float("nan"),
+            "n_gaps_above_thr": (0 if self.ctx.threshold is not None else None),
+            "total_gap_prop": float("nan"),
+            "max_gap_loc": float("nan")
+        }
 
-    # Plot
-    sns.set_palette("colorblind")
-    fig, ax = plt.subplots(figsize=figsize)
+    # (3) descriptive stats (+ payload for drawing)
+    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+        clean = s.sort_values()
+        n = int(clean.size)
+        unique_vals = clean.unique()
+        n_unique = int(unique_vals.size)
 
-    # Build ECDF
-    ecdf_x = clean.values
-    ecdf_y = np.arange(1, n+1) / n if n > 0 else np.array([])
-    if n > 0:
-        ax.step(ecdf_x, ecdf_y, where='post', label='ECDF')
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+        if n_unique >= 2:
+            gaps = np.diff(unique_vals)
+            gaps_list = gaps.tolist()
+            max_gap = float(gaps.max())
+            median_gap = float(np.median(gaps))
+            pct10_gap = float(np.percentile(gaps, 10))
+            pct50_gap = float(np.percentile(gaps, 50))
+            pct90_gap = float(np.percentile(gaps, 90))
 
-    # Annotate largest gap
-    if n_unique >= 2 and not np.isnan(max_gap_loc):
-        # ECDF level at value just before gap
-        count_le = np.searchsorted(ecdf_x, unique_vals[idx], side='right')
-        y_level = count_le / n
-        ax.annotate(
-            "", xy=(unique_vals[idx], y_level), xytext=(unique_vals[idx+1], y_level),
-            arrowprops=dict(arrowstyle='<->', color='red')
+            denom = float(unique_vals[-1] - unique_vals[0])
+            total_gap_prop = float(gaps.sum() / denom) if denom != 0 else float("nan")
+
+            # location of max gap midpoint
+            max_idx = int(np.argmax(gaps))
+            max_gap_loc = float((unique_vals[max_idx] + unique_vals[max_idx + 1]) / 2)
+
+            thr = self.ctx.threshold
+            n_gaps_above = int((gaps > thr).sum()) if thr is not None else None
+        else:
+            # not enough distinct values
+            gaps_list = []
+            max_gap = median_gap = pct10_gap = pct50_gap = pct90_gap = total_gap_prop = max_gap_loc = float("nan")
+            max_idx = None
+            n_gaps_above = 0 if self.ctx.threshold is not None else None
+
+        return {
+            "params": {"threshold": self.ctx.threshold},
+            "n": n,
+            "n_unique": n_unique,
+            "gaps": gaps_list,
+            "max_gap": max_gap,
+            "median_gap": median_gap,
+            "pct10_gap": pct10_gap,
+            "pct50_gap": pct50_gap,
+            "pct90_gap": pct90_gap,
+            "n_gaps_above_thr": n_gaps_above,
+            "total_gap_prop": total_gap_prop,
+            "max_gap_loc": max_gap_loc,
+            # payload for draw:
+            "unique_vals": unique_vals,
+            "max_gap_idx": max_idx,
+        }
+
+    # (4) no inferential stats
+    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        return {}
+
+    # (5) draw
+    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
+        sns.set_palette("colorblind")
+
+        title = chart_metadata["title"]
+        xlabel = chart_metadata["xlabel"] or "Value"
+        ylabel = chart_metadata["ylabel"] or "ECDF"
+
+        # ECDF from full cleaned series (not just uniques)
+        clean = s.dropna().sort_values()
+        n = desc["n"]
+        ecdf_x = clean.values
+        ecdf_y = (np.arange(1, n + 1) / n) if n > 0 else np.array([])
+
+        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+        if n > 0:
+            ax.step(ecdf_x, ecdf_y, where="post", label="ECDF")
+
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+
+        # Annotate largest gap
+        unique_vals = desc["unique_vals"]
+        idx = desc["max_gap_idx"]
+        if idx is not None:
+            # ECDF level just before the gap
+            count_le = int(np.searchsorted(ecdf_x, unique_vals[idx], side="right"))
+            y_level = count_le / n if n > 0 else 0.0
+
+            ax.annotate(
+                "",
+                xy=(unique_vals[idx], y_level),
+                xytext=(unique_vals[idx + 1], y_level),
+                arrowprops=dict(arrowstyle="<->", color="red"),
+            )
+            ax.text(
+                float((unique_vals[idx] + unique_vals[idx + 1]) / 2),
+                y_level + 0.02,
+                f"Max gap = {desc['max_gap']:.2f}",
+                ha="center",
+                va="bottom",
+                color="red",
+                fontsize="small",
+            )
+
+        # Stats textbox
+        stats_text = (
+            f"n = {desc['n']}\n"
+            f"n_unique = {desc['n_unique']}\n"
+            f"max_gap = {desc['max_gap']:.2f}\n"
+            f"median_gap = {desc['median_gap']:.2f}\n"
+            f"P10 = {desc['pct10_gap']:.2f}, P50 = {desc['pct50_gap']:.2f}, P90 = {desc['pct90_gap']:.2f}\n"
+            f"total_gap_prop = {desc['total_gap_prop']:.2f}"
+            + (f"\n(gaps > {self.ctx.threshold}) = {desc['n_gaps_above_thr']}" if self.ctx.threshold is not None else "")
         )
         ax.text(
-            max_gap_loc, y_level + 0.02,
-            f"Max gap = {max_gap:.2f}",
-            ha='center', va='bottom', color='red', fontsize='small'
+            0.98,
+            0.02,
+            stats_text,
+            transform=ax.transAxes,
+            ha="right",
+            va="bottom",
+            fontsize="small",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.5),
         )
 
-    # Stats textbox
-    stats_text = (
-        f"n = {n}\n"
-        f"n_unique = {n_unique}\n"
-        f"max_gap = {max_gap:.2f}\n"
-        f"median_gap = {median_gap:.2f}\n"
-        f"P10 = {pct10_gap:.2f}, P50 = {pct50_gap:.2f}, P90 = {pct90_gap:.2f}\n"
-        f"total_gap_prop = {total_gap_prop:.2f}\n"
-        + (f"gaps > {threshold} = {n_gaps_above}" if threshold is not None else "")
-    )
-    ax.text(
-        0.98, 0.02, stats_text,
-        transform=ax.transAxes, ha='right', va='bottom',
-        fontsize='small', bbox=dict(boxstyle='round', facecolor='white', alpha=0.5)
-    )
+        ax.legend()
+        return fig, ax
 
-    # Data source
-    if data_source:
-        fig.text(
-            0.01, 0.01, f"Source: {data_source}",
-            ha='left', va='bottom', fontsize='small', color='gray'
-        )
+def plot_distribution_ecdf_gap(
+    series: pd.Series,
+    /,
+    *,
+    ctx: Optional[ECDFGapContext] = None,
+    **kwargs: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Back-compat wrapper that delegates to the class-based implementation.
+    - If `ctx` is provided, it's used (optionally overridden by kwargs).
+    - Otherwise we construct ECDFGapContext(**kwargs).
+    """
+    if ctx is None:
+        ctx = ECDFGapContext(**kwargs)
+    else:
+        for k, v in kwargs.items():
+            setattr(ctx, k, v)
 
-    ax.legend()
+    plot = ECDFGapNumericPlot(ctx)
+    return plot.run(series)
 
-    # Optional save
-    if save_path:
-        if file_name is None:
-            file_name = f"{title}.png"
-        os.makedirs(save_path, exist_ok=True)
-        abs_path = os.path.join(save_path, file_name)
-        fig.savefig(abs_path, bbox_inches='tight')
-
-    return {
-        'descriptive_stats': {
-            'params': {
-                'threshold': threshold,
-            },
-            'n': n,
-            'n_unique': n_unique,
-            'gaps': gaps_list,
-            'max_gap': max_gap,
-            'median_gap': median_gap,
-            'pct10_gap': pct10_gap,
-            'pct50_gap': pct50_gap,
-            'pct90_gap': pct90_gap,
-            'n_gaps_above_thr': n_gaps_above,
-            'total_gap_prop': total_gap_prop,
-            'max_gap_loc': max_gap_loc
-        },
-        'chart_metadata': {
-            'title': title,
-            'xlabel': xlabel,
-            'ylabel': ylabel,
-            'data_source': data_source,
-            'file_name': file_name
-        }
-    }

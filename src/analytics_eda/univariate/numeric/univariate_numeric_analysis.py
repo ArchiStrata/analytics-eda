@@ -86,6 +86,8 @@ def univariate_numeric_analysis(
     # Missing Data Analysis
     missing_data = missing_data_analysis(series_copy, report_path, report_log_id=report_log_id)
 
+    # TODO: check for strings in numeric series. requires removing the initial full validate_numeric_named_series check.
+
     # Cardinality Analysis
     plot_cardinality_barchart_meta = plot_cardinality_barchart(series_copy, data_source=data_source, save_path=report_path)
     is_discrete = plot_cardinality_barchart_meta['descriptive_stats']['is_discrete']
