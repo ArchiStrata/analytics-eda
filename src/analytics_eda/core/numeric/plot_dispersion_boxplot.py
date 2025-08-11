@@ -11,28 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import numpy as np
+from dataclasses import dataclass
+from typing import Dict, Any, Optional, Tuple
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from .validate_numeric_named_series import validate_numeric_named_series
-from ..utils.build_chart_title import build_chart_title
+from ..utils.base_plot import BasePlot, PlotContext
+from .validate_numeric_named_series import NumericSeriesMixin
 
-def plot_dispersion_boxplot(
-    series: pd.Series,
-    title_template: str = "Dispersion of {name}{modifiers} (IQR & Outliers)",
-    name: str = None,
-    filter_desc: str = None,
-    transform_desc: str = None,
-    ylabel: str = "Value",
-    data_source: str = None,
-    figsize: tuple = (8, 6),
-    std_outlier_multiplier: float = 4.0,
-    save_path: str = None,
-    file_name: str = None
-):
+@dataclass
+class DispersionBoxplotContext(PlotContext):
+    title_template: str = "Dispersion of {name}{modifiers} (IQR & Outliers)"
+    ylabel: str = "Value"
+    figsize: Tuple[int, int] = (8, 6)
+
+    # plot-specific knobs
+    std_outlier_multiplier: float = 4.0
+
+class DispersionBoxplotNumericPlot(NumericSeriesMixin, BasePlot):
     """
     Generate a boxplot (with violin silhouette) that effectively communicates
     the dispersion of a numeric variable, flagging extreme values and returning
@@ -49,288 +46,209 @@ def plot_dispersion_boxplot(
         - Computes and returns key dispersion metrics: standard deviation, variance, range, MAD (mean absolute deviation), coefficient of variation, and select percentiles.
         - Optionally includes data source annotation, saves the plot, and returns metadata for reproducibility.
 
-    How:
-        - Cleans the data by dropping missing values.
-        - Uses seaborn to generate a vertical boxplot with colorblind-friendly styling.
-        - Adds annotated statistics to the chart to support effective data storytelling.
-        - Allows layout customization via figsize and image export through save_path and file_name.
-
-    Parameters
-    ----------
-    series : pd.Series
-        Numeric dataset to plot. Missing values will be dropped.
-    title_template: A Python format-string with placeholders:
-      - {name}:        series name or label
-      - {modifiers}:   combined filter/transform text, empty if none
-    name:                Optional override for series.name
-    filter_desc:         e.g. "filtered by New York"
-    transform_desc:      e.g. "log-transformed"
-    ylabel : str, default="Value"
-        Label for the y-axis.
-    data_source : str, optional
-        Text annotation to show the source of the data in the chart.
-    figsize : tuple, default=(8, 6)
-        Width and height of the figure in inches.
-    std_outlier_multiplier : float, default=4.0
-        How many σ away from the mean to flag extremes.
-    save_path : str or Path, optional
-        Directory where the plot image will be saved. Created if it doesn't exist.
-    file_name : str, optional
-        Name of the image file (e.g., "boxplot.png"). Must be used with `save_path`.
-
-    Returns
-    -------
-    metadata : dict
-        {
-            'descriptive_stats': {
-                'params': {
-                  'std_outlier_multiplier': float
-                }
-                'n': int,           # see table below
-                'mean': float,
-                'std': float,
-                'var': float,
-                'min': float,
-                'max': float,
-                'range': float,
-                'mad': float,
-                'cv': float,
-                'pct_10': float,
-                'pct_25': float,
-                'pct_75': float,
-                'pct_90': float,
-                'iqr': float,
-                'extreme_lower_count': int,
-                'extreme_upper_count': int
-            },
-            'chart_metadata': {
-                'title': str,
-                'ylabel': str,
-                'data_source': str or None,
-                'file_name': str or None
-            }
-        }
-
-    Key Descriptive Statistics
-    --------------------------
-    | Statistic | What it tells you                                    |
-    |-----------|------------------------------------------------------|
-    | `n`       | Sample size (number of observations)                 |
-    | `std`     | Standard deviation: typical distance from the mean   |
-    | `var`     | Variance: squared average deviation                  |
-    | `min`/`max` | Extremes of the data range                         |
-    | `range`   | Span of values (max − min)                           |
-    | `mad`     | Mean absolute deviation from the mean                |
-    | `cv`      | Coefficient of variation (std / mean)                |
-    | `pct_10`  | 10th percentile: lower‐tail threshold                |
-    | `pct_25`  | 25th percentile (Q1): first quartile                 |
-    | `pct_75`  | 75th percentile (Q3): third quartile                 |
-    | `pct_90`  | 90th percentile: upper‐tail threshold                |
-    | `iqr`     | Interquartile range (IQR)  measures how “wide” the central half of your data is, ignoring the lowest 25 % and highest 25 %. |
+    Returns BasePlot.run() schema:
+      {
+        "descriptive_stats": {
+          "params": {"std_outlier_multiplier": float},
+          "n","mean","std","var","min","max","range","mad","cv",
+          "pct_10","pct_25","pct_75","pct_90","iqr",
+          "extreme_lower_count","extreme_upper_count"
+        },
+        "inferential_stats": {},
+        "chart_metadata": {"title","ylabel","data_source","file_name"}
+      }
     """
-    validate_numeric_named_series(series)
-    series_clean = series.copy().dropna()
-    n = series_clean.size
 
-    title = build_chart_title(
-                    name=name, series=series,
-                    filter_desc=filter_desc,
-                    transform_desc=transform_desc,
-                    title_template=title_template
-                )
-
-    # Early return on empty series
-    if n == 0:
-        empty_stats = {
-            'params': {
-                'std_outlier_multiplier': std_outlier_multiplier
-            },
-            'n': 0,
-            'mean': np.nan,
-            'std': np.nan,
-            'var': np.nan,
-            'min': np.nan,
-            'max': np.nan,
-            'range': np.nan,
-            'mad': np.nan,
-            'cv': np.nan,
-            'pct_10': np.nan,
-            'pct_25': np.nan,
-            'pct_75': np.nan,
-            'pct_90': np.nan,
-            'iqr': np.nan,
-            'extreme_lower_count': 0,
-            'extreme_upper_count': 0
-        }
+    # Match original chart_metadata keys (exclude xlabel)
+    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
+        from ..utils.build_chart_title import build_chart_title  # local import to mirror your utils structure
+        title = build_chart_title(
+            name=self.ctx.name,
+            series=series,
+            filter_desc=self.ctx.filter_desc,
+            transform_desc=self.ctx.transform_desc,
+            title_template=self.ctx.title_template,
+        )
         return {
-            'descriptive_stats': empty_stats,
-            'chart_metadata': {
-                'title': title,
-                'ylabel': ylabel,
-                'data_source': data_source,
-                'file_name': None
-            }
+            "title": title,
+            "ylabel": self.ctx.ylabel,
+            "data_source": self.ctx.data_source,
+            "file_name": self.ctx.file_name,
         }
 
-    # Compute dispersion statistics
-    std = series_clean.std()
-    var = series_clean.var()
-    min_val = series_clean.min()
-    max_val = series_clean.max()
-    range_val = max_val - min_val
-    mad = (series_clean - series_clean.mean()).abs().mean()
-    mean = series_clean.mean()
-    cv = std / mean if mean != 0 else float('nan')
-    pct_10 = series_clean.quantile(0.10)
-    pct_25 = series_clean.quantile(0.25)
-    pct_75 = series_clean.quantile(0.75)
-    pct_90 = series_clean.quantile(0.90)
-    iqr = pct_75 - pct_25
+    # (2) default when empty
+    def default_descriptive(self) -> Dict[str, Any]:
+        return {
+            "params": {"std_outlier_multiplier": float(self.ctx.std_outlier_multiplier)},
+            "n": 0,
+            "mean": float("nan"),
+            "std": float("nan"),
+            "var": float("nan"),
+            "min": float("nan"),
+            "max": float("nan"),
+            "range": float("nan"),
+            "mad": float("nan"),
+            "cv": float("nan"),
+            "pct_10": float("nan"),
+            "pct_25": float("nan"),
+            "pct_75": float("nan"),
+            "pct_90": float("nan"),
+            "iqr": float("nan"),
+            "extreme_lower_count": 0,
+            "extreme_upper_count": 0,
+        }
 
-    # Extreme bounds
-    lower_bound = mean - std_outlier_multiplier * std
-    upper_bound = mean + std_outlier_multiplier * std
-    lower_outliers = series_clean[series_clean < lower_bound]
-    upper_outliers = series_clean[series_clean > upper_bound]
-    n_lower = lower_outliers.size
-    n_upper = upper_outliers.size
+    # (3) descriptive stats
+    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+        n = int(s.size)
+        mean = float(s.mean())
+        std = float(s.std())
+        var = float(s.var())
+        min_val = float(s.min())
+        max_val = float(s.max())
+        range_val = float(max_val - min_val)
+        mad = float((s - s.mean()).abs().mean())
+        cv = float(std / mean) if mean != 0 else float("nan")
+        pct_10 = float(s.quantile(0.10))
+        pct_25 = float(s.quantile(0.25))
+        pct_75 = float(s.quantile(0.75))
+        pct_90 = float(s.quantile(0.90))
+        iqr = float(pct_75 - pct_25)
 
-    # Plot setup
-    sns.set_palette("colorblind")
-    palette = sns.color_palette("colorblind")
-    fig, ax = plt.subplots(figsize=figsize)
+        m = float(self.ctx.std_outlier_multiplier)
+        lower_bound = mean - m * std
+        upper_bound = mean + m * std
+        n_lower = int((s < lower_bound).sum())
+        n_upper = int((s > upper_bound).sum())
 
-    # 1) Thin violin silhouette (behind box)
-    parts = ax.violinplot(
-        series_clean,
-        vert=True,
-        positions=[0],
-        widths=0.8,
-        showmeans=False,
-        showmedians=False,
-        showextrema=False
-    )
-    for pc in parts['bodies']:
-        pc.set_facecolor(palette[0])
-        pc.set_edgecolor(palette[0])
-        pc.set_alpha(0.15)
-        pc.set_linewidth(0.8)
-        pc.set_zorder(1)
+        return {
+            "params": {"std_outlier_multiplier": m},
+            "n": n,
+            "mean": mean,
+            "std": std,
+            "var": var,
+            "min": min_val,
+            "max": max_val,
+            "range": range_val,
+            "mad": mad,
+            "cv": cv,
+            "pct_10": pct_10,
+            "pct_25": pct_25,
+            "pct_75": pct_75,
+            "pct_90": pct_90,
+            "iqr": iqr,
+            "extreme_lower_count": n_lower,
+            "extreme_upper_count": n_upper,
+        }
 
-    # 2) notched boxplot behind
-    ax.boxplot(
-        series_clean,
-        positions=[0],
-        widths=0.4,
-        notch=False,
-        patch_artist=True,
-        showcaps=True,
-        boxprops=dict(facecolor='white', linewidth=1.2),
-        whiskerprops=dict(linewidth=1),
-        medianprops=dict(linewidth=1.5, color=palette[1]),
-        flierprops=dict(marker='o', markersize=0),  # hide default fliers
-        zorder=2
-    )
+    # (4) no inferential stats
+    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        return {}
 
-    ax.set_title(title)
-    ax.set_ylabel(ylabel)
+    # (5) draw
+    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
+        sns.set_palette("colorblind")
+        palette = sns.color_palette("colorblind")
 
-    # Mean dot (uses palette[1], free of other annotations)
-    ax.scatter(
-        [0], [mean],
-        color=palette[1],
-        marker='o',
-        s=60,
-        zorder=4,
-        label=f"Mean = {mean:.2f}"
-    )
+        title = chart_metadata["title"]
+        ylabel = chart_metadata["ylabel"] or "Value"
 
-    # Annotate extreme‐bound lines
-    ax.axhline(lower_bound, color=palette[2], linestyle='--',
-               label=f"Lower {std_outlier_multiplier}σ = {lower_bound:.2f} ({n_lower})")
-    ax.axhline(upper_bound, color=palette[3], linestyle='--',
-               label=f"Upper {std_outlier_multiplier}σ = {upper_bound:.2f} ({n_upper})")
+        fig, ax = plt.subplots(figsize=self.ctx.figsize)
 
-    # Highlight extreme points
-    if n_lower:
-        ax.scatter([0]*n_lower, lower_outliers, color=palette[2], zorder=3)
-    if n_upper:
-        ax.scatter([0]*n_upper, upper_outliers, color=palette[3], zorder=3)
+        # 1) Thin violin silhouette behind box
+        parts = ax.violinplot(
+            s.to_numpy(),
+            vert=True, positions=[0], widths=0.8,
+            showmeans=False, showmedians=False, showextrema=False,
+        )
+        for pc in parts["bodies"]:
+            pc.set_facecolor(palette[0])
+            pc.set_edgecolor(palette[0])
+            pc.set_alpha(0.15)
+            pc.set_linewidth(0.8)
+            pc.set_zorder(1)
 
-    # Annotate 10th/90th percentile lines
-    ax.axhline(pct_10, color='purple', linestyle=':', label=f"10th pct = {pct_10:.2f}")
-    ax.axhline(pct_90, color='purple', linestyle=':', label=f"90th pct = {pct_90:.2f}")
-
-    ax.legend(loc="upper left", fontsize="small", frameon=False)
-
-    # Dispersion stats textbox
-    text = (
-        f"Std Dev = {std:.2f}\n"
-        f"Variance = {var:.2f}\n"
-        f"Min = {min_val:.2f}, Max = {max_val:.2f}\n"
-        f"Range = {range_val:.2f}\n"
-        f"MAD = {mad:.2f}\n"
-        f"CV = {cv:.2f}\n"
-        f"IQR = {iqr:.2f}"
-    )
-
-    ax.text(
-        0.95, 0.95, text,
-        transform=ax.transAxes,
-        va='top', ha='right',
-        fontsize='small',
-        bbox=dict(boxstyle='round', facecolor='white', alpha=0.5)
-    )
-
-    # Optional data source annotation
-    if data_source:
-        fig.text(
-            0.01, 0.01, f"Source: {data_source}",
-            ha='left', va='bottom',
-            fontsize='small', color='gray'
+        # 2) Boxplot
+        ax.boxplot(
+            s.to_numpy(),
+            positions=[0], widths=0.4, notch=False, patch_artist=True, showcaps=True,
+            boxprops=dict(facecolor="white", linewidth=1.2),
+            whiskerprops=dict(linewidth=1),
+            medianprops=dict(linewidth=1.5, color=palette[1]),
+            flierprops=dict(marker="o", markersize=0),  # hide default fliers
+            zorder=2,
         )
 
-    # Sample size annotation in bottom-right
-    fig.text(
-        0.99, 0.01, f"n = {n}",
-        ha='right', va='bottom',
-        fontsize='small', color='gray'
-    )
+        ax.set_title(title)
+        ax.set_ylabel(ylabel)
 
-    # Optional save
-    if save_path:
-        if file_name is None:
-            file_name = f"{title}.png"
-        os.makedirs(save_path, exist_ok=True)
-        abs_path = os.path.join(save_path, file_name)
-        fig.savefig(abs_path, bbox_inches='tight')
+        # Mean dot
+        mean = desc["mean"]
+        ax.scatter([0], [mean], color=palette[1], marker="o", s=60, zorder=4, label=f"Mean = {mean:.2f}")
 
-    return {
-        'descriptive_stats': {
-            'params': {
-                'std_outlier_multiplier': std_outlier_multiplier
-            },
-            'n': n,
-            'mean': mean,
-            'std': std,
-            'var': var,
-            'min': min_val,
-            'max': max_val,
-            'range': range_val,
-            'mad': mad,
-            'cv': cv,
-            'pct_10': pct_10,
-            'pct_25': pct_25,
-            'pct_75': pct_75,
-            'pct_90': pct_90,
-            'iqr': iqr,
-            'extreme_lower_count': n_lower,
-            'extreme_upper_count': n_upper
-        },
-        'chart_metadata': {
-            'title': title,
-            'ylabel': ylabel,
-            'data_source': data_source,
-            'file_name': file_name
-        }
-    }
+        # Extremes (±kσ) lines and counts
+        m = desc["params"]["std_outlier_multiplier"]
+        lower_bound = desc["mean"] - m * desc["std"]
+        upper_bound = desc["mean"] + m * desc["std"]
+        ax.axhline(lower_bound, color=palette[2], linestyle="--",
+                   label=f"Lower {m}σ = {lower_bound:.2f} ({desc['extreme_lower_count']})")
+        ax.axhline(upper_bound, color=palette[3], linestyle="--",
+                   label=f"Upper {m}σ = {upper_bound:.2f} ({desc['extreme_upper_count']})")
+
+        # Highlight extreme points
+        lower_mask = s < lower_bound
+        upper_mask = s > upper_bound
+        if lower_mask.any():
+            ax.scatter([0] * int(lower_mask.sum()), s[lower_mask], color=palette[2], zorder=3)
+        if upper_mask.any():
+            ax.scatter([0] * int(upper_mask.sum()), s[upper_mask], color=palette[3], zorder=3)
+
+        # 10th/90th percentile lines
+        ax.axhline(desc["pct_10"], color="purple", linestyle=":", label=f"10th pct = {desc['pct_10']:.2f}")
+        ax.axhline(desc["pct_90"], color="purple", linestyle=":", label=f"90th pct = {desc['pct_90']:.2f}")
+
+        ax.legend(loc="upper left", fontsize="small", frameon=False)
+
+        # Dispersion stats textbox
+        text = (
+            f"Std Dev = {desc['std']:.2f}\n"
+            f"Variance = {desc['var']:.2f}\n"
+            f"Min = {desc['min']:.2f}, Max = {desc['max']:.2f}\n"
+            f"Range = {desc['range']:.2f}\n"
+            f"MAD = {desc['mad']:.2f}\n"
+            f"CV = {desc['cv']:.2f}\n"
+            f"IQR = {desc['iqr']:.2f}"
+        )
+        ax.text(
+            0.95, 0.95, text, transform=ax.transAxes,
+            va="top", ha="right", fontsize="small",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.5),
+        )
+
+        # Sample size footer (BasePlot.run will add data_source footer if present)
+        fig.text(0.99, 0.01, f"n = {desc['n']}", ha="right", va="bottom",
+                 fontsize="small", color="gray")
+
+        return fig, ax
+
+
+def plot_dispersion_boxplot(
+    series: pd.Series,
+    /,
+    *,
+    ctx: Optional[DispersionBoxplotContext] = None,
+    **kwargs: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Back-compat wrapper that delegates to the class-based implementation.
+    - If `ctx` is provided, it's used (optionally overridden by kwargs).
+    - Otherwise we construct DispersionBoxplotContext(**kwargs).
+    """
+    if ctx is None:
+        ctx = DispersionBoxplotContext(**kwargs)
+    else:
+        for k, v in kwargs.items():
+            setattr(ctx, k, v)
+
+    plot = DispersionBoxplotNumericPlot(ctx)
+    return plot.run(series)
