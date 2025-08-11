@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-from typing import Callable, Sequence, Literal, Optional
+from dataclasses import dataclass
+from typing import Dict, Any, Optional, Tuple, Literal, Sequence, Callable
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -20,29 +20,27 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.signal import find_peaks
 
+from ..utils.base_plot import BasePlot, PlotContext
+from .validate_numeric_named_series import NumericSeriesMixin
 from .binning_rules import doane_bins, freedman_diaconis_bins, scott_bins, sturges_bins
-from .validate_numeric_named_series import validate_numeric_named_series
-from ..utils.build_chart_title import build_chart_title
 
 BinMethod = Literal['sturges', 'scott', 'freedman_diaconis', 'doane']
 
-def plot_distribution_density(
-    series: pd.Series,
-    title_template: str = "Distribution Density of {name}{modifiers}",
-    name: str = None,
-    filter_desc: str = None,
-    transform_desc: str = None,
-    xlabel: str = "Value",
-    ylabel: str = "Density",
-    data_source: str = None,
-    figsize: tuple = (10, 6),
-    save_path: str = None,
-    file_name: str = None,
-    bin_method: Optional[BinMethod] = None,
-    bins: int | Sequence[float] | None = None,
-    hist_alpha: float = 0.4,
+@dataclass
+class DistributionDensityContext(PlotContext):
+    title_template: str = "Distribution Density of {name}{modifiers}"
+    xlabel: str = "Value"
+    ylabel: str = "Density"
+    figsize: Tuple[int, int] = (10, 6)
+
+    # plot-specific knobs
+    bin_method: Optional[BinMethod] = None
+    bins: Optional[int | Sequence[float]] = None
+    hist_alpha: float = 0.4
     bw_adjust: float = 1.0
-):
+
+
+class DistributionDensityNumericPlot(NumericSeriesMixin, BasePlot):
     """
     Generate a histogram overlaid with a KDE to communicate the shape of a numeric distribution.
 
@@ -60,259 +58,225 @@ def plot_distribution_density(
         - Optionally saves the figure to disk.
         - Returns computed shape metrics and chart parameters.
 
-    How:
-        - Works on a cleaned copy of the data (missing values dropped).
-        - Uses SciPy’s Gaussian KDE over a fine grid to estimate density.
-        - Detects peaks via `scipy.signal.find_peaks`.
-        - Calculates percentiles, skewness, kurtosis, and Bowley skew.
-        - Renders the plot with colorblind-friendly styling and annotations.
-
-    Parameters
-    ----------
-    series : pd.Series
-        Numeric dataset to plot. Missing values will be dropped.
-    title_template: A Python format-string with placeholders:
-      - {name}:        series name or label
-      - {modifiers}:   combined filter/transform text, empty if none
-    name:                Optional override for series.name
-    filter_desc:         e.g. "filtered by New York"
-    transform_desc:      e.g. "log-transformed"
-    xlabel : str, default="Value"
-        Label for the x-axis.
-    ylabel : str, default="Density"
-        Label for the y-axis.
-    data_source : str, optional
-        Text annotation for the data source (bottom-left of figure).
-    figsize : tuple, default=(10, 6)
-        Figure size in inches (width, height).
-    save_path : str or Path, optional
-        Directory to save the image. Created if necessary.
-    file_name : str, optional
-        Filename (with extension) for saving. Requires `save_path`.
-    bin_method: str | None = None
-        The statistical binning rule used for dynamically setting bins based on the data.
-    bins : int or sequence of floats
-        Number of histogram bins, or the bin edges.
-    hist_alpha : float
-        Transparency level for the histogram bars.
-    bw_adjust : float
-        Bandwidth adjustment factor for KDE (relative to default).
-
-    Returns
-    -------
-    metadata : dict
-        {
-            'descriptive_stats': {
-                'params': {
-                    'bins': int,
-                    'bin_method': str
-                },
-                'n': int,               
-                'entropy_bits': float,   
-                'skewness': float,         
-                'kurtosis': float,         
-                'modes_count': int,        
-                'quartile_skew': float,    
-                'pct_10': float,           
-                'pct_25': float,           
-                'pct_50': float,           
-                'pct_75': float,           
-                'pct_90': float            
-            },
-            'chart_metadata': {
-                'title': str,
-                'xlabel': str,
-                'ylabel': str,
-                'data_source': str or None,
-                'file_name': str or None
-            }
-        }
-
-    Key Shape Statistics
-    --------------------
-    | Statistic          | What it tells you                                                                 |
-    |--------------------|-----------------------------------------------------------------------------------|
-    | `skewness`         | Asymmetry of the curve: > 0 right‐skewed, < 0 left‐skewed                          |
-    | `kurtosis`         | Peakedness/tail‐weight: > 0 heavy tails & sharp peak, < 0 light tails & flat peak |
-    | `modes_count`      | Number of humps in the KDE—identifies subpopulations                              |
-    | Quartiles (Q1,Q2,Q3) | Central bulk shape: Q2–Q1 vs. Q3–Q2 shows asymmetry; IQR (Q3–Q1) measures spread  |
-    | Tail percentiles   | P10/P90 show extreme behavior: wider P90–P10 vs. IQR indicates heavy tails        |
-    | `quartile_skew`    | Robust skew: (Q3+Q1−2Q2)/(Q3−Q1) focusing on the IQR                               |
-    """
-    validate_numeric_named_series(series)
-    data = series.copy().dropna()
-    n = data.size
-
-    title = build_chart_title(
-                    name=name, series=series,
-                    filter_desc=filter_desc,
-                    transform_desc=transform_desc,
-                    title_template=title_template
-                )
-
-    # Early exit for empty data
-    if n == 0:
-        empty_stats = dict(
-            n=0, entropy_bits=np.nan, skewness=np.nan, kurtosis=np.nan, modes_count=0,
-            quartile_skew=np.nan, pct_10=np.nan, pct_25=np.nan,
-            pct_50=np.nan, pct_75=np.nan, pct_90=np.nan
-        )
-        empty_stats['params'] = {
-            'bins': bins,
-            'bin_method': bin_method
-        }
-        return {
-            'descriptive_stats': empty_stats,
-            'chart_metadata': dict(
-                title=title, xlabel=xlabel, ylabel=ylabel,
-                data_source=data_source, file_name=None
-            )
-        }
-
-    # dynamically pick bins if requested
-    if bin_method:
-        methods: dict[BinMethod, Callable[[pd.Series], int]] = {
-            'sturges': sturges_bins,
-            'scott': scott_bins,
-            'freedman_diaconis': freedman_diaconis_bins,
-            'doane': doane_bins
-        }
-        try:
-            bins = methods[bin_method](data)
-        except KeyError as exc:
-            raise ValueError(f"Unknown bin_method: {bin_method!r}. "
-                             f"Choose from {list(methods)}.") from exc
-    elif bins is None:
-        # default fallback  
-        bins = 30
-
-    # Compute percentiles and robust quartile skew
-    q1, q2, q3 = data.quantile([0.25, 0.50, 0.75])
-    pct_10, pct_90 = data.quantile([0.10, 0.90])
-    iqr = q3 - q1
-    quartile_skew = ((q3 + q1 - 2 * q2) / iqr) if iqr != 0 else np.nan
-
-    # Compute skewness & kurtosis
-    skewness = data.skew()
-    kurtosis = data.kurtosis()
-
-    # KDE estimate with adjustable bandwidth
-    kde = stats.gaussian_kde(data)
-    kde.set_bandwidth(bw_method=kde.factor * bw_adjust)
-    grid = np.linspace(data.min(), data.max(), 512)
-    density = kde(grid)
-
-    # Detect peaks (modes)
-    peaks, _ = find_peaks(density)
-    modes_count = len(peaks)
-    mode_locations = grid[peaks].tolist()
-
-    # Plot setup
-    sns.set_palette("colorblind")
-    fig, ax = plt.subplots(figsize=figsize)
-
-    # Compute entropy over histogram
-    hist_counts, _ = np.histogram(data, bins=bins)
-    probs = hist_counts / hist_counts.sum() if hist_counts.sum() > 0 else np.array([])
-    entropy_bits = float(-np.sum(probs * np.log2(probs + 1e-12)))
-
-    # Histogram (normalized to density)
-    ax.hist(data, bins=bins, density=True,
-            alpha=hist_alpha, label="Histogram")
-
-    # KDE line
-    ax.plot(grid, density, lw=2, label="KDE")
-
-    # Shade tails
-    ax.fill_between(grid, density,
-                    where=(grid < pct_10), alpha=0.3,
-                    label="Bottom 10%")
-    ax.fill_between(grid, density,
-                    where=(grid > pct_90), alpha=0.3,
-                    label="Top 10%")
-
-    # Quartile & median lines
-    ax.axvline(q1, linestyle='--', label=f"Q1 = {q1:.2f}")
-    ax.axvline(q2, linestyle='-', label=f"Median = {q2:.2f}")
-    ax.axvline(q3, linestyle='--', label=f"Q3 = {q3:.2f}")
-
-    # Mode markers
-    if modes_count:
-        heights = density[peaks]
-        ax.scatter(mode_locations, heights,
-                   color='green', marker='o',
-                   label=f"{modes_count} mode(s)")
-        for x_loc, y_loc in zip(mode_locations, heights):
-            ax.text(x_loc, y_loc, f"{x_loc:.2f}",
-                    ha='left', va='bottom',
-                    fontsize='x-small', color='green')
-    # Finalize axes
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-
-    # Annotate stats
-    stats_text = (
-        f"n = {n}\n"
-        f"Entropy = {entropy_bits:.2f} bits\n"
-        f"Skewness = {skewness:.2f}\n"
-        f"Kurtosis = {kurtosis:.2f}\n"
-        f"Quartile skew = {quartile_skew:.2f}"
-    )
-    ax.text(0.98, 0.98, stats_text,
-            transform=ax.transAxes, ha='right', va='top',
-            fontsize='small', bbox=dict(facecolor='white', alpha=0.5))
-
-    # Optional data source
-    if data_source:
-        fig.text(0.01, 0.01, f"Source: {data_source}",
-                 ha='left', va='bottom', fontsize='small', color='gray')
-
-    # Legend ordering
-    handles, labels = ax.get_legend_handles_labels()
-    order = ["Histogram", "KDE",
-             f"Q1 = {q1:.2f}", f"Median = {q2:.2f}", f"Q3 = {q3:.2f}",
-             "Bottom 10%", "Top 10%",
-             f"{modes_count} mode(s)"]
-    ordered = [(h, l) for key in order
-               for h, l in zip(handles, labels) if l == key]
-    if ordered:
-        h_ord, l_ord = zip(*ordered)
-        ax.legend(h_ord, l_ord)
-    else:
-        ax.legend(handles, labels)
-
-    # Optional save
-    if save_path:
-        if file_name is None:
-            file_name = f"{title}.png"
-        os.makedirs(save_path, exist_ok=True)
-        abs_path = os.path.join(save_path, file_name)
-        fig.savefig(abs_path, bbox_inches='tight')
-
-    return {
-        'descriptive_stats': {
-            'params': {
-                'bins': bins,
-                'bin_method': bin_method
-            },
-            'n': n,
-            'entropy_bits': entropy_bits,
-            'skewness': skewness,
-            'kurtosis': kurtosis,
-            'modes_count': modes_count,
-            'quartile_skew': quartile_skew,
-            'pct_10': pct_10,
-            'pct_25': q1,
-            'pct_50': q2,
-            'pct_75': q3,
-            'pct_90': pct_90
+    Returns BasePlot.run() schema:
+      {
+        "descriptive_stats": {
+          "params": {"bins": int|list, "bin_method": str|None},
+          "n","entropy_bits","skewness","kurtosis","modes_count","quartile_skew",
+          "pct_10","pct_25","pct_50","pct_75","pct_90"
         },
-        'chart_metadata': {
-            'title': title,
-            'xlabel': xlabel,
-            'ylabel': ylabel,
-            'data_source': data_source,
-            'file_name': file_name
+        "inferential_stats": {},
+        "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
+      }
+    """
+
+    # Chart metadata mirrors legacy keys
+    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
+        from ..utils.build_chart_title import build_chart_title
+        title = build_chart_title(
+            name=self.ctx.name,
+            series=series,
+            filter_desc=self.ctx.filter_desc,
+            transform_desc=self.ctx.transform_desc,
+            title_template=self.ctx.title_template,
+        )
+        return {
+            "title": title,
+            "xlabel": self.ctx.xlabel,
+            "ylabel": self.ctx.ylabel,
+            "data_source": self.ctx.data_source,
+            "file_name": self.ctx.file_name,
         }
-    }
+
+    # (2) default when empty
+    def default_descriptive(self) -> Dict[str, Any]:
+        return {
+            "params": {"bins": self.ctx.bins, "bin_method": self.ctx.bin_method},
+            "n": 0,
+            "entropy_bits": float("nan"),
+            "skewness": float("nan"),
+            "kurtosis": float("nan"),
+            "modes_count": 0,
+            "quartile_skew": float("nan"),
+            "pct_10": float("nan"),
+            "pct_25": float("nan"),
+            "pct_50": float("nan"),
+            "pct_75": float("nan"),
+            "pct_90": float("nan")
+        }
+
+    # (3) descriptive stats (+ payload for drawing)
+    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+        n = int(s.size)
+
+        # Resolve bins: bin_method > ctx.bins > default 30
+        chosen_bins: int | Sequence[float] | None = self.ctx.bins
+        if self.ctx.bin_method:
+            methods: dict[BinMethod, Callable[[pd.Series], int]] = {
+                "sturges": sturges_bins,
+                "scott": scott_bins,
+                "freedman_diaconis": freedman_diaconis_bins,
+                "doane": doane_bins,
+            }
+            if self.ctx.bin_method not in methods:
+                raise ValueError(f"Unknown bin_method: {self.ctx.bin_method!r}. Choose from {list(methods)}.")
+            chosen_bins = methods[self.ctx.bin_method](s)
+        elif chosen_bins is None:
+            chosen_bins = 30
+
+        # Percentiles & quartile skew
+        q1, q2, q3 = s.quantile([0.25, 0.50, 0.75])
+        pct_10, pct_90 = s.quantile([0.10, 0.90])
+        iqr = q3 - q1
+        quartile_skew = float(((q3 + q1 - 2 * q2) / iqr) if iqr != 0 else np.nan)
+
+        # Shape
+        skewness = float(s.skew())
+        kurtosis = float(s.kurtosis())
+
+        # KDE grid
+        kde = stats.gaussian_kde(s.to_numpy())
+        kde.set_bandwidth(bw_method=kde.factor * self.ctx.bw_adjust)
+        grid = np.linspace(float(s.min()), float(s.max()), 512)
+        density = kde(grid)
+
+        # Modes via peaks in KDE
+        peaks, _ = find_peaks(density)
+        modes_count = int(len(peaks))
+        mode_x = grid[peaks]
+        mode_y = density[peaks]
+
+        # Entropy over histogram (normalize to probabilities)
+        hist_counts, _ = np.histogram(s.to_numpy(), bins=chosen_bins)
+        probs = hist_counts / hist_counts.sum() if hist_counts.sum() > 0 else np.array([])
+        entropy_bits = float(-np.sum(probs * np.log2(probs + 1e-12))) if probs.size else float("nan")
+
+        return {
+            "params": {"bins": chosen_bins, "bin_method": self.ctx.bin_method},
+            "n": n,
+            "entropy_bits": entropy_bits,
+            "skewness": skewness,
+            "kurtosis": float(kurtosis),
+            "modes_count": modes_count,
+            "quartile_skew": quartile_skew,
+            "pct_10": float(pct_10),
+            "pct_25": float(q1),
+            "pct_50": float(q2),
+            "pct_75": float(q3),
+            "pct_90": float(pct_90),
+            # payload for draw:
+            "bins_resolved": chosen_bins,
+            "grid": grid,
+            "density": density,
+            "mode_x": mode_x.tolist(),
+            "mode_y": mode_y.tolist(),
+        }
+
+    # (4) inferential: none
+    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        return {}
+
+    # (5) draw
+    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
+        sns.set_palette("colorblind")
+
+        title = chart_metadata["title"]
+        xlabel = chart_metadata["xlabel"] or "Value"
+        ylabel = chart_metadata["ylabel"] or "Density"
+
+        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+
+        # Histogram (density)
+        ax.hist(
+            s.to_numpy(),
+            bins=desc["bins_resolved"],
+            density=True,
+            alpha=self.ctx.hist_alpha,
+            label="Histogram",
+        )
+
+        # KDE
+        ax.plot(desc["grid"], desc["density"], lw=2, label="KDE")
+
+        # Tails
+        ax.fill_between(
+            desc["grid"], desc["density"],
+            where=(desc["grid"] < desc["pct_10"]),
+            alpha=0.3, label="Bottom 10%",
+        )
+        ax.fill_between(
+            desc["grid"], desc["density"],
+            where=(desc["grid"] > desc["pct_90"]),
+            alpha=0.3, label="Top 10%",
+        )
+
+        # Quartiles & median
+        ax.axvline(desc["pct_25"], linestyle="--", label=f"Q1 = {desc['pct_25']:.2f}")
+        ax.axvline(desc["pct_50"], linestyle="-", label=f"Median = {desc['pct_50']:.2f}")
+        ax.axvline(desc["pct_75"], linestyle="--", label=f"Q3 = {desc['pct_75']:.2f}")
+
+        # Modes
+        if desc["modes_count"] > 0:
+            ax.scatter(desc["mode_x"], desc["mode_y"], color="green", marker="o",
+                       label=f"{desc['modes_count']} mode(s)")
+            for x_loc, y_loc in zip(desc["mode_x"], desc["mode_y"]):
+                ax.text(x_loc, y_loc, f"{x_loc:.2f}",
+                        ha="left", va="bottom", fontsize="x-small", color="green")
+
+        # Axes & labels
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+
+        # Stats textbox
+        stats_text = (
+            f"n = {desc['n']}\n"
+            f"Entropy = {desc['entropy_bits']:.2f} bits\n"
+            f"Skewness = {desc['skewness']:.2f}\n"
+            f"Kurtosis = {desc['kurtosis']:.2f}\n"
+            f"Quartile skew = {desc['quartile_skew']:.2f}"
+        )
+        ax.text(0.98, 0.98, stats_text, transform=ax.transAxes,
+                ha="right", va="top", fontsize="small",
+                bbox=dict(facecolor="white", alpha=0.5))
+
+        # Legend ordering similar to legacy presentation
+        handles, labels = ax.get_legend_handles_labels()
+        order = [
+            "Histogram", "KDE",
+            f"Q1 = {desc['pct_25']:.2f}",
+            f"Median = {desc['pct_50']:.2f}",
+            f"Q3 = {desc['pct_75']:.2f}",
+            "Bottom 10%", "Top 10%",
+            f"{desc['modes_count']} mode(s)",
+        ]
+        ordered = [(h, l) for key in order for h, l in zip(handles, labels) if l == key]
+        if ordered:
+            h_ord, l_ord = zip(*ordered)
+            ax.legend(h_ord, l_ord)
+        else:
+            ax.legend(handles, labels)
+
+        return fig, ax
+    
+def plot_distribution_density(
+    series: pd.Series,
+    /,
+    *,
+    ctx: Optional[DistributionDensityContext] = None,
+    **kwargs: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Back-compat wrapper that delegates to the class-based implementation.
+    - If `ctx` is provided, it's used (optionally overridden by kwargs).
+    - Otherwise we construct DistributionDensityContext(**kwargs).
+    """
+    if ctx is None:
+        ctx = DistributionDensityContext(**kwargs)
+    else:
+        for k, v in kwargs.items():
+            setattr(ctx, k, v)
+
+    plot = DistributionDensityNumericPlot(ctx)
+    return plot.run(series)
+
