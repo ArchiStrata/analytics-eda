@@ -11,281 +11,302 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-from typing import Any, Dict, Literal, Optional
+from dataclasses import dataclass
+from typing import Dict, Any, Optional, Tuple, Literal
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy import stats
 
-from ..utils.build_chart_title import build_chart_title
-from .validate_numeric_named_series import validate_numeric_named_series
+from ..utils.base_plot import BasePlot, PlotContext
+from .validate_numeric_named_series import NumericSeriesMixin
 
 MeanCIMethod = Literal['t', 'bootstrap']
 MedianCIMethod = Literal['bootstrap', None]
 
-def plot_central_tendency_violin(
-    series: pd.Series,
-    mean_ci_method: MeanCIMethod = 't',
-    median_ci_method: MedianCIMethod = 'bootstrap',
-    alpha: float = 0.05,
-    bootstrap_samples: int = 1_000,
-    popmean: Optional[float] = None,
-    popmedian: Optional[float] = None,
-    popvariance: Optional[float] = None,
-    title_template: str = "Distribution of {name}{modifiers}: Central Tendency (Violin)",
-    name: Optional[str] = None,
-    filter_desc: Optional[str] = None,
-    transform_desc: Optional[str] = None,
-    xlabel: str = "Value",
-    ylabel: str = "Density",
-    data_source: Optional[str] = None,
-    figsize: tuple = (10, 6),
-    save_path: Optional[str] = None,
-    file_name: Optional[str] = None
-) -> dict:
+@dataclass
+class CentralTendencyViolinContext(PlotContext):
+    title_template: str = "Distribution of {name}{modifiers}: Central Tendency (Violin)"
+    xlabel: str = "Value"
+    ylabel: str = "Density"
+    figsize: Tuple[int, int] = (10, 6)
+
+    # plot-specific
+    mean_ci_method: MeanCIMethod = "t"
+    median_ci_method: MedianCIMethod = "bootstrap"
+    alpha: float = 0.05
+    bootstrap_samples: int = 1_000
+
+    # optional population params for tests
+    popmean: Optional[float] = None
+    popmedian: Optional[float] = None
+    popvariance: Optional[float] = None
+
+class CentralTendencyViolinPlot(NumericSeriesMixin, BasePlot):
     """
-    Generate a horizontal violin plot showing distribution with overlaid point and error bars for
-    mean and/or median confidence intervals.
+    Violin distribution with mean/median and CIs, plus optional inferential tests.
 
     Tests shown when popmean and/or popmedian and/or popvariance are not None:
       - Cohen’s d, one-sample t-test, and (if popvariance) one-sample Z-test for popmean
       - Wilcoxon signed-rank and sign test for popmedian
 
-    Parameters
-    ----------
-    series : pd.Series
-        Numeric dataset to plot. Missing values will be dropped.
-    mean_ci_method : {'t', 'bootstrap'}, default='t'
-        Which CI to compute for the mean.
-    median_ci_method : {'bootstrap', None}, default='bootstrap'
-        Which CI to compute for the median, or None.
-    alpha : float, default=0.05
-        Significance level for confidence intervals.
-    bootstrap_samples : int, default=1000
-        Number of resamples when using bootstrap methods.
-    title_template : str
-        Python format string for the chart title.
-    name : str, optional
-        Override for series.name in title.
-    filter_desc : str, optional
-    transform_desc : str, optional
-    xlabel : str
-    ylabel : str
-    data_source : str, optional
-    figsize : tuple
-    save_path : str, optional
-    file_name : str, optional
-
-    Returns
-    -------
-    metadata : dict
-        Contains descriptive_stats, inferential_stats, and chart_metadata.
+    Returns BasePlot.run() schema:
+      {
+        "descriptive_stats": {
+          "params": {"mean_ci_method", "median_ci_method"},
+          "n", "mean", "median", "mean_ci", "median_ci"
+        },
+        "inferential_stats": { ... tests ... },
+        "chart_metadata": {...}
+      }
     """
-    # Validate input
-    validate_numeric_named_series(series)
-    data = series.dropna()
-    n = data.size
 
-    # Build title
-    title = build_chart_title(
-        name=name,
-        series=series,
-        filter_desc=filter_desc,
-        transform_desc=transform_desc,
-        title_template=title_template
-    )
-
-    inferential_params = {
-        "alpha": alpha,
-        "bootstrap_samples": bootstrap_samples,
-        "popmean": popmean,
-        "popmedian": popmedian,
-        "popvariance": popvariance
-    }
-
-    # If empty
-    if n == 0:
+    # (2) defaults for empty input
+    def default_descriptive(self) -> Dict[str, Any]:
         return {
-            'descriptive_stats': {
-                'params': {
-                    'mean_ci_method': mean_ci_method,
-                    'median_ci_method': median_ci_method
-                },
-                'n': 0,
-                'mean': np.nan,
-                'median': np.nan,
-                'mean_ci': (np.nan, np.nan),
-                'median_ci': (np.nan, np.nan)
+            "params": {
+                "mean_ci_method": self.ctx.mean_ci_method,
+                "median_ci_method": self.ctx.median_ci_method,
             },
-            'inferential_stats': {
-                'params': inferential_params
+            "n": 0,
+            "mean": float("nan"),
+            "median": float("nan"),
+            "mean_ci": (float("nan"), float("nan")),
+            "median_ci": (float("nan"), float("nan")),
+        }
+
+    # (3) descriptive stats (+ we assemble inferential inputs here)
+    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+        n = int(s.size)
+        mean = float(s.mean()) if n else float("nan")
+        median = float(s.median()) if n else float("nan")
+
+        # Mean CI
+        if n:
+            if self.ctx.mean_ci_method == "t":
+                sem = stats.sem(s, ddof=1)
+                ci_low, ci_high = stats.t.interval(
+                    1 - self.ctx.alpha, df=n - 1, loc=mean, scale=sem
+                )
+                mean_ci = (float(ci_low), float(ci_high))
+            elif self.ctx.mean_ci_method == "bootstrap":
+                rng = np.random.default_rng()
+                boot_means = rng.choice(s.to_numpy(), size=(self.ctx.bootstrap_samples, n), replace=True).mean(axis=1)
+                lo, hi = np.percentile(boot_means, [100 * self.ctx.alpha / 2, 100 * (1 - self.ctx.alpha / 2)])
+                mean_ci = (float(lo), float(hi))
+            else:
+                raise ValueError("mean_ci_method must be 't' or 'bootstrap'")
+        else:
+            mean_ci = (float("nan"), float("nan"))
+
+        # Median CI
+        if n and self.ctx.median_ci_method == "bootstrap":
+            rng = np.random.default_rng()
+            boot = rng.choice(s.to_numpy(), size=(self.ctx.bootstrap_samples, n), replace=True)
+            boot_meds = np.median(boot, axis=1)
+            lo, hi = np.percentile(boot_meds, [100 * self.ctx.alpha / 2, 100 * (1 - self.ctx.alpha / 2)])
+            median_ci = (float(lo), float(hi))
+        elif self.ctx.median_ci_method is None:
+            median_ci = (float("nan"), float("nan"))
+        else:
+            # Guard against unexpected value
+            raise ValueError("median_ci_method must be 'bootstrap' or None")
+
+        return {
+            "params": {
+                "mean_ci_method": self.ctx.mean_ci_method,
+                "median_ci_method": self.ctx.median_ci_method,
             },
-            'chart_metadata': {
-                'title': title,
-                'xlabel': xlabel,
-                'ylabel': ylabel,
-                'data_source': data_source,
-                'file_name': file_name
+            "n": n,
+            "mean": mean,
+            "median": median,
+            "mean_ci": mean_ci,
+            "median_ci": median_ci,
+        }
+    
+    def default_inferential(self) -> Dict[str, Any]:
+        return {
+            "params": {
+                "alpha": self.ctx.alpha,
+                "bootstrap_samples": self.ctx.bootstrap_samples,
+                "popmean": self.ctx.popmean,
+                "popmedian": self.ctx.popmedian,
+                "popvariance": self.ctx.popvariance,
             }
         }
 
-    # Compute central tendencies
-    sample_mean = float(data.mean())
-    sample_median = float(data.median())
-
-    # Compute mean CI
-    if mean_ci_method == 't':
-        sem = stats.sem(data, ddof=1)
-        mean_ci_low, mean_ci_high = stats.t.interval(1 - alpha, df=n - 1, loc=sample_mean, scale=sem)
-    elif mean_ci_method == 'bootstrap':
-        rng = np.random.default_rng()
-        boot_means = rng.choice(data, size=(bootstrap_samples, n), replace=True).mean(axis=1)
-        mean_ci_low, mean_ci_high = np.percentile(boot_means, [100*alpha/2, 100*(1-alpha/2)])
-    else:
-        raise ValueError("mean_ci_method must be 't' or 'bootstrap'")
-
-    # Compute median CI
-    if median_ci_method == 'bootstrap':
-        rng = np.random.default_rng()
-        boot_meds = rng.choice(data, size=(bootstrap_samples, n), replace=True)
-        boot_meds = np.median(boot_meds, axis=1)
-        med_ci_low, med_ci_high = np.percentile(boot_meds, [100*alpha/2, 100*(1-alpha/2)])
-    else:
-        raise ValueError("median_ci_method must be 'bootstrap'")
-
-    # perform population tests
-    stats_lines = []
-    test_results: Dict[str, Any] = {}
-
-    test_results['params'] = inferential_params
-
-    if popmean is not None:
-        test_results['popmean'] = {}
-
-        # One-Sample Cohen's d
-        sd = data.std(ddof=1)
-        cohens_d = (sample_mean - popmean) / sd if sd != 0 else None
-        test_results['popmean']['cohens_d'] = cohens_d
-
-        # One-Sample t-Test
-        t_stat, t_p = stats.ttest_1samp(data, popmean)
-        test_results['popmean']['t_test'] = {'statistic': float(t_stat), 'p_value': float(t_p), 'reject': bool(t_p < alpha)}
-        stats_lines.append(
-            f"Mean vs {popmean:.2f}: d={cohens_d:.2f}, "
-            f"t={t_stat:.2f}, p={t_p:.3f} "
-            f"{'(reject)' if test_results['popmean']['t_test']['reject'] else '(ns)'}"
-        )
-
-        # One-sample Z-test (requires known σ²)
-        if popvariance is not None:
-            sigma = np.sqrt(popvariance)
-            z_stat = (sample_mean - popmean) / (sigma / np.sqrt(n))
-            z_p = 2 * (1 - stats.norm.cdf(abs(z_stat)))
-            test_results['popmean']['z_test'] = {'statistic': float(z_stat), 'p_value': float(z_p), 'reject': bool(z_p < alpha)}
-            stats_lines.append(
-                f"Z-test vs {popmean:.2f}: z={z_stat:.2f}, p={z_p:.3f} "
-                f"{'(reject)' if test_results['popmean']['z_test']['reject'] else '(ns)'}"
-            )
-
-    if popmedian is not None:
-        test_results['popmedian'] = {}
-        # Wilcoxon Signed-Rank Test
-        diff = data - popmedian
-        stat_wr, p_wr = stats.wilcoxon(diff)
-        test_results['popmedian']['wilcoxon'] = {'statistic': float(stat_wr), 'p_value': float(p_wr), 'reject': bool(p_wr < alpha)}
-        stats_lines.append(
-            f"Median vs {popmedian:.2f}: W={stat_wr:.2f}, p={p_wr:.3f} "
-            f"{'(reject)' if test_results['popmedian']['wilcoxon']['reject'] else '(ns)'}"
-        )
-
-        # Sign test (binomial on signs)
-        nonzero = diff[diff != 0]
-        n_sign = len(nonzero)
-        if n_sign > 0:
-            pos = int((nonzero > 0).sum())
-            sign_res = stats.binomtest(pos, n_sign, p=0.5)
-            test_results['popmedian']['sign_test'] = {'num_positive': pos, 'num_negative': n_sign - pos, 'n': n_sign, 'p_value': float(sign_res.pvalue), 'reject': bool(sign_res.pvalue < alpha)}
-            stats_lines.append(
-                f"Sign test: +={pos}, -={n_sign-pos}, p={sign_res.pvalue:.3f} "
-                f"{'(reject)' if test_results['popmedian']['sign_test']['reject'] else '(ns)'}"
-            )
-
-    # Plot
-    sns.set_palette("colorblind")
-    palette = sns.color_palette("colorblind")
-    mean_col, med_col = palette[0], palette[1]
-
-    fig, ax = plt.subplots(figsize=figsize)
-    # Horizontal violin
-    sns.violinplot(x=data, orient='h', inner=None, color='lightgray', ax=ax)
-
-    # Overlay mean and its CI
-    ax.errorbar(
-        x=sample_mean,
-        y=0,
-        xerr=[[sample_mean - mean_ci_low], [mean_ci_high - sample_mean]],
-        fmt='o', capsize=5, color=mean_col, label=f"Mean CI ({mean_ci_method}, {int((1-alpha)*100)}%)"
-    )
-    ax.axvline(sample_mean, color=mean_col, linestyle='--', label=f"Mean = {sample_mean:.2f}")
-
-    # Overlay median and its CI if requested
-    if median_ci_method == 'bootstrap':
-        ax.errorbar(
-            x=sample_median,
-            y=0,
-            xerr=[[sample_median - med_ci_low], [med_ci_high - sample_median]],
-            fmt='s', capsize=5, color=med_col, label=f"Median CI (bootstrap, {int((1-alpha)*100)}%)"
-        )
-        ax.axvline(sample_median, color=med_col, linestyle='-.', label=f"Median = {sample_median:.2f}")
-
-    # Labels and title
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_yticks([])
-    if ylabel:
-        ax.set_ylabel(ylabel)
-
-    # stats textbox
-    if stats_lines:
-        textbox = "\n".join(stats_lines)
-        ax.text(0.01, 0.95, textbox, transform=ax.transAxes,
-                fontsize='small', va='top', bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.5))
-
-    # Annotations
-    if data_source:
-        fig.text(0.01, 0.01, f"Source: {data_source}", ha='left', va='bottom', fontsize='small', color='gray')
-    fig.text(0.99, 0.01, f"n = {n}", ha='right', va='bottom', fontsize='small', color='gray')
-
-    ax.legend()
-
-    # Save
-    if save_path:
-        if file_name is None:
-            file_name = f"{title}.png"
-        os.makedirs(save_path, exist_ok=True)
-        fig.savefig(os.path.join(save_path, file_name), bbox_inches='tight')
-
-    # Return metadata
-    return {
-        'descriptive_stats': {
-            'params': {
-                'mean_ci_method': mean_ci_method,
-                'median_ci_method': median_ci_method
-            },
-            'n': n,
-            'mean': sample_mean,
-            'median': sample_median,
-            'mean_ci': (mean_ci_low, mean_ci_high),
-            'median_ci': (med_ci_low, med_ci_high)
-        },
-        'inferential_stats': test_results,
-        'chart_metadata': {
-            'title': title,
-            'xlabel': xlabel,
-            'ylabel': ylabel,
-            'data_source': data_source,
-            'file_name': file_name
+    # (5) inferential stats (optional tests vs population params)
+    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        out: Dict[str, Any] = {
+            "params": {
+                "alpha": self.ctx.alpha,
+                "bootstrap_samples": self.ctx.bootstrap_samples,
+                "popmean": self.ctx.popmean,
+                "popmedian": self.ctx.popmedian,
+                "popvariance": self.ctx.popvariance,
+            }
         }
-    }
+
+        # Tests for mean
+        if self.ctx.popmean is not None:
+            out["popmean"] = {}
+
+            # One-Sample Cohen's d
+            sd = float(s.std(ddof=1))
+            cohens_d = (desc["mean"] - self.ctx.popmean) / sd if sd != 0 else None
+            
+            # One-Sample t-Test
+            t_stat, t_p = stats.ttest_1samp(s, self.ctx.popmean)
+            out["popmean"]["cohens_d"] = None if cohens_d is None else float(cohens_d)
+            out["popmean"]["t_test"] = {
+                "statistic": float(t_stat),
+                "p_value": float(t_p),
+                "reject": bool(t_p < self.ctx.alpha),
+            }
+
+            # One-sample Z-test (requires known σ²)
+            if self.ctx.popvariance is not None:
+                sigma = float(np.sqrt(self.ctx.popvariance))
+                z_stat = (desc["mean"] - self.ctx.popmean) / (sigma / np.sqrt(desc['n']))
+                z_p = 2 * (1 - stats.norm.cdf(abs(z_stat)))
+                out["popmean"]["z_test"] = {
+                    "statistic": float(z_stat),
+                    "p_value": float(z_p),
+                    "reject": bool(z_p < self.ctx.alpha),
+                }
+
+        # Tests for median
+        if self.ctx.popmedian is not None:
+            out["popmedian"] = {}
+
+            # Wilcoxon Signed-Rank Test
+            diff = s - self.ctx.popmedian
+            stat_wr, p_wr = stats.wilcoxon(diff)
+            out["popmedian"]["wilcoxon"] = {
+                "statistic": float(stat_wr),
+                "p_value": float(p_wr),
+                "reject": bool(p_wr < self.ctx.alpha),
+            }
+
+            # Sign test (binomial on signs)
+            nonzero = diff[diff != 0]
+            n_sign = int(nonzero.size)
+            if n_sign > 0:
+                pos = int((nonzero > 0).sum())
+                sign_res = stats.binomtest(pos, n_sign, p=0.5)
+                out["popmedian"]["sign_test"] = {
+                    "num_positive": pos,
+                    "num_negative": n_sign - pos,
+                    "n": n_sign,
+                    "p_value": float(sign_res.pvalue),
+                    "reject": bool(sign_res.pvalue < self.ctx.alpha),
+                }
+
+        return out
+
+    # (6) draw
+    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
+        sns.set_palette("colorblind")
+        palette = sns.color_palette("colorblind")
+        mean_col, med_col = palette[0], palette[1]
+
+        title = chart_metadata["title"]
+        xlabel = chart_metadata["xlabel"] or "Value"
+        ylabel = chart_metadata["ylabel"] or "Density"
+
+        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+
+        # Horizontal violin
+        sns.violinplot(x=s, orient="h", inner=None, color="lightgray", ax=ax)
+
+        # Overlay mean and its CI
+        mean = desc["mean"]; mean_lo, mean_hi = desc["mean_ci"]
+        if desc["n"] > 0 and np.isfinite(mean):
+            if np.isfinite(mean_lo) and np.isfinite(mean_hi):
+                ax.errorbar(
+                    x=mean, y=0,
+                    xerr=[[mean - mean_lo], [mean_hi - mean]],
+                    fmt="o", capsize=5, color=mean_col,
+                    label=f"Mean CI ({self.ctx.mean_ci_method}, {int((1 - self.ctx.alpha) * 100)}%)",
+                )
+            ax.axvline(mean, color=mean_col, linestyle="--", label=f"Mean = {mean:.2f}")
+
+        # Overlay median and its CI (if requested)
+        if desc["n"] > 0 and self.ctx.median_ci_method == "bootstrap":
+            med = desc["median"]; med_lo, med_hi = desc["median_ci"]
+            if np.isfinite(med):
+                if np.isfinite(med_lo) and np.isfinite(med_hi):
+                    ax.errorbar(
+                        x=med, y=0,
+                        xerr=[[med - med_lo], [med_hi - med]],
+                        fmt="s", capsize=5, color=med_col,
+                        label=f"Median CI (bootstrap, {int((1 - self.ctx.alpha) * 100)}%)",
+                    )
+                ax.axvline(med, color=med_col, linestyle="-.", label=f"Median = {med:.2f}")
+
+        # Labels/title
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_yticks([])
+        if ylabel:
+            ax.set_ylabel(ylabel)
+
+        # Compact stats summary textbox (when tests were run)
+        stats_lines = []
+        pm = inf.get("popmean"); pmed = inf.get("popmedian")
+        if pm is not None:
+            parts = []
+            if "cohens_d" in pm and pm["cohens_d"] is not None:
+                parts.append(f"d={pm['cohens_d']:.2f}")
+            if "t_test" in pm:
+                parts.append(f"t={pm['t_test']['statistic']:.2f}, p={pm['t_test']['p_value']:.3f}"
+                             f" {'(reject)' if pm['t_test']['reject'] else '(ns)'}")
+            if "z_test" in pm:
+                parts.append(f"z={pm['z_test']['statistic']:.2f}, p={pm['z_test']['p_value']:.3f}"
+                             f" {'(reject)' if pm['z_test']['reject'] else '(ns)'}")
+            if parts: stats_lines.append("Mean vs pop: " + "; ".join(parts))
+        if pmed is not None:
+            parts = []
+            if "wilcoxon" in pmed:
+                parts.append(f"W={pmed['wilcoxon']['statistic']:.2f}, p={pmed['wilcoxon']['p_value']:.3f}"
+                             f" {'(reject)' if pmed['wilcoxon']['reject'] else '(ns)'}")
+            if "sign_test" in pmed:
+                st = pmed["sign_test"]
+                parts.append(f"Sign: +={st['num_positive']}, -={st['num_negative']}, p={st['p_value']:.3f}"
+                             f" {'(reject)' if st['reject'] else '(ns)'}")
+            if parts: stats_lines.append("Median vs pop: " + "; ".join(parts))
+        if stats_lines:
+            ax.text(0.01, 0.95, "\n".join(stats_lines), transform=ax.transAxes,
+                    fontsize="small", va="top",
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.5))
+
+        # Sample size footer (BasePlot will add data_source if present)
+        fig.text(0.99, 0.01, f"n = {desc['n']}", ha="right", va="bottom",
+                 fontsize="small", color="gray")
+
+        ax.legend()
+        return fig, ax
+
+
+def plot_central_tendency_violin(
+    series: pd.Series,
+    /,
+    *,
+    ctx: Optional[CentralTendencyViolinContext] = None,
+    **kwargs: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Back-compat wrapper that delegates to the class-based implementation.
+    - If `ctx` is provided, it's used (optionally overridden by kwargs).
+    - Otherwise we construct CentralTendencyViolinContext(**kwargs).
+    """
+    if ctx is None:
+        ctx = CentralTendencyViolinContext(**kwargs)
+    else:
+        for k, v in kwargs.items():
+            setattr(ctx, k, v)
+
+    plot = CentralTendencyViolinPlot(ctx)
+    return plot.run(series)
+
