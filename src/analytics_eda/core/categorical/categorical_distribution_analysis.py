@@ -78,9 +78,9 @@ def categorical_distribution_analysis(
         data_source=data_source,
     )
 
-    # 2. Cardinality & Balance
+    # 2. Balance
     # What it is:  
-    #   Assessment of category cardinality and balance –  
+    #   Assessment of category balance –  
     #   counting unique categories, identifying rare “tail” categories (often grouped as ‘Others’),  
     #   and quantifying how evenly observations are distributed using metrics like entropy and the Gini index.
     # Why it matters: Tells you if you have too many categories to handle, or if one category overwhelms the rest.

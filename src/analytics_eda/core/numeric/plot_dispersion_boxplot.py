@@ -59,24 +59,7 @@ class DispersionBoxplotNumericPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # Match original chart_metadata keys (exclude xlabel)
-    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
-        from ..utils.build_chart_title import build_chart_title  # local import to mirror your utils structure
-        title = build_chart_title(
-            name=self.ctx.name,
-            series=series,
-            filter_desc=self.ctx.filter_desc,
-            transform_desc=self.ctx.transform_desc,
-            title_template=self.ctx.title_template,
-        )
-        return {
-            "title": title,
-            "ylabel": self.ctx.ylabel,
-            "data_source": self.ctx.data_source,
-            "file_name": self.ctx.file_name,
-        }
-
-    # (2) default when empty
+    # (1) default when empty
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "params": {"std_outlier_multiplier": float(self.ctx.std_outlier_multiplier)},
@@ -98,7 +81,7 @@ class DispersionBoxplotNumericPlot(NumericSeriesMixin, BasePlot):
             "extreme_upper_count": 0,
         }
 
-    # (3) descriptive stats
+    # (2) descriptive stats
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         n = int(s.size)
         mean = float(s.mean())
@@ -141,11 +124,7 @@ class DispersionBoxplotNumericPlot(NumericSeriesMixin, BasePlot):
             "extreme_upper_count": n_upper,
         }
 
-    # (4) no inferential stats
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
-        return {}
-
-    # (5) draw
+    # (3) draw
     def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
         sns.set_palette("colorblind")
         palette = sns.color_palette("colorblind")

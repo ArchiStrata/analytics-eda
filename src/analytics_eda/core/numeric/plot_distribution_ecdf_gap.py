@@ -65,25 +65,7 @@ class ECDFGapNumericPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # Chart metadata mirrors legacy keys
-    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
-        from ..utils.build_chart_title import build_chart_title
-        title = build_chart_title(
-            name=self.ctx.name,
-            series=series,
-            filter_desc=self.ctx.filter_desc,
-            transform_desc=self.ctx.transform_desc,
-            title_template=self.ctx.title_template,
-        )
-        return {
-            "title": title,
-            "xlabel": self.ctx.xlabel,
-            "ylabel": self.ctx.ylabel,
-            "data_source": self.ctx.data_source,
-            "file_name": self.ctx.file_name,
-        }
-
-    # (2) default when empty
+    # (1) default when empty
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "params": {"threshold": self.ctx.threshold},
@@ -100,7 +82,7 @@ class ECDFGapNumericPlot(NumericSeriesMixin, BasePlot):
             "max_gap_loc": float("nan")
         }
 
-    # (3) descriptive stats (+ payload for drawing)
+    # (2) descriptive stats (+ payload for drawing)
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         clean = s.sort_values()
         n = int(clean.size)
@@ -150,11 +132,7 @@ class ECDFGapNumericPlot(NumericSeriesMixin, BasePlot):
             "max_gap_idx": max_idx,
         }
 
-    # (4) no inferential stats
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
-        return {}
-
-    # (5) draw
+    # (3) draw
     def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
         sns.set_palette("colorblind")
 
