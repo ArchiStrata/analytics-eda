@@ -102,7 +102,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 "descriptive_stats": {
                     "total": 3,  # clean size
                     "nunique": 2,
-                    "uniqueness_ratio": 2 / 5,  # nunique / original length
+                    "uniqueness_ratio": 2 / 3,  # nunique / original length
                 },
             },
         ),

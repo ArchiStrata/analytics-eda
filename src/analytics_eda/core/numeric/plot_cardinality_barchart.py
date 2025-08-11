@@ -11,29 +11,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
+from dataclasses import dataclass
+from typing import Dict, Any, Optional, Tuple
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from .validate_numeric_named_series import validate_numeric_named_series
+from ..utils.base_plot import BasePlot, PlotContext
+from .validate_numeric_named_series import NumericSeriesMixin
 
-def plot_cardinality_barchart(
-    series: pd.Series,
-    top_k: int = 10,
-    title_template: str = "Value Counts (Top {top_k}) of {name} for Cardinality",
-    name: str = None,
-    xlabel: str = "Value",
-    ylabel: str = "Count",
-    data_source: str = None,
-    figsize: tuple = (8, 6),
-    save_path: str = None,
-    file_name: str = None,
-    max_unique_fraction: float = 0.05,
-    max_unique_values: int = 20,
+@dataclass
+class CardinalityBarContext(PlotContext):
+    title_template: str = "Value Counts (Top {top_k}) of {name} for Cardinality"
+    xlabel: str = "Value"
+    ylabel: str = "Count"
+    figsize: Tuple[int, int] = (8, 6)
+
+    # plot-specific
+    top_k: int = 10
+    max_unique_fraction: float = 0.05
+    max_unique_values: int = 20
     integer_tolerance: float = 1e-8
-):
+
+class CardinalityBarNumericPlot(NumericSeriesMixin, BasePlot):
     """
     Generate a bar chart that tells the cardinality story of a numeric variable.
 
@@ -48,205 +49,171 @@ def plot_cardinality_barchart(
         - Optionally annotates data source and saves the figure.  
         - Returns cardinality metric and chart metadata for reporting.
 
-    How:
-        - Cleans the data by dropping missing values.  
-        - Uses pandas `value_counts` to get top k frequencies.  
-        - Plots a colorblind-friendly bar chart of value vs. count.  
-        - Supports layout control via `figsize` and export via `save_path`/`file_name`.
-
-    Parameters
-    ----------
-    series : pd.Series
-        Numeric dataset to analyze. Missing values will be dropped.
-    top_k : int, default=10
-        Number of most frequent values to display.
-    title_template: A Python format-string with placeholders:
-      - {name}:        series name or label
-      - {modifiers}:   combined filter/transform text, empty if none
-    name:                Optional override for series.name
-    xlabel : str, default="Value"
-        Label for the x-axis.
-    ylabel : str, default="Count"
-        Label for the y-axis.
-    data_source : str, optional
-        Text annotation for the data source (bottom-left of figure).
-    figsize : tuple, default=(8, 6)
-        Figure size in inches (width, height).
-    save_path : str or Path, optional
-        Directory where the plot image will be saved. Created if needed.
-    file_name : str, optional
-        Filename (with extension) for saving. Requires `save_path`.
-    max_unique_fraction : float
-        Relative threshold of unique values / total rows below which we
-        treat floats as discrete.
-    max_unique_values   : int
-        Absolute cap on number of unique values to still call discrete.
-    integer_tolerance   : float
-        Tolerance for considering float values "whole" (e.g. 1.00000002)
-
-    Returns
-    -------
-    metadata : dict
-        {
-            'descriptive_stats': {
-                'params': {
-                    'max_unique_fraction': float,
-                    'max_unique_values': int,
-                    'integer_tolerance': float
-                }
-                'total': int # total number of values
-                'nunique': int   # number of distinct values
-                'uniqueness_ratio': float # ratio of distinct values to total
-                'is_discrete': bool
-            },
-            'chart_metadata': {
-                'title': str,
-                'xlabel': str,
-                'ylabel': str,
-                'data_source': str or None,
-                'top_k': int,
-                'file_name': str or None
-            }
-        }
+    Returns BasePlot.run() schema:
+      {
+        "descriptive_stats": {
+          "params": {...},
+          "total", "nunique", "uniqueness_ratio", "is_discrete"
+        },
+        "inferential_stats": {},
+        "chart_metadata": {..., "top_k": int}
+      }
     """
-    validate_numeric_named_series(series)
-    clean = series.copy().dropna()
 
-    label = name or getattr(series, "name", None) or "Value"
-    title = title_template.format(name=label, top_k=top_k)
-
-    # Early return if empty
-    if clean.size == 0:
+    # Title must include {top_k}; override metadata builder to format it.
+    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
+        label = self.ctx.name or getattr(series, "name", None) or "Value"
+        title = self.ctx.title_template.format(name=label, top_k=self.ctx.top_k)
         return {
-            'descriptive_stats': {
-                'params': {
-                    'max_unique_fraction': max_unique_fraction,
-                    'max_unique_values': max_unique_values,
-                    'integer_tolerance': integer_tolerance
-                },
-                'total': clean.size,
-                'nunique': 0,
-                'uniqueness_ratio': 0,
-                'is_discrete': None
-            },
-            'chart_metadata': {
-                'title': title,
-                'xlabel': xlabel,
-                'ylabel': ylabel,
-                'data_source': data_source,
-                'top_k': top_k,
-                'file_name': file_name
-            }
+            "title": title,
+            "xlabel": self.ctx.xlabel,
+            "ylabel": self.ctx.ylabel,
+            "data_source": self.ctx.data_source,
+            "file_name": self.ctx.file_name,
+            "top_k": int(self.ctx.top_k),
         }
-    nunique = int(clean.nunique())
-    uniqueness_ratio = nunique / len(series) # Shows how many values are unique vs repeated.
 
-    is_discrete = is_discrete_numeric(
-        clean,
-        max_unique_fraction=max_unique_fraction,
-        max_unique_values=max_unique_values,
-        integer_tolerance=integer_tolerance
-    )
+    # (2) default when empty
+    def default_descriptive(self) -> Dict[str, Any]:
+        return {
+            "params": {
+                "max_unique_fraction": float(self.ctx.max_unique_fraction),
+                "max_unique_values": int(self.ctx.max_unique_values),
+                "integer_tolerance": float(self.ctx.integer_tolerance),
+            },
+            "total": 0,
+            "nunique": 0,
+            "uniqueness_ratio": 0.0,
+            "is_discrete": None,
+            # payload for draw():
+            "labels": [],
+            "values": np.array([], dtype=float),
+        }
 
-    # Compute top-k frequencies
-    counts = clean.value_counts().head(top_k)
-    labels = counts.index.astype(str)
-    values = counts.values
+    # (3) descriptive stats (+ payload for drawing)
+    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+        total = int(s.size)
+        nunique = int(s.nunique())
+        uniqueness_ratio = (nunique / total) if total else 0.0
 
-    # Plot
-    sns.set_palette("colorblind")
-    fig, ax = plt.subplots(figsize=figsize)
-    sns.barplot(x=labels, y=values, ax=ax)
-
-    subtitle = (
-        f"{'Discrete' if is_discrete else 'Continuous'} "
-        f"| Unique: {nunique:,} ({uniqueness_ratio:.1%})"
-    )
-    ax.set_title(f"{title}\n{subtitle}")
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
-
-    # Optional data source
-    if data_source:
-        fig.text(
-            0.01, 0.01, f"Source: {data_source}",
-            ha='left', va='bottom',
-            fontsize='small', color='gray'
+        is_discrete = self._is_discrete_numeric(
+            s,
+            max_unique_fraction=self.ctx.max_unique_fraction,
+            max_unique_values=self.ctx.max_unique_values,
+            integer_tolerance=self.ctx.integer_tolerance,
         )
 
-    # Optional save
-    if save_path:
-        if file_name is None:
-            file_name = f"{title}.png"
-        os.makedirs(save_path, exist_ok=True)
-        abs_path = os.path.join(save_path, file_name)
-        fig.savefig(abs_path, bbox_inches='tight')
+        counts = s.value_counts().head(self.ctx.top_k)
+        labels = counts.index.astype(str).tolist()
+        values = counts.values.astype(float)
 
-    return {
-        'descriptive_stats': {
-            'params': {
-                'max_unique_fraction': max_unique_fraction,
-                'max_unique_values': max_unique_values,
-                'integer_tolerance': integer_tolerance
+        return {
+            "params": {
+                "max_unique_fraction": float(self.ctx.max_unique_fraction),
+                "max_unique_values": int(self.ctx.max_unique_values),
+                "integer_tolerance": float(self.ctx.integer_tolerance),
             },
-            'total': clean.size,
-            'nunique': nunique,
-            'uniqueness_ratio': uniqueness_ratio,
-            'is_discrete': is_discrete,
-        },
-        'chart_metadata': {
-            'title': title,
-            'xlabel': xlabel,
-            'ylabel': ylabel,
-            'data_source': data_source,
-            'top_k': top_k,
-            'file_name': file_name
+            "total": total,
+            "nunique": nunique,
+            "uniqueness_ratio": float(uniqueness_ratio),
+            "is_discrete": bool(is_discrete),
+            # payload:
+            "labels": labels,
+            "values": values,
         }
-    }
 
-def is_discrete_numeric(s,
+    # (4) no inferential stats
+    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        return {}
+
+    # (5) draw
+    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
+        title = chart_metadata["title"]
+        xlabel = chart_metadata["xlabel"] or "Value"
+        ylabel = chart_metadata["ylabel"] or "Count"
+
+        sns.set_palette("colorblind")
+        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+        ax.bar(desc["labels"], desc["values"])
+
+        subtitle = (
+            f"{'Discrete' if desc['is_discrete'] else 'Continuous'} "
+            f"| Unique: {desc['nunique']:,} ({desc['uniqueness_ratio']:.1%})"
+        )
+        ax.set_title(f"{title}\n{subtitle}")
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+
+        return fig, ax
+
+    # ---- helper: discreteness ----
+    @staticmethod
+    def _is_discrete_numeric(
+        s: pd.Series,
         max_unique_fraction: float = 0.05,
         max_unique_values: int = 20,
-        integer_tolerance: float = 1e-8) -> bool:
+        integer_tolerance: float = 1e-8,
+    ) -> bool:
+        """
+        Determine whether a numeric pandas Series should be treated as discrete.
+
+        A series is considered discrete if:
+        - It has an integer dtype and either:
+            * The ratio of unique values to non-null entries is below `max_unique_fraction`, or
+            * The total number of unique values is below `max_unique_values`.
+        - It has a float dtype and either:
+            * All values are within `integer_tolerance` of a whole number, or
+            * Its unique-value ratio or count falls below the specified thresholds.
+
+        Parameters
+        ----------
+        s : pd.Series
+            Numeric data to evaluate. NaNs are ignored in all calculations.
+        max_unique_fraction : float, default=0.05
+            Maximum fraction of unique values (unique / total non-null) to still call discrete.
+        max_unique_values : int, default=20
+            Maximum absolute count of unique values to still call discrete.
+        integer_tolerance : float, default=1e-8
+            Tolerance for treating float values as effectively integers (e.g. 3.0000000001).
+
+        Returns
+        -------
+        bool
+            True if the series meets the criteria for discreteness; False otherwise.
+        """
+        # 1) Integer dtype
+        if pd.api.types.is_integer_dtype(s.dtype):
+            return (s.nunique() / len(s)) <= max_unique_fraction or s.nunique() < max_unique_values
+        # 2) Float dtype
+        if pd.api.types.is_float_dtype(s.dtype):
+            # 2a. effectively all whole numbers?
+            if np.isclose(s % 1, 0, atol=integer_tolerance).all():
+                return True
+            frac = s.nunique() / len(s)
+            # 2b. low cardinality
+            if frac < max_unique_fraction or s.nunique() < max_unique_values:
+                return True
+        return False
+
+
+def plot_cardinality_barchart(
+    series: pd.Series,
+    /,
+    *,
+    ctx: Optional[CardinalityBarContext] = None,
+    **kwargs: Dict[str, Any],
+) -> Dict[str, Any]:
     """
-    Determine whether a numeric pandas Series should be treated as discrete.
-
-    A series is considered discrete if:
-      - It has an integer dtype and either:
-        * The ratio of unique values to non-null entries is below `max_unique_fraction`, or
-        * The total number of unique values is below `max_unique_values`.
-      - It has a float dtype and either:
-        * All values are within `integer_tolerance` of a whole number, or
-        * Its unique-value ratio or count falls below the specified thresholds.
-
-    Parameters
-    ----------
-    s : pd.Series
-        Numeric data to evaluate. NaNs are ignored in all calculations.
-    max_unique_fraction : float, default=0.05
-        Maximum fraction of unique values (unique / total non-null) to still call discrete.
-    max_unique_values : int, default=20
-        Maximum absolute count of unique values to still call discrete.
-    integer_tolerance : float, default=1e-8
-        Tolerance for treating float values as effectively integers (e.g. 3.0000000001).
-
-    Returns
-    -------
-    bool
-        True if the series meets the criteria for discreteness; False otherwise.
+    Back-compat wrapper that delegates to the class-based implementation.
+    - If `ctx` is provided, it's used (optionally overridden by kwargs).
+    - Otherwise we construct CardinalityBarContext(**kwargs).
     """
-    # 1. Integer dtype
-    if pd.api.types.is_integer_dtype(s.dtype):
-        return (s.nunique() / len(s)) <= max_unique_fraction \
-            or s.nunique() < max_unique_values
-    # 2. Float dtype
-    if pd.api.types.is_float_dtype(s.dtype):
-        # 2a. effectively all whole numbers?
-        if np.isclose(s % 1, 0, atol=integer_tolerance).all():
-            return True
-        # 2b. low cardinality
-        frac = s.nunique() / len(s)
-        if frac < max_unique_fraction or s.nunique() < max_unique_values:
-            return True
-    return False
+    if ctx is None:
+        ctx = CardinalityBarContext(**kwargs)
+    else:
+        for k, v in kwargs.items():
+            setattr(ctx, k, v)
+
+    plot = CardinalityBarNumericPlot(ctx)
+    return plot.run(series)

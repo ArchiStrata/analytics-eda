@@ -39,3 +39,8 @@ def validate_numeric_named_series(
     if require_name and (series.name is None or str(series.name).strip() == ""):
         raise ValueError("Series must have a non-empty 'name' attribute.")
     return series
+
+class NumericSeriesMixin:
+    def validate(self, series: pd.Series) -> pd.Series:
+        validate_numeric_named_series(series)
+        return series.copy().dropna()

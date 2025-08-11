@@ -1,6 +1,5 @@
 from .numeric_distribution_analysis import numeric_distribution_analysis
-from .plot_cardinality_barchart import plot_cardinality_barchart
-from .validate_numeric_named_series import validate_numeric_named_series
+from .plot_cardinality_barchart import plot_cardinality_barchart, CardinalityBarContext, CardinalityBarNumericPlot
 from .plot_central_tendency_histogram import plot_central_tendency_histogram
 from .plot_central_tendency_violin import plot_central_tendency_violin
 from .plot_dispersion_boxplot import plot_dispersion_boxplot
@@ -9,3 +8,4 @@ from .plot_distribution_ecdf_gap import plot_distribution_ecdf_gap
 from .plot_distribution_qq_fit import plot_distribution_qq_fit
 from .plot_distribution_ecdf_vs_cdf import plot_distribution_ecdf_vs_cdf
 from .plot_distribution_probability_function import plot_distribution_probability_function
+from .validate_numeric_named_series import validate_numeric_named_series, NumericSeriesMixin
