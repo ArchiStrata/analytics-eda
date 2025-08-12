@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import pandas as pd
 import pytest
@@ -22,7 +21,7 @@ from analytics_eda.core.numeric import plot_distribution_qq_fit
 def test_validate_numeric_named_series_errors(series_factory, expected_exc, match):
     obj = series_factory()
     with pytest.raises(expected_exc, match=match):
-        plot_distribution_qq_fit(obj, "norm")
+        plot_distribution_qq_fit(obj, distribution_name="norm")
 
 
 @pytest.mark.parametrize(

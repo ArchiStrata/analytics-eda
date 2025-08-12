@@ -7,5 +7,5 @@ from .plot_distribution_density import plot_distribution_density, DistributionDe
 from .plot_distribution_ecdf_gap import plot_distribution_ecdf_gap, ECDFGapContext, ECDFGapNumericPlot
 from .plot_distribution_ecdf_vs_cdf import plot_distribution_ecdf_vs_cdf, ECDFvCDFContext, ECDFvsCDFNumericPlot
 from .plot_distribution_probability_function import plot_distribution_probability_function, ProbFuncContext, ProbabilityFunctionPlot
-from .plot_distribution_qq_fit import plot_distribution_qq_fit
+from .plot_distribution_qq_fit import plot_distribution_qq_fit, QqFitContext, QqFitNumericPlot
 from .validate_numeric_named_series import validate_numeric_named_series, NumericSeriesMixin
