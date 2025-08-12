@@ -60,7 +60,7 @@ class CardinalityBarNumericPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # Title must include {top_k}; override metadata builder to format it.
+    # (1) Title must include {top_k}; override metadata builder to format it.
     def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
         label = self.ctx.name or getattr(series, "name", None) or "Value"
         title = self.ctx.title_template.format(name=label, top_k=self.ctx.top_k)
