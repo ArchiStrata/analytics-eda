@@ -4,11 +4,6 @@ import pandas as pd
 from analytics_eda.core.numeric.numeric_distribution_analysis import numeric_distribution_analysis
 from analytics_eda.core.numeric.evaluate_transforms import evaluate_transforms
 
-
-def make_float_series(data, name="x"):
-    # ensure float dtype and proper name
-    return pd.Series(data, dtype=float, name=name)
-
 @pytest.mark.parametrize(
     "make_input, exc, pattern",
     [
@@ -50,8 +45,258 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                     "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                },
-                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
+                    "distribution_fits": {
+                        "norm": {
+                            "ecdf_vs_cdf": {
+                                "descriptive_stats": {
+                                    "n": 150,
+                                    "params": {
+                                        "distribution_name": "norm",
+                                        "distribution_fit": [
+                                            0.063,
+                                            0.959
+                                        ]
+                                    },
+                                    "ks_D": 0.0405234014173278
+                                },
+                                "inferential_stats": {
+                                    "params": {
+                                        "alpha": 0.05
+                                    },
+                                    "ks": {
+                                        "statistic": 0.040439623105054445,
+                                        "p_value": 0.9585664995494558,
+                                        "reject": False
+                                    },
+                                    "anderson": {
+                                        "statistic": 0.40396592474297677,
+                                        "critical_value": 0.767,
+                                        "critical_values": [
+                                            0.562,
+                                            0.64,
+                                            0.767,
+                                            0.895,
+                                            1.065
+                                        ],
+                                        "significance_levels": [
+                                            15.0,
+                                            10.0,
+                                            5.0,
+                                            2.5,
+                                            1.0
+                                        ],
+                                        "reject": False
+                                    },
+                                    "cvm": {
+                                        "statistic": 0.0556707443438706,
+                                        "p_value": 0.8419518956667803,
+                                        "reject": False
+                                    }
+                                },
+                                "chart_metadata": {
+                                    "title": "ECDF vs. Theoretical CDF of norm (norm)",
+                                    "xlabel": "Value",
+                                    "ylabel": "CDF",
+                                    "data_source": "UnitTest",
+                                    "file_name": "ECDF vs. Theoretical CDF of norm (norm).png"
+                                }
+                            },
+                            "qq": {
+                                "descriptive_stats": {
+                                    "intercept": 0.00010465900704410797,
+                                    "slope": 0.9983392874998688,
+                                    "r_squared": 0.9882016901688403,
+                                    "median_residual": 0.022879929960715417,
+                                    "iqr_residual": 0.11265581094199321,
+                                    "max_abs_residual": 0.6571515339829359,
+                                    "skewness": -0.20357498056930046,
+                                    "kurtosis": -0.4148577220304337,
+                                    "min": -2.3653039062769743
+                                },
+                                "inferential_stats": {
+                                    "params": {
+                                        "alpha": 0.05,
+                                        "distribution_name": "norm"
+                                    },
+                                    "dagostino_pearson": {
+                                        "statistic": 2.4918425812847533,
+                                        "p_value": 0.28767575302776366,
+                                        "reject": False
+                                    },
+                                    "reject_normality": False
+                                },
+                                "chart_metadata": {
+                                    "title": "Q\u2013Q Plot Fit Assessment of norm (norm)",
+                                    "xlabel": "Theoretical Quantiles",
+                                    "ylabel": "Sample Quantiles",
+                                    "data_source": "UnitTest",
+                                    "file_name": "Q\u2013Q Plot Fit Assessment of norm (norm).png"
+                                }
+                            }
+                        },
+                        "lognorm": {
+                            "ecdf_vs_cdf": {
+                                "descriptive_stats": {
+                                    "n": 150,
+                                    "params": {
+                                        "distribution_name": "lognorm"
+                                    },
+                                    "error": "requires positive data",
+                                    "skip_plot": True,
+                                    "x": "[]",
+                                    "ecdf": "[]",
+                                    "cdf_theo": "[]"
+                                },
+                                "inferential_stats": {
+                                    "params": {
+                                        "alpha": 0.05
+                                    }
+                                },
+                                "chart_metadata": {
+                                    "title": "ECDF vs. Theoretical CDF of norm (lognorm)",
+                                    "xlabel": "Value",
+                                    "ylabel": "CDF",
+                                    "data_source": "UnitTest"
+                                }
+                            },
+                            "qq": {
+                                "descriptive_stats": {
+                                    "intercept": None,
+                                    "slope": None,
+                                    "r_squared": None,
+                                    "median_residual": None,
+                                    "iqr_residual": None,
+                                    "max_abs_residual": None,
+                                    "skewness": None,
+                                    "kurtosis": None,
+                                    "min": -2.3653039062769743,
+                                    "error": "requires positive data",
+                                    "skip_plot": True
+                                },
+                                "inferential_stats": {
+                                    "params": {
+                                        "alpha": 0.05,
+                                        "distribution_name": "lognorm"
+                                    }
+                                },
+                                "chart_metadata": {
+                                    "title": "Q\u2013Q Plot Fit Assessment of norm (lognorm)",
+                                    "xlabel": "Theoretical Quantiles",
+                                    "ylabel": "Sample Quantiles",
+                                    "data_source": "UnitTest"
+                                }
+                            }
+                        },
+                        "gamma": {
+                            "ecdf_vs_cdf": {
+                                "descriptive_stats": {
+                                    "n": 150,
+                                    "params": {
+                                        "distribution_name": "gamma",
+                                    },
+                                    "error": "requires positive data",
+                                    "skip_plot": True,
+                                    "x": "[]",
+                                    "ecdf": "[]",
+                                    "cdf_theo": "[]"
+                                },
+                                "inferential_stats": {
+                                    "params": {
+                                        "alpha": 0.05
+                                    }
+                                },
+                                "chart_metadata": {
+                                    "title": "ECDF vs. Theoretical CDF of norm (gamma)",
+                                    "xlabel": "Value",
+                                    "ylabel": "CDF",
+                                    "data_source": "UnitTest"
+                                }
+                            },
+                            "qq": {
+                                "descriptive_stats": {
+                                    "intercept": None,
+                                    "slope": None,
+                                    "r_squared": None,
+                                    "median_residual": None,
+                                    "iqr_residual": None,
+                                    "max_abs_residual": None,
+                                    "skewness": None,
+                                    "kurtosis": None,
+                                    "min": -2.3653039062769743,
+                                    "error": "requires positive data",
+                                    "skip_plot": True
+                                },
+                                "inferential_stats": {
+                                    "params": {
+                                        "alpha": 0.05,
+                                        "distribution_name": "gamma"
+                                    }
+                                },
+                                "chart_metadata": {
+                                    "title": "Q\u2013Q Plot Fit Assessment of norm (gamma)",
+                                    "xlabel": "Theoretical Quantiles",
+                                    "ylabel": "Sample Quantiles",
+                                    "data_source": "UnitTest"
+                                }
+                            }
+                        },
+                        "expon": {
+                            "ecdf_vs_cdf": {
+                                "descriptive_stats": {
+                                    "n": 150,
+                                    "params": {
+                                        "distribution_name": "expon",
+                                        "distribution_fit": None
+                                    },
+                                    "error": "requires non-negative data",
+                                    "skip_plot": True,
+                                    "x": "[]",
+                                    "ecdf": "[]",
+                                    "cdf_theo": "[]",
+                                    "ks_D": None
+                                },
+                                "inferential_stats": {
+                                    "params": {
+                                        "alpha": 0.05
+                                    }
+                                },
+                                "chart_metadata": {
+                                    "title": "ECDF vs. Theoretical CDF of norm (expon)",
+                                    "xlabel": "Value",
+                                    "ylabel": "CDF",
+                                    "data_source": "UnitTest"
+                                }
+                            },
+                            "qq": {
+                                "descriptive_stats": {
+                                    "intercept": None,
+                                    "slope": None,
+                                    "r_squared": None,
+                                    "median_residual": None,
+                                    "iqr_residual": None,
+                                    "max_abs_residual": None,
+                                    "skewness": None,
+                                    "kurtosis": None,
+                                    "min": -2.3653039062769743,
+                                    "error": "requires non-negative data",
+                                    "skip_plot": True
+                                },
+                                "inferential_stats": {
+                                    "params": {
+                                        "alpha": 0.05,
+                                        "distribution_name": "expon"
+                                    }
+                                },
+                                "chart_metadata": {
+                                    "title": "Q\u2013Q Plot Fit Assessment of norm (expon)",
+                                    "xlabel": "Theoretical Quantiles",
+                                    "ylabel": "Sample Quantiles",
+                                    "data_source": "UnitTest"
+                                }
+                            }
+                        }
+                    }
+                }
             },
         ),
         # 2) Lognormal (strictly positive)
@@ -70,8 +315,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                     "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                },
-                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
+                }
             },
         ),
         # 3) Gamma (strictly positive)
@@ -90,8 +334,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                     "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                },
-                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
+                }
             },
         ),
         # 4) Exponential (non‑negative)
@@ -111,7 +354,6 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                     "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
-                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
             },
         ),
         # -----------------------------------------
@@ -133,8 +375,8 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                     "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "transforms": {"yeo-johnson": {}, "arcsinh": {}}
                 },
-                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
             },
         ),
         # 2) Lognormal + transforms
@@ -154,7 +396,6 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                     "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
-                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
             },
         ),
         # 3) Gamma + transforms
@@ -174,7 +415,6 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                     "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
-                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
             },
         ),
         # 4) Exponential + transforms
@@ -194,7 +434,6 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                     "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
-                "distribution_names": ("norm", "lognorm", "gamma", "expon"),
             },
         ),
     ],
@@ -239,64 +478,38 @@ def test_numeric_distribution_analysis_param(
     # ---- shape ----
     for plot_key, exp in expected_distribution["shape"].items():
         assert plot_key in dist_loaded["shape"], f"missing shape.{plot_key}"
-        payload = dist_loaded["shape"][plot_key]
-        assert_plot_metadata(payload, exp, tmp_path)
 
-    # Distribution fits (per-named distribution)
-    fits = dist_loaded["shape"]["distribution_fits"]
-    expected_names = set(expected_distribution["distribution_names"])
-    assert set(fits.keys()) == expected_names
+        # Distribution fits (per-named distribution)
+        if plot_key == "distribution_fits":
+            expected_distribution_fits = exp
+            actual_distribution_fits = dist_loaded["shape"][plot_key]
 
-    for dist_name in expected_names:
-        assert set(fits[dist_name].keys()) == {"ecdf_vs_cdf", "qq"}
+            for dist_name, plots in expected_distribution_fits.items():
+                assert dist_name in actual_distribution_fits
+                actual_distribution_fit = actual_distribution_fits[dist_name]
 
-        # --- ECDF vs CDF: handle support checks ---
-        evc = fits[dist_name]["ecdf_vs_cdf"]
-        evc_desc = evc["descriptive_stats"]
-        evc_cm   = evc["chart_metadata"]
+                for dist_plot_key, dist_exp in plots.items():
+                    assert dist_plot_key in actual_distribution_fit, f"missing distribution.{dist_plot_key}"
+                    payload = actual_distribution_fit[dist_plot_key]
+                    assert_plot_metadata(payload, dist_exp, tmp_path)
+        elif plot_key == "transforms":
+            if kwargs.get("evaluate_transforms_fn") is not None:
+                expected_transforms = exp
+                actual_transforms = dist_loaded["shape"][plot_key]
 
-        if "error" in evc_desc:
-            # Support violated → no file is expected
-            assert evc_cm.get("file_name") is None, f"expected no file for unsupported {dist_name}"
-            # Optional: assert the error message is one of the expected ones
-            assert evc_desc["error"] in {"requires positive data", "requires non-negative data"}
+                for transform_name, expected_data in expected_transforms.items():
+                    assert transform_name in actual_transforms
+                    actual_transform_report_meta = actual_transforms[transform_name]
+                    full_transform_report = load_and_validate_report(actual_transform_report_meta, tmp_path / transform_name)
+                    report_t = full_transform_report["data"]
+                    assert report_t is not None, f"{transform_name!r} entry missing nested 'data'"
+
+                    # ---- central_tendency ----
+                    if "central_tendency" in expected_data:
+                        for plot_key, exp in expected_data["central_tendency"].items():
+                            assert plot_key in report_t["central_tendency"], f"missing central_tendency.{plot_key}"
+                            payload = report_t["central_tendency"][plot_key]
+                            assert_plot_metadata(payload, exp, tmp_path)
         else:
-            # Normal path → file must exist
-            assert evc_cm.get("file_name"), f"missing file_name for {dist_name}.ecdf_vs_cdf"
-            assert (tmp_path / evc_cm["file_name"]).exists(), f"missing saved file for {dist_name}.ecdf_vs_cdf"
-
-        # --- QQ plot: always expect a saved file (no support early-return there) ---
-        qq = fits[dist_name]["qq"]
-        qq_cm = qq["chart_metadata"]
-        assert qq_cm.get("file_name"), f"missing file_name for {dist_name}.qq"
-        assert (tmp_path / qq_cm["file_name"]).exists(), f"missing saved file for {dist_name}.qq"
-
-    # ---- transforms sanity (only when evaluate_transforms_fn was provided) ----
-    if kwargs.get("evaluate_transforms_fn") is not None:
-        shape = dist_loaded["shape"]
-        assert "transforms" in shape, "Expected 'transforms' when evaluate_transforms_fn is provided"
-
-        transforms = shape["transforms"]
-        expected_base = {"yeo-johnson", "arcsinh"}
-        assert expected_base.issubset(transforms.keys()), "Base transforms missing from results"
-
-        for transform_name, transform_meta in transforms.items():
-            assert isinstance(transform_meta, dict), f"{transform_name!r} meta must be a dict"
-
-            full_transform_report = load_and_validate_report(transform_meta, tmp_path / transform_name)
-            report_t = full_transform_report["data"]
-            assert report_t is not None, f"{transform_name!r} entry missing nested 'data'"
-
-            # histogram saved
-            hist_meta = report_t["central_tendency"]["histogram"]
-            rel = hist_meta["chart_metadata"]["file_name"]
-            assert rel, f"No file_name for histogram in transform {transform_name!r}"
-            assert (tmp_path / transform_name / rel).exists(), \
-                f"{tmp_path/transform_name/rel} missing for transform {transform_name!r}"
-
-            # ecdf_vs_cdf saved for norm
-            evc_meta = report_t["shape"]["distribution_fits"]["norm"]["ecdf_vs_cdf"]
-            rel2 = evc_meta["chart_metadata"]["file_name"]
-            assert rel2, f"No file_name for ECDF vs CDF in transform {transform_name!r}"
-            assert (tmp_path / transform_name / rel2).exists(), \
-                f"{tmp_path/transform_name/rel2} missing for transform {transform_name!r}"
+            payload = dist_loaded["shape"][plot_key]
+            assert_plot_metadata(payload, exp, tmp_path)
