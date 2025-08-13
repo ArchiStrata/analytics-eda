@@ -18,9 +18,11 @@ import uuid
 
 import pandas as pd
 
-from ...core.numeric import CardinalityBarContext, CardinalityBarPlot, validate_numeric_named_series, numeric_distribution_analysis
+from ...core.numeric import CardinalityBarContext, CardinalityBarPlot, numeric_distribution_analysis
 from ...core.reporting import write_json_report
 from ...core.missing_data import MissingDataBarContext, MissingDataBarPlot
+from ...core.data_quality import StringCoercionBarPlot, StringCoercionBarContext
+from ...core.utils import validate_named_series
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +80,7 @@ def univariate_numeric_analysis(
             }
         }
     """
-    validate_numeric_named_series(series)
+    validate_named_series(series)
 
     logger.info(
         "Starting univariate_numeric_analysis",
@@ -95,6 +97,7 @@ def univariate_numeric_analysis(
     report_path = Path(report_root) / series_copy.name.replace(' ', '_')
     report_path.mkdir(parents=True, exist_ok=True)
 
+    # 1. Data Quality & Standardization
     # Missing Data Analysis
     missing_data = {}
     md_ctx = MissingDataBarContext(save_path=report_path, data_source=data_source)
@@ -103,7 +106,13 @@ def univariate_numeric_analysis(
         "barchart": md_plot.run(series_copy),
     }
 
-    # TODO: check for strings in numeric series. requires removing the initial full validate_numeric_named_series check.
+    # Check for strings in numeric series. requires removing the initial full validate_numeric_named_series check.
+    data_quality = {}
+    string_coercion_ctx = StringCoercionBarContext(save_path=report_path, data_source=data_source)
+    string_coercion_plot = StringCoercionBarPlot(string_coercion_ctx)
+    data_quality["string_coercion"] = string_coercion_plot.run(series_copy)
+    
+    series_copy = pd.to_numeric(series_copy, errors="coerce").dropna()
 
     # Cardinality Analysis
     card_ctx = CardinalityBarContext(save_path=report_path, data_source=data_source)
@@ -116,7 +125,7 @@ def univariate_numeric_analysis(
         'barchart': cardinality_bar_plot_result
     }
 
-    # Distribution Analysis
+    # 2. Distribution Analysis
     distribution_result = numeric_distribution_analysis(
         series_copy,
         is_discrete=is_discrete,
@@ -136,6 +145,7 @@ def univariate_numeric_analysis(
 
     # Generate report
     eda_report = {
+        'data_quality': data_quality,
         'missing_data': missing_data,
         'cardinality': cardinality,
         'distribution': distribution_result
@@ -146,19 +156,19 @@ def univariate_numeric_analysis(
             'version': '1.0.0',
             'report_name': 'univariate_numeric_analysis',
             'parameters': {
-                'series': series.name
+                'series': series_copy.name
             }
         },
         'data': eda_report
     }
 
-    report_file_path = report_path / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"
+    report_file_path = report_path / f"{series_copy.name.replace(' ', '_')}_univariate_analysis_report.json"
     write_json_report(full_report, report_file_path)
 
     logger.info(
         "Completed univariate_numeric_analysis",
         extra={
-            'series_name': series.name,
+            'series_name': series_copy.name,
             'report_log_id': report_log_id
         }
     )

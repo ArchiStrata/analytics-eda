@@ -13,10 +13,32 @@
 # limitations under the License.
 import pandas as pd
 
+def validate_named_series(
+    series: pd.Series,
+    require_name: bool = True
+) -> pd.Series:
+    """
+    Validate that the input is a categorical pandas Series with a non-empty name.
+
+    Args:
+        series (pd.Series): The Series to validate.
+        require_name (bool): If True, series.name must be non-empty.
+
+    Returns:
+        pd.Series: The validated Series.
+
+    Raises:
+        TypeError: If `series` is not a pandas Series.
+        ValueError: If `require_name` is True and `series.name` is None or empty.
+    """
+    if not isinstance(series, pd.Series):
+        raise TypeError("Input must be a pandas Series.")
+    
+    if require_name and (series.name is None or str(series.name).strip() == ""):
+        raise ValueError("Series must have a non-empty 'name' attribute.")
+    return series
+
 class NamedSeriesMixin:
     def validate(self, series: pd.Series) -> pd.Series:
-        if not isinstance(series, pd.Series):
-            raise TypeError("Input must be a pandas Series.")
-        if (series.name is None or str(series.name).strip() == ""):
-            raise ValueError("Series must have a non-empty 'name' attribute.")
+        validate_named_series(series)
         return series
