@@ -16,7 +16,7 @@ import math
 import pandas as pd
 
 from .validate_numeric_named_series import validate_numeric_named_series
-from ..clean_series import clean_series
+from ..utils.clean_series import clean_series
 
 logger = logging.getLogger(__name__)
 

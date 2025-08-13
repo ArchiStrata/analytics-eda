@@ -20,13 +20,14 @@ import pandas as pd
 
 from .validate_categorical_named_series import validate_categorical_named_series
 
-from .plot_frequency_pareto import plot_frequency_pareto
-from .plot_chi2_gof_uniform import plot_chi2_gof_uniform
-from .plot_balance_lorenz_curve import plot_balance_lorenz_curve
+from .frequency_pareto_plot import FrequencyParetoPlot, FrequencyParetoContext
+from .balance_chi_square_uniform_plot import BalanceChiSquareUniformPlot, BalanceChiSquareUniformContext
+from .balance_lorenz_curve_plot import BalanceLorenzCurvePlot, BalanceLorenzCurveContext
 
-from ..numeric import plot_distribution_density, plot_dispersion_boxplot
+from ..numeric import DispersionBoxplotPlot, DispersionBoxplotContext, DistributionDensityPlot, DistributionDensityContext
+
 from ..reporting import write_json_report
-from ..utils import call_plot_with_overrides
+from ..utils.build_plot_context import build_plot_context
 
 logger = logging.getLogger(__name__)
 
@@ -42,15 +43,47 @@ def categorical_distribution_analysis(
     plot_balance_lorenz_curve_overrides: Optional[Dict[str, Any]] = None
 ) -> dict:
     """
-    Analyze a categorical pandas Series and produce a structured report with summary
-    statistics, a frequency table, and a top-N bar chart (aggregating all others).
+    Perform a comprehensive statistical and visual analysis of a categorical Series,
+    generating both frequency-based and balance-based metrics and visualizations,
+    and compile them into a structured JSON report.
+
+    This function is designed to help identify dominant categories, rare "tail" categories,
+    and the overall distribution fairness of categorical data. It produces a combination of
+    descriptive statistics, inferential tests, and plots that reveal category proportions,
+    variability, and equality of distribution.
+
+    The analysis includes:
+      - **Frequency Distribution**: Counts and proportions of each category, visualized via a Pareto chart.
+      - **Balance Metrics**:
+          * Frequency density (histogram + KDE) of category counts.
+          * Boxplot of category frequencies to highlight dispersion.
+          * Chi-square goodness-of-fit test against a uniform distribution.
+          * Lorenz curve with Gini index to measure category inequality.
+
+    Results are saved to disk as a JSON report containing:
+      - Chart metadata for each visualization.
+      - Descriptive and inferential statistics for each analysis component.
+      - Report metadata (version, parameters, identifiers).
 
     Parameters
     ----------
     series : pd.Series
         Categorical data to analyze (dtype 'category' or 'object').
     report_path : pathlib.Path
-    report_log_id (str): report log id.
+        Directory where the JSON report and generated plots will be saved.
+    report_log_id : str, optional
+        Unique identifier for logging and traceability.
+    data_source : str, optional
+        Source description to embed in plots and metadata.
+    plot_*_overrides : dict, optional
+        Keyword overrides for customizing the context of individual plots
+        (e.g., axis labels, titles, save options). Keys must match the
+        corresponding `PlotContext` fields.
+
+    Returns
+    -------
+    dict
+        Dictionary with the relative path to the generated JSON report.
     """
     # validate input
     validate_categorical_named_series(series)
@@ -69,14 +102,13 @@ def categorical_distribution_analysis(
     frequency_distribution = {}
 
     # Pareto
-    freq_pareto_over = (plot_frequency_pareto_overrides or {}).copy()
-    frequency_distribution['pareto'] = call_plot_with_overrides(
-        plot_frequency_pareto,
-        series,
-        overrides=freq_pareto_over,
-        save_path=report_path,
-        data_source=data_source,
+    fp_ctx = build_plot_context(
+        FrequencyParetoContext,
+        base={"save_path": report_path, "data_source": data_source},
+        overrides=plot_frequency_pareto_overrides,
     )
+    fp_plot = FrequencyParetoPlot(fp_ctx)
+    frequency_distribution["pareto"] = fp_plot.run(series)
 
     # 2. Balance
     # What it is:  
@@ -90,49 +122,43 @@ def categorical_distribution_analysis(
     freq_counts = series.copy().dropna().value_counts()
 
     # Density plot (Histogram + KDE)
-    balance_density_over = (plot_distribution_density_overrides or {}).copy()
-    balance_density_over.setdefault('xlabel', 'Frequency')
-    balance['density'] = call_plot_with_overrides(
-        plot_distribution_density,
-        freq_counts,
-        overrides=balance_density_over,
-        save_path=report_path,
-        data_source=data_source,
+    dens_ctx = build_plot_context(
+        DistributionDensityContext,
+        base={"save_path": report_path, "data_source": data_source, "xlabel": "Frequency"},
+        overrides=plot_distribution_density_overrides,
     )
+    dens_plot = DistributionDensityPlot(dens_ctx)
+    balance["density"] = dens_plot.run(freq_counts)
 
     # Boxplot + Violin (Dispersion)
-    balance_boxplot_over = (plot_dispersion_boxplot_overrides or {}).copy()
-    balance_boxplot_over.setdefault('ylabel', 'Frequency')
-    balance['boxplot'] = call_plot_with_overrides(
-        plot_dispersion_boxplot,
-        freq_counts,
-        overrides=balance_boxplot_over,
-        save_path=report_path,
-        data_source=data_source,
+    box_ctx = build_plot_context(
+        DispersionBoxplotContext,
+        base={"save_path": report_path, "data_source": data_source, "ylabel": "Frequency"},
+        overrides=plot_dispersion_boxplot_overrides,
     )
+    box_plot = DispersionBoxplotPlot(box_ctx)
+    balance["boxplot"] = box_plot.run(freq_counts)
+
 
     # TODO: Rare categories (e.g. <1% of total) - bar chart
 
     # Chi-square goodness-of-fit against a uniform distribution
-    chi2_gof_uniform_over = (plot_chi2_gof_uniform_overrides or {}).copy()
-    chi2_gof_uniform_over.setdefault('xlabel', 'Frequency')
-    balance['chi2_gof_uniform'] = call_plot_with_overrides(
-        plot_chi2_gof_uniform,
-        series,
-        overrides=chi2_gof_uniform_over,
-        save_path=report_path,
-        data_source=data_source,
+    chi_ctx = build_plot_context(
+        BalanceChiSquareUniformContext,
+        base={"save_path": report_path, "data_source": data_source, "xlabel": "Frequency"},
+        overrides=plot_chi2_gof_uniform_overrides,
     )
+    chi_plot = BalanceChiSquareUniformPlot(chi_ctx)
+    balance["chi2_gof_uniform"] = chi_plot.run(series)
 
     # Lorenz curve with Gini index
-    lorenz_curve_over = (plot_balance_lorenz_curve_overrides or {}).copy()
-    balance['lorenz_curve'] = call_plot_with_overrides(
-        plot_balance_lorenz_curve,
-        series,
-        overrides=lorenz_curve_over,
-        save_path=report_path,
-        data_source=data_source,
+    lor_ctx = build_plot_context(
+        BalanceLorenzCurveContext,
+        base={"save_path": report_path, "data_source": data_source},
+        overrides=plot_balance_lorenz_curve_overrides,
     )
+    lor_plot = BalanceLorenzCurvePlot(lor_ctx)
+    balance["lorenz_curve"] = lor_plot.run(series)
 
     # compile report
     distribution_report = {

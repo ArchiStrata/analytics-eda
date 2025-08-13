@@ -14,7 +14,7 @@
 import os
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
-from ..core import write_json_report
+from ..core.reporting import write_json_report
 
 def explore_data(
         df: pd.DataFrame,

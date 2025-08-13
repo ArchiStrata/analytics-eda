@@ -18,7 +18,9 @@ import uuid
 
 import pandas as pd
 
-from ...core import write_json_report, missing_data_analysis, validate_numeric_named_series, numeric_distribution_analysis, plot_cardinality_barchart
+from ...core.numeric import CardinalityBarContext, CardinalityBarPlot, validate_numeric_named_series, numeric_distribution_analysis
+from ...core.reporting import write_json_report
+from ...core.missing_data import MissingDataBarContext, MissingDataBarPlot
 
 logger = logging.getLogger(__name__)
 
@@ -38,31 +40,41 @@ def univariate_numeric_analysis(
     plot_distribution_probability_overrides: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """
-    Conduct a full univariate analysis on a numeric series.
+    Perform a comprehensive univariate analysis on a numeric pandas Series and
+    generate a structured JSON report containing missing data, cardinality, and 
+    distribution insights.
 
-    Steps:
-      1. Validate numeric series.
-      2. Missing data analysis (counts, percentage, plot).
-      3. Cardinality analysis.
-      4. Distribution analysis (descriptive stats, normality tests, visualizations).
-      5. Aggregation and saving of all results into a single JSON report.
+    This function validates the input series, computes descriptive statistics,
+    conducts normality and distribution tests, generates relevant visualizations,
+    and aggregates the results into a single, machine-readable report. The output 
+    can be used for exploratory data analysis (EDA), data quality assessment, or 
+    as part of automated profiling workflows.
+
+    Analysis includes:
+        1. Missing data profiling (counts, percentages, bar chart).
+        2. Cardinality profiling (category counts, discrete/continuous flag, bar chart).
+        3. Distribution profiling (descriptive stats, normality tests, histogram, 
+        violin plot, ECDF, Q–Q plot, and other relevant charts).
 
     Args:
-        series (pd.Series): Series to analyze.
-        report_root (str): Base directory where report files will be saved.
-        report_log_id (str): report log id.
-    
-    Returns:
-        {
-            'report_file_path': <report_file_path> # File path to the saved JSON report as written by `write_json_report`.
-        }
+        series (pd.Series): Numeric series to analyze.
+        report_root (str): Directory where report files will be saved.
+        report_log_id (str): Identifier for logging and traceability.
+        data_source (Optional[str]): Metadata describing the data source.
+        distribution_names (Sequence[str]): Statistical distributions to fit 
+            during goodness-of-fit analysis.
+        *_overrides (dict): Optional keyword overrides for individual plot functions.
 
-    JSON report structure:
+    Returns:
+        Dict[str, Path]: Dictionary containing the path to the generated JSON report.
+
+    Report structure:
         {
-            'metadata': { ... } # Report metadata
-            'data': {
-                'missing_data': Summary of missing data analysis,
-                'distribution': Summary of distribution analysis,
+            "metadata": { ... },
+            "data": {
+                "missing_data": { ... },
+                "cardinality": { ... },
+                "distribution": { ... }
             }
         }
     """
@@ -84,16 +96,24 @@ def univariate_numeric_analysis(
     report_path.mkdir(parents=True, exist_ok=True)
 
     # Missing Data Analysis
-    missing_data = missing_data_analysis(series_copy, report_path, report_log_id=report_log_id)
+    missing_data = {}
+    md_ctx = MissingDataBarContext(save_path=report_path, data_source=data_source)
+    md_plot = MissingDataBarPlot(md_ctx)
+    missing_data = {
+        "barchart": md_plot.run(series_copy),
+    }
 
     # TODO: check for strings in numeric series. requires removing the initial full validate_numeric_named_series check.
 
     # Cardinality Analysis
-    plot_cardinality_barchart_meta = plot_cardinality_barchart(series_copy, data_source=data_source, save_path=report_path)
-    is_discrete = plot_cardinality_barchart_meta['descriptive_stats']['is_discrete']
+    card_ctx = CardinalityBarContext(save_path=report_path, data_source=data_source)
+    card_plot = CardinalityBarPlot(card_ctx)
+    cardinality_bar_plot_result = card_plot.run(series_copy)
+    
+    is_discrete = cardinality_bar_plot_result['descriptive_stats']['is_discrete']
 
     cardinality = {
-        'plot_cardinality_barchart': plot_cardinality_barchart_meta
+        'barchart': cardinality_bar_plot_result
     }
 
     # Distribution Analysis
@@ -132,8 +152,8 @@ def univariate_numeric_analysis(
         'data': eda_report
     }
 
-    report_path = report_path / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"
-    write_json_report(full_report, report_path)
+    report_file_path = report_path / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"
+    write_json_report(full_report, report_file_path)
 
     logger.info(
         "Completed univariate_numeric_analysis",
@@ -144,5 +164,5 @@ def univariate_numeric_analysis(
     )
 
     return {
-        'report_file_path': report_path
+        'report_file_path': report_file_path
     }

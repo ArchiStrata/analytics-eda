@@ -17,7 +17,10 @@ from typing import Any, Dict, Optional
 import uuid
 import pandas as pd
 
-from ...core import write_json_report, missing_data_analysis, validate_categorical_named_series, categorical_distribution_analysis
+from ...core.categorical import validate_categorical_named_series, categorical_distribution_analysis
+from ...core.reporting import write_json_report
+from ...core.missing_data import MissingDataBarContext, MissingDataBarPlot
+from ...core.numeric import CardinalityBarContext, CardinalityBarPlot
 
 logger = logging.getLogger(__name__)
 
@@ -33,31 +36,40 @@ def univariate_categorical_analysis(
     plot_balance_lorenz_curve_overrides: Optional[Dict[str, Any]] = None
 ) -> Path:
     """
-    Run a full univariate analysis on a named categorical pandas Series and save results.
+    Perform a comprehensive univariate analysis of a categorical pandas Series, 
+    profiling its quality, cardinality, and distribution, and saving results as plots 
+    and a structured JSON report.
 
-    This function will:
-      1. Validate that `series` is a named categorical Series.
-      2. Compute and save missing-data statistics using `missing_data_analysis`.
-      3. Generate frequency distribution and a top-N bar plot via `categorical_distribution_analysis`.
-      4. Compile all outputs and write a JSON report with `write_json_report`.
+    This analysis is designed for exploratory data analysis (EDA) and includes:
+        • Missing data profiling — counts, percentages, and a visual barchart.
+        • Cardinality assessment — number of distinct categories and frequency distribution.
+        • Distribution analysis — frequency/Pareto plots, statistical tests, and balance metrics.
+
+    All outputs are saved to the specified report directory, with key results aggregated 
+    into a single JSON file for integration into automated reporting pipelines.
 
     Args:
         series (pd.Series): Named categorical Series (dtype 'category' or 'object').
-        report_root (str, optional): Directory path for saving plots and report.
-            Defaults to 'reports/eda/univariate/categorical'.
-        report_log_id (str): report log id.
+        report_root (str, optional): Base directory for saving plots and the report.
+        report_log_id (str, optional): Unique identifier for logging/report tracking.
+        data_source (str, optional): Optional label for the dataset's origin.
+        plot_frequency_pareto_overrides, plot_distribution_density_overrides, 
+        plot_dispersion_boxplot_overrides, plot_chi2_gof_uniform_overrides, 
+        plot_balance_lorenz_curve_overrides (dict, optional): 
+            Per-plot configuration overrides.
 
     Returns:
-        {
-            'report_file_path': <report_file_path> # File path to the saved JSON report as written by `write_json_report`.
+        dict: {
+            'report_file_path': Path to the saved JSON report
         }
 
     JSON report structure:
         {
-            'metadata': { ... } # Report metadata
+            'metadata': { ... },
             'data': {
-                'missing_data': {'total': int, 'missing': int, 'pct_missing': float},
-                'distribution': {...}  # output from categorical_distribution_analysis
+                'missing_data': {...},
+                'cardinality': {...},
+                'distribution': {...}
             }
         }
     """
@@ -72,15 +84,28 @@ def univariate_categorical_analysis(
         }
     )
 
+    # Always work from a copy
+    series_copy = series.copy()
+
     # Prepare save directory
-    save_dir = Path(report_root) / series.name.replace(' ', '_')
-    save_dir.mkdir(parents=True, exist_ok=True)
+    report_path = Path(report_root) / series.name.replace(' ', '_')
+    report_path.mkdir(parents=True, exist_ok=True)
 
     # 1. Data Quality & Standardization / categorical_variable_profiling
     # Missing Data Analysis - Detect missingness
-    missing_data = missing_data_analysis(series, save_dir, report_log_id=report_log_id)
+    missing_data = {}
 
-    # TODO: plot_cardinality_barchart - Detect cardinality
+    md_ctx = MissingDataBarContext(save_path=report_path, data_source=data_source)
+    md_plot = MissingDataBarPlot(md_ctx)
+    missing_data['barchart'] = md_plot.run(series_copy)
+
+    # Detect cardinality
+    cardinality = {}
+
+    card_ctx = CardinalityBarContext(save_path=report_path, data_source=data_source)
+    card_plot = CardinalityBarPlot(card_ctx)
+    # TODO: get the series_copy value counts as a new series before calling card_plot
+    cardinality['barchart'] = card_plot.run(series_copy)
 
     # TODO: Detect ordinality / monotonicity - Is the variable nominal (unordered) or ordinal (has natural order)?
 
@@ -91,8 +116,8 @@ def univariate_categorical_analysis(
 
     # 2. Distribution Analysis
     distribution_result = categorical_distribution_analysis(
-        series,
-        save_dir,
+        series_copy,
+        report_path=report_path,
         report_log_id=report_log_id,
         data_source=data_source,
         plot_frequency_pareto_overrides=plot_frequency_pareto_overrides,
@@ -105,6 +130,7 @@ def univariate_categorical_analysis(
     # Generate report
     eda_report = {
         'missing_data': missing_data,
+        "cardinality": cardinality,
         'distribution': distribution_result
     }
 
@@ -113,23 +139,23 @@ def univariate_categorical_analysis(
             'version': '0.1.0',
             'report_name': 'univariate_categorical_analysis',
             'parameters': {
-                'series': series.name
+                'series': series_copy.name
             }
         },
         'data': eda_report
     }
 
-    report_path = save_dir / f"{series.name.replace(' ', '_')}_univariate_analysis_report.json"
+    report_file_path = report_path / f"{series_copy.name.replace(' ', '_')}_univariate_analysis_report.json"
     write_json_report(full_report, report_path)
 
     logger.info(
         "Completed univariate_categorical_analysis",
         extra={
-            'series_name': series.name,
+            'series_name': series_copy.name,
             'report_log_id': report_log_id
         }
     )
 
     return {
-        'report_file_path': report_path
+        'report_file_path': report_file_path
     }

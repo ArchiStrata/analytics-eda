@@ -81,7 +81,7 @@ class BasePlot(ABC):
         s = self.validate(series)
         chart_metadata = self.build_chart_metadata(s)
 
-        if s.dropna().empty:
+        if s.empty:
             return {
                 "descriptive_stats": self.default_descriptive(),
                 "inferential_stats": self.default_inferential(),
@@ -90,6 +90,14 @@ class BasePlot(ABC):
 
         desc = self.compute_descriptive(s)
         inf = self.compute_inferential(s, desc) or {}
+
+        if desc.get("error") or desc.get("skip_plot"):
+            chart_metadata["file_name"] = None
+            return {
+                "descriptive_stats": desc,
+                "inferential_stats": inf,
+                "chart_metadata": chart_metadata,
+            }
 
         fig, _ = self.draw(s, desc, inf, chart_metadata)
 

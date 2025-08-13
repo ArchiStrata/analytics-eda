@@ -17,19 +17,20 @@ from pathlib import Path
 from typing import Optional, Dict, Any, Callable, Sequence
 import pandas as pd
 
-from .plot_central_tendency_histogram import plot_central_tendency_histogram
-from .plot_central_tendency_violin import plot_central_tendency_violin
-from .plot_dispersion_boxplot       import plot_dispersion_boxplot
-from .plot_distribution_ecdf_gap    import plot_distribution_ecdf_gap
-from .plot_distribution_ecdf_vs_cdf import plot_distribution_ecdf_vs_cdf
-from .plot_distribution_density         import plot_distribution_density
-from .plot_distribution_qq_fit import plot_distribution_qq_fit
-from .plot_distribution_probability_function import plot_distribution_probability_function
+from .central_tendency_histogram_plot import CentralTendencyHistogramContext, CentralTendencyHistogramPlot
+from .central_tendency_violin_plot import CentralTendencyViolinContext, CentralTendencyViolinPlot
+from .dispersion_boxplot_plot import DispersionBoxplotContext, DispersionBoxplotPlot
+from .distribution_ecdf_gap_plot import DistributionECDFGapContext, DistributionECDFGapPlot
+from .distribution_density_plot import DistributionDensityContext, DistributionDensityPlot
+from .distribution_ecdf_vs_cdf_plot import DistributionECDFvsCDFContext, DistributionECDFvsCDFPlot
+from .distribution_qq_fit_plot import DistributionQqFitContext, DistributionQqFitPlot
+from .distribution_probability_function_plot import DistributionProbabilityFunctionContext, DistributionProbabilityFunctionPlot
+
 
 from .validate_numeric_named_series import validate_numeric_named_series
 
 from ..reporting import write_json_report
-from ..utils import call_plot_with_overrides
+from ..utils.build_plot_context import build_plot_context
 
 logger = logging.getLogger(__name__)
 
@@ -100,109 +101,76 @@ def numeric_distribution_analysis(
     # Central Tendency
     central_tendency = {}
 
-    central_tendency_hist_over = (plot_central_tendency_histogram_overrides or {}).copy()
-
-    central_tendency['histogram'] = call_plot_with_overrides(
-        plot_central_tendency_histogram,
-        series,
-        overrides=central_tendency_hist_over,
-        save_path=report_path,
-        data_source=data_source,
+    hist_ctx = build_plot_context(
+        CentralTendencyHistogramContext,
+        base={"save_path": report_path, "data_source": data_source},
+        overrides=plot_central_tendency_histogram_overrides,
     )
+    central_tendency["histogram"] = CentralTendencyHistogramPlot(hist_ctx).run(series)
 
-    central_tendency_violin_over = (plot_central_tendency_violin_overrides or {}).copy()
 
-    central_tendency['violin'] = call_plot_with_overrides(
-        plot_central_tendency_violin,
-        series,
-        overrides=central_tendency_violin_over,
-        save_path=report_path,
-        data_source=data_source,
+    violin_ctx = build_plot_context(
+        CentralTendencyViolinContext,
+        base={"save_path": report_path, "data_source": data_source},
+        overrides=plot_central_tendency_violin_overrides,
     )
+    central_tendency["violin"] = CentralTendencyViolinPlot(violin_ctx).run(series)
 
     # Dispersion
-    dispersion_over = (plot_dispersion_boxplot_overrides or {}).copy()
-
-    plot_dispersion_boxplot_meta = call_plot_with_overrides(
-        plot_dispersion_boxplot,
-        series,
-        overrides=dispersion_over,
-        save_path=report_path,
-        data_source=data_source,
+    dispersion = {}
+    box_ctx = build_plot_context(
+        DispersionBoxplotContext,
+        base={"save_path": report_path, "data_source": data_source},
+        overrides=plot_dispersion_boxplot_overrides,
     )
-
-    dispersion = {
-        'boxplot': plot_dispersion_boxplot_meta,
-    }
+    dispersion["boxplot"] = DispersionBoxplotPlot(box_ctx).run(series)
 
     # Shape
     shape = {}
 
     # ECDF gap plot
-    ecdf_gap_over = (plot_distribution_ecdf_gap_overrides or {}).copy()
-
-    # call the plotting helper with the overrides dict
-    shape['ecdf_gap'] = call_plot_with_overrides(
-        plot_distribution_ecdf_gap,
-        series,
-        overrides=ecdf_gap_over,
-        save_path=report_path,
-        data_source=data_source,
+    ecdf_gap_ctx = build_plot_context(
+        DistributionECDFGapContext,
+        base={"save_path": report_path, "data_source": data_source},
+        overrides=plot_distribution_ecdf_gap_overrides,
     )
+    shape["ecdf_gap"] = DistributionECDFGapPlot(ecdf_gap_ctx).run(series)
 
-    # prepare overrides for density plot
-    density_over = (plot_distribution_density_overrides or {}).copy()
 
-    # call the plotting helper with the overrides dict
-    shape['density'] = call_plot_with_overrides(
-        plot_distribution_density,
-        series,
-        overrides=density_over,
-        save_path=report_path,
-        data_source=data_source,
+    # Density plot
+    dens_ctx = build_plot_context(
+        DistributionDensityContext,
+        base={"save_path": report_path, "data_source": data_source},
+        overrides=plot_distribution_density_overrides,
     )
+    shape["density"] = DistributionDensityPlot(dens_ctx).run(series)
 
     # probability
-    prob_over = (plot_distribution_probability_overrides or {}).copy()
-
-    shape['probability'] = call_plot_with_overrides(
-        plot_distribution_probability_function,
-        series,
-        overrides=prob_over,
-        save_path=report_path,
-        data_source=data_source,
+    prob_ctx = build_plot_context(
+        DistributionProbabilityFunctionContext,
+        base={"save_path": report_path, "data_source": data_source},
+        overrides=plot_distribution_probability_overrides,
     )
+    shape["probability"] = DistributionProbabilityFunctionPlot(prob_ctx).run(series)
+
 
     # Fit each theoretical distribution
     distribution_fits = {}
     for dist in distribution_names:
-        # force the distribution_name to the current dist
-        ecdf_vs_cdf_over = (plot_distribution_ecdf_vs_cdf_overrides or {}).copy()
-        ecdf_vs_cdf_over['distribution_name'] = dist
-
-        ecdf_vs_cdf_meta = call_plot_with_overrides(
-            plot_distribution_ecdf_vs_cdf,
-            series,
-            overrides=ecdf_vs_cdf_over,
-            save_path=report_path,
-            data_source=data_source,
+        ecdf_vs_cdf_ctx = build_plot_context(
+            DistributionECDFvsCDFContext,
+            base={"save_path": report_path, "data_source": data_source, "distribution_name": dist},
+            overrides=plot_distribution_ecdf_vs_cdf_overrides,
         )
-
-        # Q–Q fit
-        qq_fit_over = (plot_distribution_qq_fit_overrides or {}).copy()
-        qq_fit_over['distribution_name'] = dist
-
-        qq_meta = call_plot_with_overrides(
-            plot_distribution_qq_fit,
-            series,
-            overrides=qq_fit_over,
-            save_path=report_path,
-            data_source=data_source,
+        qq_ctx = build_plot_context(
+            DistributionQqFitContext,
+            base={"save_path": report_path, "data_source": data_source, "distribution_name": dist},
+            overrides=plot_distribution_qq_fit_overrides,
         )
 
         distribution_fits[dist] = {
-            'ecdf_vs_cdf': ecdf_vs_cdf_meta,
-            'qq': qq_meta
+            "ecdf_vs_cdf": DistributionECDFvsCDFPlot(ecdf_vs_cdf_ctx).run(series),
+            "qq": DistributionQqFitPlot(qq_ctx).run(series),
         }
     
     shape['distribution_fits'] = distribution_fits

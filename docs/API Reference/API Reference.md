@@ -6,7 +6,6 @@ The full API documentation is under construction.
 
 - [univariate_numeric_analysis](/src/analytics_eda/univariate/numeric/univariate_numeric_analysis.py)
 - [univariate_categorical_analysis](/src/analytics_eda/univariate/categorical/univariate_categorical_analysis.py)
-- [univariate_timeseries_analysis](/src/analytics_eda//univariate/timeseries/univariate_timeseries_analysis.py)
 
 ## Bivariate
 
