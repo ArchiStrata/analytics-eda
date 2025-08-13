@@ -79,6 +79,8 @@ class DispersionBoxplotPlot(NumericSeriesMixin, BasePlot):
             "iqr": float("nan"),
             "extreme_lower_count": 0,
             "extreme_upper_count": 0,
+            "extreme_lower_bound": 0,
+            "extreme_upper_bound": 0,
         }
 
     # (2) descriptive stats
@@ -99,10 +101,10 @@ class DispersionBoxplotPlot(NumericSeriesMixin, BasePlot):
         iqr = float(pct_75 - pct_25)
 
         m = float(self.ctx.std_outlier_multiplier)
-        lower_bound = mean - m * std
-        upper_bound = mean + m * std
-        n_lower = int((s < lower_bound).sum())
-        n_upper = int((s > upper_bound).sum())
+        extreme_lower_bound = mean - m * std
+        extreme_upper_bound = mean + m * std
+        extreme_lower_count = int((s < extreme_lower_bound).sum())
+        extreme_upper_count = int((s > extreme_upper_bound).sum())
 
         return {
             "params": {"std_outlier_multiplier": m},
@@ -120,8 +122,10 @@ class DispersionBoxplotPlot(NumericSeriesMixin, BasePlot):
             "pct_75": pct_75,
             "pct_90": pct_90,
             "iqr": iqr,
-            "extreme_lower_count": n_lower,
-            "extreme_upper_count": n_upper,
+            "extreme_lower_count": extreme_lower_count,
+            "extreme_upper_count": extreme_upper_count,
+            "extreme_lower_bound": extreme_lower_bound,
+            "extreme_upper_bound": extreme_upper_bound,
         }
 
     # (3) draw

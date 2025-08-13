@@ -23,6 +23,7 @@ from .validate_categorical_named_series import validate_categorical_named_series
 from .frequency_pareto_plot import FrequencyParetoPlot, FrequencyParetoContext
 from .balance_chi_square_uniform_plot import BalanceChiSquareUniformPlot, BalanceChiSquareUniformContext
 from .balance_lorenz_curve_plot import BalanceLorenzCurvePlot, BalanceLorenzCurveContext
+from .balance_rare_categories_plot import BalanceRareCategoriesPlot, BalanceRareCategoriesContext
 
 from ..numeric import DispersionBoxplotPlot, DispersionBoxplotContext, DistributionDensityPlot, DistributionDensityContext
 
@@ -39,8 +40,9 @@ def categorical_distribution_analysis(
     plot_frequency_pareto_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_density_overrides: Optional[Dict[str, Any]] = None,
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
-    plot_chi2_gof_uniform_overrides: Optional[Dict[str, Any]] = None,
-    plot_balance_lorenz_curve_overrides: Optional[Dict[str, Any]] = None
+    plot_balance_chi_square_uniform_overrides: Optional[Dict[str, Any]] = None,
+    plot_balance_lorenz_curve_overrides: Optional[Dict[str, Any]] = None,
+    plot_balance_rare_categories_overrides: Optional[Dict[str, Any]] = None
 ) -> dict:
     """
     Perform a comprehensive statistical and visual analysis of a categorical Series,
@@ -59,6 +61,7 @@ def categorical_distribution_analysis(
           * Boxplot of category frequencies to highlight dispersion.
           * Chi-square goodness-of-fit test against a uniform distribution.
           * Lorenz curve with Gini index to measure category inequality.
+          * Rare categories barchart.
 
     Results are saved to disk as a JSON report containing:
       - Chart metadata for each visualization.
@@ -140,13 +143,20 @@ def categorical_distribution_analysis(
     balance["boxplot"] = box_plot.run(freq_counts)
 
 
-    # TODO: Rare categories (e.g. <1% of total) - bar chart
+    # Rare categories
+    rare_cat_ctx = build_plot_context(
+        BalanceRareCategoriesContext,
+        base={"save_path": report_path, "data_source": data_source},
+        overrides=plot_balance_rare_categories_overrides,
+    )
+    rare_cat_plot = BalanceRareCategoriesPlot(rare_cat_ctx)
+    balance["rare_categories"] = rare_cat_plot.run(series)
 
     # Chi-square goodness-of-fit against a uniform distribution
     chi_ctx = build_plot_context(
         BalanceChiSquareUniformContext,
         base={"save_path": report_path, "data_source": data_source, "xlabel": "Frequency"},
-        overrides=plot_chi2_gof_uniform_overrides,
+        overrides=plot_balance_chi_square_uniform_overrides,
     )
     chi_plot = BalanceChiSquareUniformPlot(chi_ctx)
     balance["chi2_gof_uniform"] = chi_plot.run(series)

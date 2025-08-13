@@ -32,8 +32,9 @@ def univariate_categorical_analysis(
     plot_frequency_pareto_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_density_overrides: Optional[Dict[str, Any]] = None,
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
-    plot_chi2_gof_uniform_overrides: Optional[Dict[str, Any]] = None,
-    plot_balance_lorenz_curve_overrides: Optional[Dict[str, Any]] = None
+    plot_balance_chi_square_uniform_overrides: Optional[Dict[str, Any]] = None,
+    plot_balance_lorenz_curve_overrides: Optional[Dict[str, Any]] = None,
+    plot_balance_rare_categories_overrides: Optional[Dict[str, Any]] = None
 ) -> Path:
     """
     Perform a comprehensive univariate analysis of a categorical pandas Series, 
@@ -54,7 +55,7 @@ def univariate_categorical_analysis(
         report_log_id (str, optional): Unique identifier for logging/report tracking.
         data_source (str, optional): Optional label for the dataset's origin.
         plot_frequency_pareto_overrides, plot_distribution_density_overrides, 
-        plot_dispersion_boxplot_overrides, plot_chi2_gof_uniform_overrides, 
+        plot_dispersion_boxplot_overrides, plot_balance_chi_square_uniform_overrides, plot_balance_rare_categories_overrides,
         plot_balance_lorenz_curve_overrides (dict, optional): 
             Per-plot configuration overrides.
 
@@ -123,8 +124,9 @@ def univariate_categorical_analysis(
         plot_frequency_pareto_overrides=plot_frequency_pareto_overrides,
         plot_distribution_density_overrides=plot_distribution_density_overrides,
         plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
-        plot_chi2_gof_uniform_overrides=plot_chi2_gof_uniform_overrides,
-        plot_balance_lorenz_curve_overrides=plot_balance_lorenz_curve_overrides
+        plot_balance_chi_square_uniform_overrides=plot_balance_chi_square_uniform_overrides,
+        plot_balance_lorenz_curve_overrides=plot_balance_lorenz_curve_overrides,
+        plot_balance_rare_categories_overrides=plot_balance_rare_categories_overrides
     )
 
     # Generate report

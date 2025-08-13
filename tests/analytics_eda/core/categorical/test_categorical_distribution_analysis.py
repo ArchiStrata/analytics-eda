@@ -119,6 +119,30 @@ from analytics_eda.core.categorical.categorical_distribution_analysis import cat
                             "data_source": "UnitTest",
                             "file_name": "Lorenz Curve of pets.png"
                         }
+                    },
+                    "rare_categories": {
+                        "descriptive_stats": {
+                            "total": 10,
+                            "k": 4,
+                            "threshold_type": "proportion",
+                            "threshold_value_count": 1,
+                            "threshold_value_prop": 0.01,
+                            "n_rare": 1,
+                            "rare_categories": [
+                                "D"
+                            ],
+                            "rare_counts": [
+                                1
+                            ]
+                        },
+                        "inferential_stats": {},
+                        "chart_metadata": {
+                            "title": "Rare Categories of pets",
+                            "xlabel": "Category",
+                            "ylabel": "Count",
+                            "data_source": "UnitTest",
+                            "file_name": "Rare Categories of pets.png"
+                        }
                     }
                 },
             },
