@@ -16,12 +16,47 @@ from analytics_eda.univariate.categorical.univariate_categorical_analysis import
                 "data_source": "UnitTest",
             },
             {
-                # Expectations for the *top-level* missing_data section
+                # Expectations for the missing_data section
                 "missing_data": {
-                    "total": 11,
-                    "missing": 1,
-                    # use a predicate for float comparison
-                    "pct_missing": lambda v: isclose(v, 1/11, rel_tol=1e-12, abs_tol=1e-12),
+                    "barchart": {
+                        "descriptive_stats": {
+                            "total": 11,
+                            "missing": 1,
+                            "pct_missing": lambda v: isclose(v, 1/11, rel_tol=1e-12, abs_tol=1e-12),
+                        }
+                    }
+                },
+                # Expectations for the cardinality section
+                "cardinality": {
+                    "barchart": {
+                        "descriptive_stats": {
+                            "params": {
+                                "max_unique_fraction": 0.05,
+                                "max_unique_values": 20,
+                                "integer_tolerance": 1e-08
+                            },
+                            "total": 4,
+                            "nunique": 4,
+                            "uniqueness_ratio": 1.0,
+                            "is_discrete": True,
+                            "labels": [
+                                "4",
+                                "3",
+                                "2",
+                                "1"
+                            ],
+                            "values": "[1. 1. 1. 1.]"
+                        },
+                        "inferential_stats": {},
+                        "chart_metadata": {
+                            "title": "Value Counts (Top 10) of count for Cardinality",
+                            "xlabel": "Value",
+                            "ylabel": "Count",
+                            "data_source": "UnitTest",
+                            "file_name": "Value Counts (Top 10) of count for Cardinality.png",
+                            "top_k": 10
+                        }
+                    }
                 },
                 # Expectations for the nested distribution report
                 "distribution": {
@@ -70,10 +105,12 @@ from analytics_eda.univariate.categorical.univariate_categorical_analysis import
                                 "title": "Dispersion of count (IQR & Outliers)",
                                 "ylabel": "Frequency",
                                 "data_source": "UnitTest",
-                                "file_name": "Dispersion of count (IQR & Outliers).png",
-                                "std_outlier_multiplier": 4.0
+                                "file_name": "Dispersion of count (IQR & Outliers).png"
                             },
                             "descriptive_stats": {
+                                "params": {
+                                    "std_outlier_multiplier": 4.0
+                                },
                                 "n": 4,
                                 "mean": 2.5,
                                 "std": 1.2909944487358056,
@@ -145,7 +182,7 @@ def test_univariate_categorical_analysis_report_data_driven(
         s, report_root=str(tmp_path), **kwargs
     )
     # load the final univariate report
-    full = load_and_validate_report(out, tmp_path / s.name.replace(' ', '_'))
+    full = load_and_validate_report(out, tmp_path)
 
     # assert metadata
     assert 'metadata' in full
@@ -156,17 +193,23 @@ def test_univariate_categorical_analysis_report_data_driven(
     data = full["data"]
 
     # structure
-    assert set(data.keys()) == {"missing_data", "distribution"}
+    assert set(data.keys()) == {"missing_data", "cardinality", "distribution"}
 
-    # ---- missing_data assertions (top-level, not a plot) ----
+    # ---- missing_data assertions ----
     expected_md = expected_sections["missing_data"]
     actual_md = data["missing_data"]
-    for key, expected in expected_md.items():
-        assert key in actual_md, f"missing_data missing key: {key!r}"
-        if callable(expected):
-            assert expected(actual_md[key]), f"Predicate failed for missing_data[{key!r}] = {actual_md[key]!r}"
-        else:
-            assert actual_md[key] == expected, f"missing_data[{key!r}] expected {expected!r}, got {actual_md[key]!r}"
+    for plot_key, expectations in expected_md.items():
+        assert plot_key in actual_md, f"missing_data missing key: {plot_key!r}"
+        payload = actual_md[plot_key]
+        assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
+    
+    # ---- cardinality assertions ----
+    expected_cardinality = expected_sections["cardinality"]
+    actual_cardinality = data["cardinality"]
+    for plot_key, expectations in expected_cardinality.items():
+        assert plot_key in actual_cardinality, f"cardinality missing key: {plot_key!r}"
+        payload = actual_cardinality[plot_key]
+        assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
 
     # ---- distribution assertions (nested report with plots) ----
     dist_full = load_and_validate_report(data["distribution"], tmp_path / s.name.replace(' ', '_'))
@@ -201,6 +244,6 @@ def test_univariate_categorical_analysis_report_data_driven(
     ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
 )
 def test_validate_categorical_named_series_errors(series_factory, expected_exc, match):
-    obj = series_factory()
+    s = series_factory()
     with pytest.raises(expected_exc, match=match):
-        univariate_categorical_analysis(obj)
+        univariate_categorical_analysis(s)

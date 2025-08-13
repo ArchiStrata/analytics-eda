@@ -104,8 +104,8 @@ def univariate_categorical_analysis(
 
     card_ctx = CardinalityBarContext(save_path=report_path, data_source=data_source)
     card_plot = CardinalityBarPlot(card_ctx)
-    # TODO: get the series_copy value counts as a new series before calling card_plot
-    cardinality['barchart'] = card_plot.run(series_copy)
+    freq_counts = series_copy.copy().dropna().value_counts()
+    cardinality['barchart'] = card_plot.run(freq_counts)
 
     # TODO: Detect ordinality / monotonicity - Is the variable nominal (unordered) or ordinal (has natural order)?
 
@@ -146,7 +146,7 @@ def univariate_categorical_analysis(
     }
 
     report_file_path = report_path / f"{series_copy.name.replace(' ', '_')}_univariate_analysis_report.json"
-    write_json_report(full_report, report_path)
+    write_json_report(full_report, report_file_path)
 
     logger.info(
         "Completed univariate_categorical_analysis",
