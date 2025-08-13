@@ -21,6 +21,7 @@ from ...core.categorical import validate_categorical_named_series, categorical_d
 from ...core.reporting import write_json_report
 from ...core.missing_data import MissingDataBarContext, MissingDataBarPlot
 from ...core.numeric import CardinalityBarContext, CardinalityBarPlot
+from ...core.data_quality import CategoricalCleanlinessBarPlot, CategoricalCleanlinessBarContext
 
 logger = logging.getLogger(__name__)
 
@@ -100,24 +101,27 @@ def univariate_categorical_analysis(
     md_plot = MissingDataBarPlot(md_ctx)
     missing_data['barchart'] = md_plot.run(series_copy)
 
+    # Check categorical cleanliness
+    data_quality = {}
+    cat_clean_ctx = CategoricalCleanlinessBarContext(save_path=report_path, data_source=data_source)
+    cat_clean_plot = CategoricalCleanlinessBarPlot(cat_clean_ctx)
+    data_quality['categorical_cleanliness_barchart'] = cat_clean_plot.run(series_copy)
+    cleaned, category_clean_meta = cat_clean_plot.clean_series(series_copy)
+    data_quality['categorical_cleanliness_barchart']['cleaning_meta'] = category_clean_meta
+
     # Detect cardinality
     cardinality = {}
 
     card_ctx = CardinalityBarContext(save_path=report_path, data_source=data_source)
     card_plot = CardinalityBarPlot(card_ctx)
-    freq_counts = series_copy.copy().dropna().value_counts()
+    freq_counts = cleaned.copy().dropna().value_counts()
     cardinality['barchart'] = card_plot.run(freq_counts)
 
     # TODO: Detect ordinality / monotonicity - Is the variable nominal (unordered) or ordinal (has natural order)?
 
-    # TODO: Label consistency (spelling/casing/abbreviations)
-    # * Inconsistent labels (e.g., "Yes", "yes", "Y")
-    # * Leading/trailing whitespace
-    # * Unicode or character issues
-
     # 2. Distribution Analysis
     distribution_result = categorical_distribution_analysis(
-        series_copy,
+        cleaned,
         report_path=report_path,
         report_log_id=report_log_id,
         data_source=data_source,
@@ -132,6 +136,7 @@ def univariate_categorical_analysis(
     # Generate report
     eda_report = {
         'missing_data': missing_data,
+        'data_quality': data_quality,
         "cardinality": cardinality,
         'distribution': distribution_result
     }
@@ -141,19 +146,19 @@ def univariate_categorical_analysis(
             'version': '0.1.0',
             'report_name': 'univariate_categorical_analysis',
             'parameters': {
-                'series': series_copy.name
+                'series': cleaned.name
             }
         },
         'data': eda_report
     }
 
-    report_file_path = report_path / f"{series_copy.name.replace(' ', '_')}_univariate_analysis_report.json"
+    report_file_path = report_path / f"{cleaned.name.replace(' ', '_')}_univariate_analysis_report.json"
     write_json_report(full_report, report_file_path)
 
     logger.info(
         "Completed univariate_categorical_analysis",
         extra={
-            'series_name': series_copy.name,
+            'series_name': cleaned.name,
             'report_log_id': report_log_id
         }
     )

@@ -60,6 +60,7 @@ def bivariate_numeric_categorical_analysis(
         }
     )
 
+    # TODO: Refactor to follow plot best practices
     if categorical_col not in df.columns:
         raise KeyError(f"Categorical column '{categorical_col}' not found.")
     if numeric_col not in df.columns:

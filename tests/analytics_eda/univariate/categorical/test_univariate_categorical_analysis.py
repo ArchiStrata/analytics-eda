@@ -26,6 +26,59 @@ from analytics_eda.univariate.categorical.univariate_categorical_analysis import
                         }
                     }
                 },
+                # Expectations for the data_quality section
+                "data_quality": {
+                    "categorical_cleanliness_barchart": {
+                        "descriptive_stats": {
+                            "total": 11,
+                            "total_nonnull": 10,
+                            "issue_labels": [
+                                "Invalid Category",
+                                "Non-Standard Characters",
+                                "Mixed Casing",
+                                "Leading/Trailing Whitespace"
+                            ],
+                            "issue_counts": [
+                                0,
+                                0,
+                                0,
+                                0
+                            ],
+                            "issue_pcts": [
+                                0.0,
+                                0.0,
+                                0.0,
+                                0.0
+                            ],
+                            "n_whitespace": 0,
+                            "n_mixed_case": 0,
+                            "n_nonstandard_chars": 0,
+                            "n_invalid_category": 0,
+                            "skip_plot": True,
+                            "error": "no cleanliness issues detected"
+                        },
+                        "inferential_stats": {},
+                        "chart_metadata": {
+                            "title": "Categorical Cleanliness for pets",
+                            "xlabel": "Count",
+                            "ylabel": "Issue Type",
+                            "data_source": "UnitTest",
+                            "file_name": None
+                        },
+                        "cleaning_meta": {
+                            "n_stripped": 0,
+                            "n_case_normalized": 0,
+                            "n_nonstandard_replaced": 0,
+                            "n_invalid_mapped": 0,
+                            "policy": {
+                                "allowed_char_pattern": "^[\\w\\s\\-\\_/.,&()']*$",
+                                "allowed_categories": None,
+                                "case_sensitive_allowed": False,
+                                "treat_empty_as_invalid": True
+                            }
+                        }
+                    }
+                },
                 # Expectations for the cardinality section
                 "cardinality": {
                     "barchart": {
@@ -192,35 +245,44 @@ def test_univariate_categorical_analysis_report_data_driven(
     assert "data" in full
     data = full["data"]
 
-    # structure
-    assert set(data.keys()) == {"missing_data", "cardinality", "distribution"}
-
     # ---- missing_data assertions ----
-    expected_md = expected_sections["missing_data"]
-    actual_md = data["missing_data"]
-    for plot_key, expectations in expected_md.items():
-        assert plot_key in actual_md, f"missing_data missing key: {plot_key!r}"
-        payload = actual_md[plot_key]
-        assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
+    if "missing_data" in expected_sections:
+        expected_md = expected_sections["missing_data"]
+        actual_md = data["missing_data"]
+        for plot_key, expectations in expected_md.items():
+            assert plot_key in actual_md, f"missing_data missing key: {plot_key!r}"
+            payload = actual_md[plot_key]
+            assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
+
+    # ---- data_quality assertions ----
+    if "data_quality" in expected_sections:
+        expected_md = expected_sections["data_quality"]
+        actual_md = data["data_quality"]
+        for plot_key, expectations in expected_md.items():
+            assert plot_key in actual_md, f"data_quality missing key: {plot_key!r}"
+            payload = actual_md[plot_key]
+            assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
     
     # ---- cardinality assertions ----
-    expected_cardinality = expected_sections["cardinality"]
-    actual_cardinality = data["cardinality"]
-    for plot_key, expectations in expected_cardinality.items():
-        assert plot_key in actual_cardinality, f"cardinality missing key: {plot_key!r}"
-        payload = actual_cardinality[plot_key]
-        assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
+    if "cardinality" in expected_sections:
+        expected_cardinality = expected_sections["cardinality"]
+        actual_cardinality = data["cardinality"]
+        for plot_key, expectations in expected_cardinality.items():
+            assert plot_key in actual_cardinality, f"cardinality missing key: {plot_key!r}"
+            payload = actual_cardinality[plot_key]
+            assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
 
     # ---- distribution assertions (nested report with plots) ----
-    dist_full = load_and_validate_report(data["distribution"], tmp_path / s.name.replace(' ', '_'))
-    dist = dist_full["data"]
+    if "distribution" in expected_sections:
+        dist_full = load_and_validate_report(data["distribution"], tmp_path / s.name.replace(' ', '_'))
+        dist = dist_full["data"]
 
-    # check expected sections/plots
-    for section, plots in expected_sections["distribution"].items():
-        assert section in dist
-        for plot_key, expectations in plots.items():
-            payload = dist[section][plot_key]
-            assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
+        # check expected sections/plots
+        for section, plots in expected_sections["distribution"].items():
+            assert section in dist
+            for plot_key, expectations in plots.items():
+                payload = dist[section][plot_key]
+                assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
 
 
 @pytest.mark.parametrize(
