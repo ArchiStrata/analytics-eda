@@ -22,13 +22,31 @@ from analytics_eda.univariate.numeric.univariate_numeric_analysis import univari
             {
                 # Top-level expectations (from the univariate report)
                 "missing_data": {
-                    "total": 121,
-                    "missing": 1,
-                    "pct_missing": lambda v: isclose(v, 1/121, rel_tol=1e-12, abs_tol=1e-12),
+                    "barchart": {
+                        "descriptive_stats": {
+                            "total": 121,
+                            "missing": 1,
+                            "pct_missing": lambda v: isclose(v, 1/121, rel_tol=1e-12, abs_tol=1e-12),
+                            "labels": [
+                                "Present",
+                                "Missing"
+                            ],
+                            "counts": "[120   1]",
+                            "pcts": "[99.17355372  0.82644628]"
+                        },
+                        "inferential_stats": {},
+                        "chart_metadata": {
+                            "title": "Missing Data for metric",
+                            "xlabel": "",
+                            "ylabel": "Percentage of Total",
+                            "data_source": "UnitTest",
+                            "file_name": "Missing Data for metric.png"
+                        }
+                    }
                 },
                 # Cardinality section expectations (plot payload in the top-level report)
                 "cardinality": {
-                    "plot_cardinality_barchart": {
+                    "barchart": {
                         "chart_metadata": {"data_source": "UnitTest"},
                         "descriptive_stats": {"is_discrete": lambda v: isinstance(v, bool)},
                     }
@@ -65,9 +83,103 @@ from analytics_eda.univariate.numeric.univariate_numeric_analysis import univari
                             "chart_metadata": {"data_source": "UnitTest"},
                             "descriptive_stats": {},
                         },
+                        "distribution_fits": {
+                            "norm": {
+                                "ecdf_vs_cdf": {
+                                    "descriptive_stats": {},
+                                    "inferential_stats": {},
+                                    "chart_metadata": {
+                                        "title": "ECDF vs. Theoretical CDF of metric (norm)",
+                                        "xlabel": "Value",
+                                        "ylabel": "CDF",
+                                        "data_source": "UnitTest",
+                                        "file_name": "ECDF vs. Theoretical CDF of metric (norm).png"
+                                    }
+                                },
+                                "qq": {
+                                    "descriptive_stats": {},
+                                    "inferential_stats": {},
+                                    "chart_metadata": {
+                                        "title": "Q\u2013Q Plot Fit Assessment of metric (norm)",
+                                        "xlabel": "Theoretical Quantiles",
+                                        "ylabel": "Sample Quantiles",
+                                        "data_source": "UnitTest",
+                                        "file_name": "Q\u2013Q Plot Fit Assessment of metric (norm).png"
+                                    }
+                                }
+                            },
+                            "lognorm": {
+                                "ecdf_vs_cdf": {
+                                    "descriptive_stats": {},
+                                    "inferential_stats": {},
+                                    "chart_metadata": {
+                                        "title": "ECDF vs. Theoretical CDF of metric (lognorm)",
+                                        "xlabel": "Value",
+                                        "ylabel": "CDF",
+                                        "data_source": "UnitTest"
+                                    }
+                                },
+                                "qq": {
+                                    "descriptive_stats": {},
+                                    "inferential_stats": {},
+                                    "chart_metadata": {
+                                        "title": "Q\u2013Q Plot Fit Assessment of metric (lognorm)",
+                                        "xlabel": "Theoretical Quantiles",
+                                        "ylabel": "Sample Quantiles",
+                                        "data_source": "UnitTest"
+                                    }
+                                }
+                            },
+                            "gamma": {
+                                "ecdf_vs_cdf": {
+                                    "descriptive_stats": {
+                                        "params": {
+                                            "distribution_name": "gamma",
+                                        }
+                                    },
+                                    "inferential_stats": {},
+                                    "chart_metadata": {
+                                        "title": "ECDF vs. Theoretical CDF of metric (gamma)",
+                                        "xlabel": "Value",
+                                        "ylabel": "CDF",
+                                        "data_source": "UnitTest"
+                                    }
+                                },
+                                "qq": {
+                                    "descriptive_stats": {},
+                                    "inferential_stats": {},
+                                    "chart_metadata": {
+                                        "title": "Q\u2013Q Plot Fit Assessment of metric (gamma)",
+                                        "xlabel": "Theoretical Quantiles",
+                                        "ylabel": "Sample Quantiles",
+                                        "data_source": "UnitTest"
+                                    }
+                                }
+                            },
+                            "expon": {
+                                "ecdf_vs_cdf": {
+                                    "descriptive_stats": {},
+                                    "inferential_stats": {},
+                                    "chart_metadata": {
+                                        "title": "ECDF vs. Theoretical CDF of metric (expon)",
+                                        "xlabel": "Value",
+                                        "ylabel": "CDF",
+                                        "data_source": "UnitTest"
+                                    }
+                                },
+                                "qq": {
+                                    "descriptive_stats": {},
+                                    "inferential_stats": {},
+                                    "chart_metadata": {
+                                        "title": "Q\u2013Q Plot Fit Assessment of metric (expon)",
+                                        "xlabel": "Theoretical Quantiles",
+                                        "ylabel": "Sample Quantiles",
+                                        "data_source": "UnitTest"
+                                    }
+                                }
+                            }
+                        }
                     },
-                    # Expected distribution names for the fit section
-                    "distribution_names": ("norm", "lognorm", "gamma", "expon"),
                 },
             },
         ),
@@ -99,19 +211,14 @@ def test_univariate_numeric_analysis_report_data_driven(
     assert set(data.keys()) == {"missing_data", "cardinality", "distribution"}
 
     # ---- Top-level: missing_data ----
-    expected_md = expected["missing_data"]
-    actual_md = data["missing_data"]
-    for key, exp in expected_md.items():
-        assert key in actual_md, f"missing_data missing key: {key!r}"
-        if callable(exp):
-            assert exp(actual_md[key]), f"Predicate failed for missing_data[{key!r}] = {actual_md[key]!r}"
-        else:
-            assert actual_md[key] == exp, f"missing_data[{key!r}] expected {exp!r}, got {actual_md[key]!r}"
+    assert "missing_data" in data and "barchart" in data["missing_data"]
+    missing_data_payload = data["missing_data"]["barchart"]
+    assert_plot_metadata(missing_data_payload, expected["missing_data"]["barchart"], top_dir)
 
     # ---- Top-level: cardinality (plot payload) ----
-    assert "cardinality" in data and "plot_cardinality_barchart" in data["cardinality"]
-    card_payload = data["cardinality"]["plot_cardinality_barchart"]
-    assert_plot_metadata(card_payload, expected["cardinality"]["plot_cardinality_barchart"], top_dir)
+    assert "cardinality" in data and "barchart" in data["cardinality"]
+    card_payload = data["cardinality"]["barchart"]
+    assert_plot_metadata(card_payload, expected["cardinality"]["barchart"], top_dir)
 
     # ---- Nested distribution report ----
     dist_full = load_and_validate_report(data["distribution"], top_dir)
@@ -132,29 +239,33 @@ def test_univariate_numeric_analysis_report_data_driven(
     # Shape plots (except distribution_fits, handled below)
     for plot_key, exp in expected["distribution"]["shape"].items():
         assert plot_key in dist["shape"], f"Missing shape plot {plot_key!r}"
-        assert_plot_metadata(dist["shape"][plot_key], exp, top_dir)
 
-    # Distribution fits (per-named distribution)
-    assert "distribution_fits" in dist["shape"], "Missing 'distribution_fits' in shape section"
-    fits = dist["shape"]["distribution_fits"]
-    expected_names = set(expected["distribution"]["distribution_names"])
-    assert set(fits.keys()) == expected_names
+        # Distribution fits (per-named distribution)
+        if plot_key == "distribution_fits":
+            expected_distribution_fits = exp
+            actual_distribution_fits = dist["shape"][plot_key]
 
-    # For each distribution: assert ecdf_vs_cdf and qq plots are present & saved
-    for dist_name in expected_names:
-        assert set(fits[dist_name].keys()) == {"ecdf_vs_cdf", "qq"}
-        # ecdf_vs_cdf
-        evc_exp = {
-            "chart_metadata": {"data_source": kwargs.get("data_source"), "distribution": dist_name},
-            "descriptive_stats": {"distribution": lambda v, dn=dist_name: v == dn, "n": lambda v: v > 0},
-        }
-        assert_plot_metadata(fits[dist_name]["ecdf_vs_cdf"], evc_exp, top_dir)
-        # qq
-        qq_exp = {
-            "chart_metadata": {"data_source": kwargs.get("data_source"), "distribution": dist_name},
-            "descriptive_stats": {},  # could assert slope/intercept/etc. exist, but keep concise here
-        }
-        assert_plot_metadata(fits[dist_name]["qq"], qq_exp, top_dir)
+            for dist_name, plots in expected_distribution_fits.items():
+                assert dist_name in actual_distribution_fits
+                actual_distribution_fit = actual_distribution_fits[dist_name]
+
+                for dist_plot_key, dist_exp in plots.items():
+                    assert dist_plot_key in actual_distribution_fit, f"missing distribution.{dist_plot_key}"
+                    payload = actual_distribution_fit[dist_plot_key]
+                    assert_plot_metadata(payload, dist_exp, top_dir)
+        elif plot_key == "transforms":
+            if kwargs.get("evaluate_transforms_fn") is not None:
+                expected_transforms = exp
+                actual_transforms = dist["shape"][plot_key]
+
+                for transform_name, expected_data in expected_transforms.items():
+                    assert transform_name in actual_transforms
+                    actual_transform_report_meta = actual_transforms[transform_name]
+                    full_transform_report = load_and_validate_report(actual_transform_report_meta, top_dir / transform_name)
+                    report_t = full_transform_report["data"]
+                    assert report_t is not None, f"{transform_name!r} entry missing nested 'data'"
+        else:
+            assert_plot_metadata(dist["shape"][plot_key], exp, top_dir)
 
 
 @pytest.mark.parametrize(
