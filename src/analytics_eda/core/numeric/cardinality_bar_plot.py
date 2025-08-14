@@ -23,7 +23,7 @@ from .validate_numeric_named_series import NumericSeriesMixin
 
 @dataclass
 class CardinalityBarContext(PlotContext):
-    title_template: str = "Value Counts (Top {top_k}) of {name} for Cardinality"
+    title_template: str = "Value Counts (Top {top_k}) of {name} for Cardinality {modifiers}"
     xlabel: str = "Value"
     ylabel: str = "Count"
     figsize: Tuple[int, int] = (8, 6)
@@ -61,15 +61,17 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
     """
 
     # (1) Title must include {top_k}; override metadata builder to format it.
-    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
-        label = self.ctx.name or getattr(series, "name", None) or "Value"
-        title = self.ctx.title_template.format(name=label, top_k=self.ctx.top_k)
+    def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+        # Make {top_k} available to the title_template AND optionally add a modifier
         return {
-            "title": title,
-            "xlabel": self.ctx.xlabel,
-            "ylabel": self.ctx.ylabel,
-            "data_source": self.ctx.data_source,
-            "file_name": self.ctx.file_name,
+            "top_k": int(self.ctx.top_k),
+            # If you also want "(Top 10)" in the (...) modifiers, add an extra_desc:
+            # "extra_desc": f"Top {int(self.ctx.top_k)}",
+        }
+    
+    def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+        # Put top_k into chart metadata payload for consumers/tests
+        return {
             "top_k": int(self.ctx.top_k),
         }
 

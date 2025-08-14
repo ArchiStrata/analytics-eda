@@ -89,22 +89,22 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
                                     "chart_metadata": {
-                                        "title": "ECDF vs. Theoretical CDF of metric (norm)",
+                                        "title": "ECDF vs. Theoretical CDF of metric (fitted to norm)",
                                         "xlabel": "Value",
                                         "ylabel": "CDF",
                                         "data_source": "UnitTest",
-                                        "file_name": "ECDF vs. Theoretical CDF of metric (norm).png"
+                                        "file_name": "ECDF vs. Theoretical CDF of metric (fitted to norm).png"
                                     }
                                 },
                                 "qq": {
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
                                     "chart_metadata": {
-                                        "title": "Q\u2013Q Plot Fit Assessment of metric (norm)",
+                                        "title": "Q\u2013Q Plot Fit Assessment of metric (fitted to norm)",
                                         "xlabel": "Theoretical Quantiles",
                                         "ylabel": "Sample Quantiles",
                                         "data_source": "UnitTest",
-                                        "file_name": "Q\u2013Q Plot Fit Assessment of metric (norm).png"
+                                        "file_name": "Q\u2013Q Plot Fit Assessment of metric (fitted to norm).png"
                                     }
                                 }
                             },
@@ -113,7 +113,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
                                     "chart_metadata": {
-                                        "title": "ECDF vs. Theoretical CDF of metric (lognorm)",
+                                        "title": "ECDF vs. Theoretical CDF of metric (fitted to lognorm)",
                                         "xlabel": "Value",
                                         "ylabel": "CDF",
                                         "data_source": "UnitTest"
@@ -123,7 +123,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
                                     "chart_metadata": {
-                                        "title": "Q\u2013Q Plot Fit Assessment of metric (lognorm)",
+                                        "title": "Q\u2013Q Plot Fit Assessment of metric (fitted to lognorm)",
                                         "xlabel": "Theoretical Quantiles",
                                         "ylabel": "Sample Quantiles",
                                         "data_source": "UnitTest"
@@ -139,7 +139,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                                     },
                                     "inferential_stats": {},
                                     "chart_metadata": {
-                                        "title": "ECDF vs. Theoretical CDF of metric (gamma)",
+                                        "title": "ECDF vs. Theoretical CDF of metric (fitted to gamma)",
                                         "xlabel": "Value",
                                         "ylabel": "CDF",
                                         "data_source": "UnitTest"
@@ -149,7 +149,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
                                     "chart_metadata": {
-                                        "title": "Q\u2013Q Plot Fit Assessment of metric (gamma)",
+                                        "title": "Q\u2013Q Plot Fit Assessment of metric (fitted to gamma)",
                                         "xlabel": "Theoretical Quantiles",
                                         "ylabel": "Sample Quantiles",
                                         "data_source": "UnitTest"
@@ -161,7 +161,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
                                     "chart_metadata": {
-                                        "title": "ECDF vs. Theoretical CDF of metric (expon)",
+                                        "title": "ECDF vs. Theoretical CDF of metric (fitted to expon)",
                                         "xlabel": "Value",
                                         "ylabel": "CDF",
                                         "data_source": "UnitTest"
@@ -171,7 +171,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
                                     "chart_metadata": {
-                                        "title": "Q\u2013Q Plot Fit Assessment of metric (expon)",
+                                        "title": "Q\u2013Q Plot Fit Assessment of metric (fitted to expon)",
                                         "xlabel": "Theoretical Quantiles",
                                         "ylabel": "Sample Quantiles",
                                         "data_source": "UnitTest"
@@ -341,7 +341,7 @@ def test_univariate_numeric_analysis_report_data_driven(
     "make_input, exc, pattern",
     [
         # Not a Series
-        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series."),
         # Missing name
         (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
         # Blank/whitespace name

@@ -191,7 +191,7 @@ def test_categorical_distribution_analysis_report_data_driven(
     "series_factory, expected_exc, match",
     [
         # Not a pandas Series
-        (lambda: ["a", "b", "c"], TypeError, r"Input must be a pandas Series\."),
+        (lambda: ["a", "b", "c"], TypeError, r"Input must be a pandas Series."),
 
         # Not categorical/object dtype
         (lambda: pd.Series([1, 2, 3], name="numeric"), TypeError,

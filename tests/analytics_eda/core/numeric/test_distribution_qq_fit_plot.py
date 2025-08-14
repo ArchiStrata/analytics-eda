@@ -8,7 +8,7 @@ from analytics_eda.core.numeric import DistributionQqFitContext, DistributionQqF
     "series_factory, expected_exc, match",
     [
         # Not a Series
-        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        (lambda: [1, 2, 3], TypeError, r"data must be a pandas Series or DataFrame"),
         # Non-numeric Series
         (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
         # Missing name
@@ -36,7 +36,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             {"distribution_name": "norm"},
             {
                 "chart_metadata": {
-                    "title": "Q–Q Plot Fit Assessment of nums (norm)",
+                    "title": "Q–Q Plot Fit Assessment of nums (fitted to norm)",
                     "xlabel": "Theoretical Quantiles",
                     "ylabel": "Sample Quantiles",
                     "data_source": None,
@@ -64,7 +64,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             lambda: pd.Series(np.random.default_rng(0).normal(size=10), name="x"),
             {"distribution_name": "norm", "alpha": 0.05},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of x (norm)"},
+                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of x (fitted to norm)"},
                 "descriptive_stats": {
                     "r_squared": (lambda v: isinstance(v, float) and 0.0 <= v <= 1.0),
                 },
@@ -84,7 +84,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             lambda: pd.Series(np.random.default_rng(1).normal(size=30), name="mid"),
             {"distribution_name": "norm"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of mid (norm)"},
+                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of mid (fitted to norm)"},
                 "inferential_stats": {
                     "params": {"alpha": 0.05, "distribution_name": "norm"},
                     "shapiro": {
@@ -106,7 +106,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             lambda: pd.Series(np.random.default_rng(2).normal(size=2100), name="huge"),
             {"distribution_name": "norm"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of huge (norm)"},
+                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of huge (fitted to norm)"},
                 "descriptive_stats": {
                     "r_squared": (lambda v: isinstance(v, float) and 0.0 <= v <= 1.0),
                 },
@@ -140,7 +140,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             },
             {
                 "chart_metadata": {
-                    "title": "QQ Fit of s (norm)",
+                    "title": "QQ Fit of s (fitted to norm)",
                     "xlabel": "Theo Q",
                     "ylabel": "Sample Q",
                     "data_source": "UnitTest",
@@ -155,7 +155,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             {"distribution_name": "norm", "alpha": 0.10},
             {
                 "inferential_stats": {"params": {"alpha": 0.10, "distribution_name": "norm"}},
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of alpha (norm)"},
+                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of alpha (fitted to norm)"},
             },
         ),
 
@@ -164,7 +164,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             lambda: pd.Series(np.random.default_rng(3).lognormal(mean=0.0, sigma=0.5, size=80), name="logpos"),
             {"distribution_name": "lognorm"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of logpos (lognorm)"},
+                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of logpos (fitted to lognorm)"},
                 "descriptive_stats": {
                     "slope": (lambda v: isinstance(v, float)),
                     "intercept": (lambda v: isinstance(v, float)),
@@ -181,7 +181,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             lambda: pd.Series(np.random.default_rng(4).gamma(shape=2.0, scale=2.0, size=100), name="g"),
             {"distribution_name": "gamma"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of g (gamma)"},
+                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of g (fitted to gamma)"},
                 "inferential_stats": {"params": {"alpha": 0.05, "distribution_name": "gamma"}},
             },
         ),
@@ -191,7 +191,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             lambda: pd.Series(np.random.default_rng(5).exponential(scale=1.0, size=120), name="e"),
             {"distribution_name": "expon"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of e (expon)"},
+                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of e (fitted to expon)"},
                 "inferential_stats": {"params": {"alpha": 0.05, "distribution_name": "expon"}},
             },
         ),
@@ -207,7 +207,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             },
             {
                 "chart_metadata": {
-                    "title": "Q–Q Plot Fit Assessment of Price (NY only, winsorized) (norm)",
+                    "title": "Q–Q Plot Fit Assessment of Price (NY only, winsorized, fitted to norm)",
                 },
             },
         ),
@@ -217,7 +217,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             lambda: pd.Series([1.0, np.nan, 2.0, np.nan, 5.0], name="with_nans"),
             {"distribution_name": "norm"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of with_nans (norm)"},
+                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of with_nans (fitted to norm)"},
                 "descriptive_stats": {
                     "slope": (lambda v: isinstance(v, float)),
                     "r_squared": (lambda v: isinstance(v, float) and 0.0 <= v <= 1.0),

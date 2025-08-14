@@ -42,7 +42,7 @@ class CategoricalCleanlinessBarContext(PlotContext):
       whether multiple distinct casings appear in the data. Rows whose token
       casing is not the group's canonical (most frequent) casing are flagged.
     """
-    title_template: str = "Categorical Cleanliness for {name}"
+    title_template: str = "Categorical Cleanliness for {name}{modifiers}"
     xlabel: str = "Count"
     ylabel: str = "Issue Type"
     figsize: Tuple[int, int] = (10, 6)
@@ -121,18 +121,6 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, BasePlot):
     - Ordering can be configured via `sort_by_count_ascending`; you may also cap
       bars with `max_bars` (mostly moot here since there are four issues).
     """
-
-    # ---- chart metadata ----
-    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
-        label = self.ctx.name or (series.name if series.name else "Value")
-        title = self.ctx.title_template.format(name=label)
-        return {
-            "title": title,
-            "xlabel": self.ctx.xlabel,
-            "ylabel": self.ctx.ylabel,
-            "data_source": self.ctx.data_source,
-            "file_name": self.ctx.file_name,
-        }
 
     # ---- defaults when empty ----
     def default_descriptive(self) -> Dict[str, Any]:

@@ -10,7 +10,7 @@ from analytics_eda.core.numeric import DistributionProbabilityFunctionContext, D
     "series_factory, expected_exc, match",
     [
         # Not a Series
-        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        (lambda: [1, 2, 3], TypeError, r"data must be a pandas Series or DataFrame"),
         # Non-numeric Series
         (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
         # Missing name
@@ -66,7 +66,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             {"is_discrete": False, "title_template": "PDF estimate of {name}{modifiers}"},
             {
                 "chart_metadata": {
-                    "title": "PDF estimate of x",
+                    "title": "PDF estimate of x (bw=scott)",
                     "xlabel": "Value",
                     "ylabel": "Density f(x)",
                     "data_source": None,
@@ -117,7 +117,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             },
             {
                 "chart_metadata": {
-                    "title": "PDF estimate of nums",
+                    "title": "PDF estimate of nums (bw=scott)",
                     "xlabel": "Value",
                     "ylabel": "Density f(x)",
                     "file_name": "pdf.png",
@@ -173,7 +173,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             },
             {
                 "chart_metadata": {
-                    "title": "PDF estimate of x",
+                    "title": "PDF estimate of x (bw=scott)",
                     "xlabel": "Score",
                     "ylabel": "Density",
                     "data_source": "UnitTest",
@@ -201,7 +201,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 "bw_method": "silverman",
             },
             {
-                "chart_metadata": {"title": "PDF estimate of grid"},
+                "chart_metadata": {"title": "PDF estimate of grid (bw=silverman)"},
                 "descriptive_stats": {
                     "n": 25,
                     "mean": (lambda v: isinstance(v, float)),
@@ -233,7 +233,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             lambda: pd.Series([1, 2, 3, 4, 5], name="basic"),
             {"is_discrete": False, "title_template": "PDF estimate of {name}{modifiers}"},
             {
-                "chart_metadata": {"title": "PDF estimate of basic"},
+                "chart_metadata": {"title": "PDF estimate of basic (bw=scott)"},
                 "descriptive_stats": {
                     "n": 5,
                     "min": 1,

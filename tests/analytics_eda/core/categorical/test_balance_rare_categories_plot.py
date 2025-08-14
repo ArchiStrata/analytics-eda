@@ -9,7 +9,7 @@ from analytics_eda.core.categorical import BalanceRareCategoriesPlot, BalanceRar
     "series_factory, expected_exc, match",
     [
         # Not a pandas Series
-        (lambda: ["a", "b", "c"], TypeError, r"Input must be a pandas Series\."),
+        (lambda: ["a", "b", "c"], TypeError, r"data must be a pandas Series or DataFrame"),
 
         # Not categorical/object dtype
         (lambda: pd.Series([1, 2, 3], name="numeric"), TypeError,

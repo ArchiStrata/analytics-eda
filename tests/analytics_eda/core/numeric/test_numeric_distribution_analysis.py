@@ -8,7 +8,7 @@ from analytics_eda.core.numeric.evaluate_transforms import evaluate_transforms
     "make_input, exc, pattern",
     [
         # Not a Series
-        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series."),
         # Non-numeric Series
         (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
         # Missing name
@@ -94,11 +94,11 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     }
                                 },
                                 "chart_metadata": {
-                                    "title": "ECDF vs. Theoretical CDF of norm (norm)",
+                                    "title": "ECDF vs. Theoretical CDF of norm (fitted to norm)",
                                     "xlabel": "Value",
                                     "ylabel": "CDF",
                                     "data_source": "UnitTest",
-                                    "file_name": "ECDF vs. Theoretical CDF of norm (norm).png"
+                                    "file_name": "ECDF vs. Theoretical CDF of norm (fitted to norm).png"
                                 }
                             },
                             "qq": {
@@ -126,11 +126,11 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     "reject_normality": False
                                 },
                                 "chart_metadata": {
-                                    "title": "Q\u2013Q Plot Fit Assessment of norm (norm)",
+                                    "title": "Q\u2013Q Plot Fit Assessment of norm (fitted to norm)",
                                     "xlabel": "Theoretical Quantiles",
                                     "ylabel": "Sample Quantiles",
                                     "data_source": "UnitTest",
-                                    "file_name": "Q\u2013Q Plot Fit Assessment of norm (norm).png"
+                                    "file_name": "Q\u2013Q Plot Fit Assessment of norm (fitted to norm).png"
                                 }
                             }
                         },
@@ -153,7 +153,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     }
                                 },
                                 "chart_metadata": {
-                                    "title": "ECDF vs. Theoretical CDF of norm (lognorm)",
+                                    "title": "ECDF vs. Theoretical CDF of norm (fitted to lognorm)",
                                     "xlabel": "Value",
                                     "ylabel": "CDF",
                                     "data_source": "UnitTest"
@@ -180,7 +180,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     }
                                 },
                                 "chart_metadata": {
-                                    "title": "Q\u2013Q Plot Fit Assessment of norm (lognorm)",
+                                    "title": "Q\u2013Q Plot Fit Assessment of norm (fitted to lognorm)",
                                     "xlabel": "Theoretical Quantiles",
                                     "ylabel": "Sample Quantiles",
                                     "data_source": "UnitTest"
@@ -206,7 +206,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     }
                                 },
                                 "chart_metadata": {
-                                    "title": "ECDF vs. Theoretical CDF of norm (gamma)",
+                                    "title": "ECDF vs. Theoretical CDF of norm (fitted to gamma)",
                                     "xlabel": "Value",
                                     "ylabel": "CDF",
                                     "data_source": "UnitTest"
@@ -233,7 +233,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     }
                                 },
                                 "chart_metadata": {
-                                    "title": "Q\u2013Q Plot Fit Assessment of norm (gamma)",
+                                    "title": "Q\u2013Q Plot Fit Assessment of norm (fitted to gamma)",
                                     "xlabel": "Theoretical Quantiles",
                                     "ylabel": "Sample Quantiles",
                                     "data_source": "UnitTest"
@@ -261,7 +261,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     }
                                 },
                                 "chart_metadata": {
-                                    "title": "ECDF vs. Theoretical CDF of norm (expon)",
+                                    "title": "ECDF vs. Theoretical CDF of norm (fitted to expon)",
                                     "xlabel": "Value",
                                     "ylabel": "CDF",
                                     "data_source": "UnitTest"
@@ -288,7 +288,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     }
                                 },
                                 "chart_metadata": {
-                                    "title": "Q\u2013Q Plot Fit Assessment of norm (expon)",
+                                    "title": "Q\u2013Q Plot Fit Assessment of norm (fitted to expon)",
                                     "xlabel": "Theoretical Quantiles",
                                     "ylabel": "Sample Quantiles",
                                     "data_source": "UnitTest"

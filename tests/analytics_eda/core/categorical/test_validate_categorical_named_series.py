@@ -22,7 +22,7 @@ def test_valid_series_without_name_when_not_required():
     "series_factory, expected_exc, match",
     [
         # Not a pandas Series
-        (lambda: ["a", "b", "c"], TypeError, r"Input must be a pandas Series\."),
+        (lambda: ["a", "b", "c"], TypeError, r"Input must be a pandas Series."),
 
         # Not categorical/object dtype
         (lambda: pd.Series([1, 2, 3], name="numeric"), TypeError,

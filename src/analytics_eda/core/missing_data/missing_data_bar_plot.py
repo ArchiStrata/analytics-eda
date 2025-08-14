@@ -25,7 +25,7 @@ from ..utils.named_series_mixin import NamedSeriesMixin
 
 @dataclass
 class MissingDataBarContext(PlotContext):
-    title_template: str = "Missing Data for {name}"
+    title_template: str = "Missing Data for {name}{modifiers}"
     xlabel: str = ""
     ylabel: str = "Percentage of Total"
     figsize: Tuple[int, int] = (8, 6)
@@ -50,18 +50,6 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
-
-    # Build chart metadata from context (same pattern as cardinality)
-    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
-        label = self.ctx.name or (series.name if series.name else "Value")
-        title = self.ctx.title_template.format(name=label)
-        return {
-            "title": title,
-            "xlabel": self.ctx.xlabel,
-            "ylabel": self.ctx.ylabel,
-            "data_source": self.ctx.data_source,
-            "file_name": self.ctx.file_name,
-        }
 
     # Defaults when empty
     def default_descriptive(self) -> Dict[str, Any]:

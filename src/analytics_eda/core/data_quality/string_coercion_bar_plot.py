@@ -29,7 +29,7 @@ class StringCoercionBarContext(PlotContext):
     Identify and visualize non-numeric (string-like) values in a series by
     attempting numeric coercion and collecting the values that fail to parse.
     """
-    title_template: str = "Non-Numeric (String) Values in {name}"
+    title_template: str = "Non-Numeric (String) Values in {name}{modifiers}"
     xlabel: str = "Count"
     ylabel: str = "Category"
     figsize: Tuple[int, int] = (10, 6)
@@ -77,18 +77,6 @@ class StringCoercionBarPlot(NamedSeriesMixin, BasePlot):
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
-
-    # Build chart metadata from context
-    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
-        label = self.ctx.name or (series.name if series.name else "Value")
-        title = self.ctx.title_template.format(name=label)
-        return {
-            "title": title,
-            "xlabel": self.ctx.xlabel,
-            "ylabel": self.ctx.ylabel,
-            "data_source": self.ctx.data_source,
-            "file_name": self.ctx.file_name,
-        }
 
     # Defaults when empty
     def default_descriptive(self) -> Dict[str, Any]:

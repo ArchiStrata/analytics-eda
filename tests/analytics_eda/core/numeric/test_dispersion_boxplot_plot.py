@@ -10,7 +10,7 @@ from analytics_eda.core.numeric import DispersionBoxplotContext, DispersionBoxpl
     "series_factory, expected_exc, match",
     [
         # Not a Series
-        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        (lambda: [1, 2, 3], TypeError, r"data must be a pandas Series or DataFrame"),
         # Non-numeric Series
         (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
         # Missing name

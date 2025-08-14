@@ -22,8 +22,6 @@ from scipy import stats
 from ..utils.base_plot import BasePlot, PlotContext
 from .validate_numeric_named_series import NumericSeriesMixin
 
-from ..utils.build_chart_title import build_chart_title
-
 DistName = Literal['norm', 'lognorm', 'gamma', 'expon']
 
 @dataclass
@@ -72,21 +70,21 @@ class DistributionECDFvsCDFPlot(NumericSeriesMixin, BasePlot):
 
     ALLOWED: Tuple[DistName, ...] = ('norm', 'lognorm', 'gamma', 'expon')
 
-    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
-        title = build_chart_title(
-            name=self.ctx.name,
-            series=series,
-            filter_desc=self.ctx.filter_desc,
-            transform_desc=self.ctx.transform_desc,
-            title_template=self.ctx.title_template,
-        )
-        full_title = f"{title} ({self.ctx.distribution_name})"
+    def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+        dist = self.ctx.distribution_name
         return {
-            "title": full_title,
-            "xlabel": self.ctx.xlabel,
-            "ylabel": self.ctx.ylabel,
-            "data_source": self.ctx.data_source,
-            "file_name": self.ctx.file_name,
+            # shows up inside "(...)" via build_chart_title's modifiers
+            "fit_desc": f"fitted to {dist}",
+            # optional extras (uncomment if you want them in modifiers too)
+            # "extra_desc": f"alpha={self.ctx.alpha:g}",
+            # also make {dist} available in case your template uses it
+            "dist": dist,
+        }
+
+    def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+        return {
+            "distribution_name": self.ctx.distribution_name,
+            "alpha": float(self.ctx.alpha),
         }
 
     # (1) default when empty

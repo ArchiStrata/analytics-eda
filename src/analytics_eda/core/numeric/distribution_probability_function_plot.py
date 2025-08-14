@@ -20,14 +20,11 @@ import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 
 from ..utils.base_plot import BasePlot, PlotContext
-from ..utils.build_chart_title import build_chart_title
 from .validate_numeric_named_series import NumericSeriesMixin
 
 @dataclass
 class DistributionProbabilityFunctionContext(PlotContext):
-    # Two templates so we can choose based on is_discrete at runtime
-    title_template_pmf: str = "PMF of {name}{modifiers}"
-    title_template_pdf: str = "PDF estimate of {name}{modifiers}"
+    title_template: str = "{pf_kind} of {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: Optional[str] = None  # dynamic default if None
     figsize: Tuple[int, int] = (10, 6)
@@ -56,37 +53,36 @@ class DistributionProbabilityFunctionPlot(NumericSeriesMixin, BasePlot):
     """
 
     # (1) Build title + ylabel dynamically from context
-    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
-        label = self.ctx.name or getattr(series, "name", None) or "Value"
+    def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+        is_disc = bool(self.ctx.is_discrete)
+        pf_kind = "PMF" if is_disc else "PDF estimate"
 
-        # Choose template based on discrete/continuous
-        template = (
-            self.ctx.title_template_pmf
-            if self.ctx.is_discrete
-            else self.ctx.title_template_pdf
-        )
-        title = build_chart_title(
-            name=label,
-            series=series,
-            filter_desc=self.ctx.filter_desc,
-            transform_desc=self.ctx.transform_desc,
-            title_template=template,
-        )
+        # Optional: show bandwidth inside modifiers for continuous KDE
+        extras = {}
+        if not is_disc and self.ctx.bw_method is not None:
+            extras["extra_desc"] = f"bw={self.ctx.bw_method}"
 
-        # Dynamic ylabel default if not provided
+        return {
+            "pf_kind": pf_kind,   # used by {pf_kind} in title_template
+            **extras,             # may include extra_desc for modifiers
+        }
+
+    def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+        is_disc = bool(self.ctx.is_discrete)
+        # Dynamic default if user didn't set ctx.ylabel
         ylabel = (
             self.ctx.ylabel
             if self.ctx.ylabel is not None
-            else ("Probability P(X = x)" if self.ctx.is_discrete else "Density f(x)")
+            else ("Probability P(X = x)" if is_disc else "Density f(x)")
         )
 
-        return {
-            "title": title,
-            "xlabel": self.ctx.xlabel,
+        meta = {
             "ylabel": ylabel,
-            "data_source": self.ctx.data_source,
-            "file_name": self.ctx.file_name,
+            "is_discrete": is_disc,
         }
+        if not is_disc:
+            meta["bw_method"] = self.ctx.bw_method
+        return meta
 
     # (2) default when empty
     def default_descriptive(self) -> Dict[str, Any]:

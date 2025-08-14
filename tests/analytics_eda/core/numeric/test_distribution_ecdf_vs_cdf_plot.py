@@ -8,7 +8,7 @@ from analytics_eda.core.numeric import DistributionECDFvsCDFContext, Distributio
     "series_factory, expected_exc, match",
     [
         # Not a Series
-        (lambda: [1, 2, 3], TypeError, r"Input must be a pandas Series\."),
+        (lambda: [1, 2, 3], TypeError, r"data must be a pandas Series or DataFrame"),
         # Non-numeric Series
         (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
         # Missing name
@@ -46,7 +46,7 @@ def test_invalid_distribution_name_raises_value_error():
             {"distribution_name": "norm"},
             {
                 "chart_metadata": {
-                    "title": "ECDF vs. Theoretical CDF of nums (norm)",
+                    "title": "ECDF vs. Theoretical CDF of nums (fitted to norm)",
                     "xlabel": "Value",
                     "ylabel": "CDF",
                     "data_source": None,
@@ -63,7 +63,7 @@ def test_invalid_distribution_name_raises_value_error():
             {"distribution_name": "norm"},
             {
                 "chart_metadata": {
-                    "title": "ECDF vs. Theoretical CDF of x (norm)",
+                    "title": "ECDF vs. Theoretical CDF of x (fitted to norm)",
                     "xlabel": "Value",
                     "ylabel": "CDF",
                     "data_source": None,
@@ -110,7 +110,7 @@ def test_invalid_distribution_name_raises_value_error():
             },
             {
                 "chart_metadata": {
-                    "title": "My ECDF vs CDF (norm)",
+                    "title": "My ECDF vs CDF",
                     "xlabel": "X",
                     "ylabel": "Y",
                     "data_source": "UnitTest",
@@ -127,7 +127,7 @@ def test_invalid_distribution_name_raises_value_error():
             {
                 "descriptive_stats": {"n": 4},
                 "inferential_stats": {"params": {"alpha": 0.1}},
-                "chart_metadata": {"title": "ECDF vs. Theoretical CDF of alpha_test (expon)"},
+                "chart_metadata": {"title": "ECDF vs. Theoretical CDF of alpha_test (fitted to expon)"},
             },
         ),
 
@@ -142,7 +142,7 @@ def test_invalid_distribution_name_raises_value_error():
                     "error": "requires positive data",
                 },
                 "chart_metadata": {
-                    "title": "ECDF vs. Theoretical CDF of pos_req (lognorm)",
+                    "title": "ECDF vs. Theoretical CDF of pos_req (fitted to lognorm)",
                 },
             },
         ),
@@ -158,7 +158,7 @@ def test_invalid_distribution_name_raises_value_error():
                     "error": "requires positive data",
                 },
                 "chart_metadata": {
-                    "title": "ECDF vs. Theoretical CDF of gamma_req (gamma)",
+                    "title": "ECDF vs. Theoretical CDF of gamma_req (fitted to gamma)",
                 },
             },
         ),
@@ -174,7 +174,7 @@ def test_invalid_distribution_name_raises_value_error():
                     "error": "requires non-negative data",
                 },
                 "chart_metadata": {
-                    "title": "ECDF vs. Theoretical CDF of expon_req (expon)",
+                    "title": "ECDF vs. Theoretical CDF of expon_req (fitted to expon)",
                 },
             },
         ),
@@ -190,7 +190,7 @@ def test_invalid_distribution_name_raises_value_error():
             },
             {
                 "chart_metadata": {
-                    "title": "ECDF vs. Theoretical CDF of Price (NY only, winsorized) (norm)",
+                    "title": "ECDF vs. Theoretical CDF of Price (NY only, winsorized, fitted to norm)",
                 },
                 "descriptive_stats": {"n": 5},
             },
@@ -249,7 +249,7 @@ def test_invalid_distribution_name_raises_value_error():
                     # note: no 'anderson' expected for gamma
                 },
                 "chart_metadata": {
-                    "title": "ECDF vs. Theoretical CDF of gamma_ok (gamma)",
+                    "title": "ECDF vs. Theoretical CDF of gamma_ok (fitted to gamma)",
                 },
             },
         ),

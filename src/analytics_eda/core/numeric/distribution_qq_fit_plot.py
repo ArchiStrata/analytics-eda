@@ -69,23 +69,21 @@ class DistributionQqFitPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # Build chart metadata (title uses build_chart_title, then appends "(dist)")
-    def build_chart_metadata(self, series: pd.Series) -> Dict[str, Any]:
-        label = self.ctx.name or getattr(series, "name", None) or "Value"
-        base_title = build_chart_title(
-            name=label,
-            series=series,
-            filter_desc=self.ctx.filter_desc,
-            transform_desc=self.ctx.transform_desc,
-            title_template=self.ctx.title_template,
-        )
-        full_title = f"{base_title} ({self.ctx.distribution_name})"
+    # Put the distribution into the title modifiers via build_chart_title
+    def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+        dist = self.ctx.distribution_name
         return {
-            "title": full_title,
-            "xlabel": self.ctx.xlabel,
-            "ylabel": self.ctx.ylabel,
-            "data_source": self.ctx.data_source,
-            "file_name": self.ctx.file_name,
+            "fit_desc": f"fitted to {dist}",
+            # If you also want alpha shown: "extra_desc": f"alpha={self.ctx.alpha:g}",
+            # If your template ever needs a placeholder, expose it too (e.g., {dist}):
+            "dist": dist,
+        }
+
+    # Add plot-specific fields to chart metadata payload
+    def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+        return {
+            "distribution_name": self.ctx.distribution_name,
+            "alpha": float(self.ctx.alpha),
         }
 
     # Empty defaults
