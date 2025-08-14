@@ -18,8 +18,8 @@ import uuid
 import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_object_dtype
 
-from ..univariate import univariate_numeric_analysis
-from ...core.reporting import write_json_report
+from ...univariate import univariate_numeric_analysis
+from ....core.reporting import write_json_report
 from .bivariate_numeric_categorical_tests import bivariate_numeric_categorical_tests
 
 logger = logging.getLogger(__name__)

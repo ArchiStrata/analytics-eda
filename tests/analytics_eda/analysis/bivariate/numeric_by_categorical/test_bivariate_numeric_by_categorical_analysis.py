@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 import json
 
-from analytics_eda.analysis.bivariate.bivariate_numeric_by_categorical_analysis import bivariate_numeric_by_categorical_analysis
+from analytics_eda.analysis.bivariate.numeric_by_categorical.bivariate_numeric_by_categorical_analysis import bivariate_numeric_by_categorical_analysis
 
 @pytest.fixture
 def sample_df():
