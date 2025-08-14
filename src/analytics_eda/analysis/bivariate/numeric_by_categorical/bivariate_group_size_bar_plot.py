@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+
+from .utils import resolve_cat_col, resolve_num_col, dropna_on, truncate_labels, postprocess_series, agg_sum
 
 from ....core.utils.base_plot import PlotContext, BasePlot
 
@@ -80,49 +82,6 @@ class BivariateGroupSizeBarPlot(BasePlot):
 
     """
 
-    # ---------- Helpers ----------
-    def _resolve_cat_col(
-        self, df: pd.DataFrame, cols: Sequence[str], role_map: Optional[Mapping[str, str]]
-    ) -> str:
-        if role_map and role_map.get("x"):
-            col = role_map["x"]
-        else:
-            if not cols:
-                raise ValueError("Provide cols=[<categorical>, <numeric>] or role_map={'x': <categorical>, 'y': <numeric>} .")
-            col = cols[0]
-        if col not in df.columns:
-            raise KeyError(f"Categorical column '{col}' not in DataFrame.")
-        return col
-
-    def _resolve_num_col(
-        self, df: pd.DataFrame, cols: Sequence[str], role_map: Optional[Mapping[str, str]]
-    ) -> str:
-        if role_map and role_map.get("y"):
-            col = role_map["y"]
-        else:
-            if not cols or len(cols) < 2:
-                raise ValueError("Provide both categorical and numeric columns (e.g., cols=['cat','value']) or set role_map={'x': 'cat', 'y': 'value'}.")
-            col = cols[1]
-        if col not in df.columns:
-            raise KeyError(f"Numeric column '{col}' not in DataFrame.")
-        return col
-
-    def _postprocess_counts(self, counts: pd.Series) -> pd.Series:
-        ctx = self.ctx  # type: BivariateGroupSizeBarContext
-        if ctx.min_count is not None:
-            counts = counts[counts >= ctx.min_count]
-        if ctx.sort_desc:
-            counts = counts.sort_values(ascending=False)
-        if ctx.top_k is not None and ctx.top_k > 0:
-            counts = counts.iloc[: ctx.top_k]
-        return counts
-
-    def _truncate_labels(self, labels: List[str]) -> List[str]:
-        m = self.ctx.max_label_len
-        if not m:
-            return labels
-        return [lbl if len(lbl) <= m else (lbl[: max(0, m - 1)] + "…") for lbl in labels]
-
     # ---------- Frame API ----------
     def validate_frame(
         self,
@@ -135,9 +94,9 @@ class BivariateGroupSizeBarPlot(BasePlot):
         Ensure categorical (x) and numeric (y) columns exist.
         Drop rows where the **categorical** is NA (numeric NA are allowed; they just won't be counted).
         """
-        cat_col = self._resolve_cat_col(df, cols, role_map)
-        _ = self._resolve_num_col(df, cols, role_map)  # validate presence only
-        return df.dropna(subset=[cat_col])
+        cat = resolve_cat_col(df, cols, role_map)
+        resolve_num_col(df, cols, role_map)  # validate presence
+        return dropna_on(df, cat)
 
     def compute_descriptive_frame(
         self,
@@ -150,20 +109,18 @@ class BivariateGroupSizeBarPlot(BasePlot):
         Sum numeric values per category:
             totals = df.groupby(cat, observed=True)[num].sum()
         """
-        cat_col = self._resolve_cat_col(df, cols, role_map)
-        num_col = self._resolve_num_col(df, cols, role_map)
+        cat_col = resolve_cat_col(df, cols, role_map)
+        num_col = resolve_num_col(df, cols, role_map)
 
-        # Sum numeric values in each category (NaNs contribute 0)
-        totals = (
-            df.groupby(cat_col, observed=True)[num_col]
-            .sum(min_count=0)        # pandas >=1.1 supports min_count
-            .fillna(0)
+        totals = postprocess_series(
+            agg_sum(df, cat_col, num_col),
+            min_value=self.ctx.min_count,
+            sort_desc=self.ctx.sort_desc,
+            top_k=self.ctx.top_k,
         )
 
-        totals = self._postprocess_counts(totals)
-
         labels_raw = totals.index.astype(str).tolist()
-        labels_disp = self._truncate_labels(labels_raw)
+        labels_disp = truncate_labels(labels_raw, self.ctx.max_label_len)
         values = totals.values.tolist()
 
         # total of totals: keep numeric type (float if sums are float)
