@@ -1,5 +1,5 @@
 import numpy as np
-from analytics_eda.bivariate.bivariate_numeric_categorical.compute_overlap_metrics import compute_overlap_metrics
+from analytics_eda.analysis.bivariate.compute_overlap_metrics import compute_overlap_metrics
 
 def test_identical_distributions():
     """Identical groups should yield high overlap and low distance despite KDE smoothing."""

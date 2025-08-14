@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 from math import isclose
 
-from analytics_eda.univariate.categorical.univariate_categorical_analysis import univariate_categorical_analysis
+from analytics_eda.analysis.univariate.univariate_categorical_analysis import univariate_categorical_analysis
     
 @pytest.mark.parametrize(
     "make_series, kwargs, expected_sections",

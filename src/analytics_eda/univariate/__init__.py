@@ -1,2 +1,0 @@
-from .categorical import univariate_categorical_analysis
-from .numeric import univariate_numeric_analysis

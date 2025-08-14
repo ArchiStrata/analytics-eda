@@ -18,13 +18,13 @@ import uuid
 import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_object_dtype
 
-from ...univariate import univariate_numeric_analysis
+from ..univariate import univariate_numeric_analysis
 from ...core.reporting import write_json_report
 from .bivariate_numeric_categorical_tests import bivariate_numeric_categorical_tests
 
 logger = logging.getLogger(__name__)
 
-def bivariate_numeric_categorical_analysis(
+def bivariate_numeric_by_categorical_analysis(
     df: pd.DataFrame,
     numeric_col: str,
     categorical_col: str,
@@ -51,7 +51,7 @@ def bivariate_numeric_categorical_analysis(
         - eda report with statistical test results and per-segment univariate reports.
     """
     logger.info(
-        "Starting bivariate_numeric_categorical_analysis",
+        "Starting bivariate_numeric_by_categorical_analysis",
         extra={
             'numeric_col': numeric_col,
             'categorical_col': categorical_col,
@@ -120,7 +120,7 @@ def bivariate_numeric_categorical_analysis(
     full_report = {
         'metadata': {
             'version': '0.1.0',
-            'report_name': 'bivariate_numeric_categorical_analysis',
+            'report_name': 'bivariate_numeric_by_categorical_analysis',
             'parameters': {
                 'numeric_col': numeric_col,
                 'categorical_col': categorical_col
@@ -133,7 +133,7 @@ def bivariate_numeric_categorical_analysis(
     full_report = write_json_report(full_report, report_path)
 
     logger.info(
-        "Completed bivariate_numeric_categorical_analysis",
+        "Completed bivariate_numeric_by_categorical_analysis",
         extra={
             'numeric_col': numeric_col,
             'categorical_col': categorical_col,

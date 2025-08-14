@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 import json
 
-from analytics_eda.bivariate.bivariate_numeric_categorical.bivariate_numeric_categorical_analysis import bivariate_numeric_categorical_analysis
+from analytics_eda.analysis.bivariate.bivariate_numeric_by_categorical_analysis import bivariate_numeric_by_categorical_analysis
 
 @pytest.fixture
 def sample_df():
@@ -14,13 +14,13 @@ def sample_df():
 def test_missing_categorical_column(sample_df):
     df = sample_df.drop(columns=['category'])
     with pytest.raises(KeyError) as exc:
-        bivariate_numeric_categorical_analysis(df, 'value', 'category')
+        bivariate_numeric_by_categorical_analysis(df, 'value', 'category')
     assert "Categorical column 'category' not found." in str(exc.value)
 
 def test_missing_numeric_column(sample_df):
     df = sample_df.drop(columns=['value'])
     with pytest.raises(KeyError) as exc:
-        bivariate_numeric_categorical_analysis(df, 'value', 'category')
+        bivariate_numeric_by_categorical_analysis(df, 'value', 'category')
     assert "Numeric column 'value' not found." in str(exc.value)
 
 def test_invalid_categorical_dtype(sample_df):
@@ -28,7 +28,7 @@ def test_invalid_categorical_dtype(sample_df):
     df = sample_df.copy()
     df['category'] = df['category'].map({'A': 1, 'B': 2})
     with pytest.raises(TypeError) as exc:
-        bivariate_numeric_categorical_analysis(df, 'value', 'category')
+        bivariate_numeric_by_categorical_analysis(df, 'value', 'category')
     assert "must be categorical or object" in str(exc.value)
 
 def test_invalid_numeric_dtype(sample_df):
@@ -36,7 +36,7 @@ def test_invalid_numeric_dtype(sample_df):
     df = sample_df.copy()
     df['value'] = df['value'].astype(str)
     with pytest.raises(TypeError) as exc:
-        bivariate_numeric_categorical_analysis(df, 'value', 'category')
+        bivariate_numeric_by_categorical_analysis(df, 'value', 'category')
     assert "must be numeric" in str(exc.value)
 
 def test_integration_creates_report(tmp_path, caplog, sample_df):
@@ -46,7 +46,7 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
     report_root = tmp_path / "reports"
 
     # Run the analysis; function returns a Path
-    report_path = bivariate_numeric_categorical_analysis(
+    report_path = bivariate_numeric_by_categorical_analysis(
         sample_df,
         numeric_col='value',
         categorical_col='category',
@@ -81,7 +81,7 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
     records = caplog.records
 
     # a. Start log
-    start_log = next((r for r in records if "Starting bivariate_numeric_categorical_analysis" in r.message), None)
+    start_log = next((r for r in records if "Starting bivariate_numeric_by_categorical_analysis" in r.message), None)
     assert start_log is not None
     assert start_log.numeric_col == 'value'
     assert start_log.categorical_col == 'category'
@@ -98,7 +98,7 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
         assert hasattr(r, 'report_log_id')
 
     # c. Completion log
-    complete_log = next((r for r in records if "Completed bivariate_numeric_categorical_analysis" in r.message), None)
+    complete_log = next((r for r in records if "Completed bivariate_numeric_by_categorical_analysis" in r.message), None)
     assert complete_log is not None
     assert complete_log.numeric_col == 'value'
     assert complete_log.categorical_col == 'category'

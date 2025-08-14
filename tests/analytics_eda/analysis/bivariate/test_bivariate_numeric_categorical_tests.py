@@ -2,7 +2,7 @@ import pytest
 import logging
 import numpy as np
 import pandas as pd
-from analytics_eda.bivariate.bivariate_numeric_categorical.bivariate_numeric_categorical_tests import bivariate_numeric_categorical_tests
+from analytics_eda.analysis.bivariate.bivariate_numeric_categorical_tests import bivariate_numeric_categorical_tests
 
 @pytest.fixture
 def df_identical():
