@@ -60,7 +60,6 @@ def bivariate_numeric_by_categorical_analysis(
         }
     )
 
-    # TODO: Refactor to follow plot best practices
     if categorical_col not in df.columns:
         raise KeyError(f"Categorical column '{categorical_col}' not found.")
     if numeric_col not in df.columns:
@@ -75,6 +74,8 @@ def bivariate_numeric_by_categorical_analysis(
     report_dir.mkdir(parents=True, exist_ok=True)
 
     statistical_tests = bivariate_numeric_categorical_tests(df, numeric_col, categorical_col, report_log_id=report_log_id)
+
+    # TODO: support BivariateGroupSizeBarPlot
 
     segment_reports = {}
     for segment_value, group_df in df.groupby(categorical_col, observed=True):

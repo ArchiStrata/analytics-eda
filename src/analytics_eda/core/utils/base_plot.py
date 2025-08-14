@@ -46,26 +46,24 @@ class BasePlot(ABC):
     def __init__(self, ctx: PlotContext):
         self.ctx = ctx
 
-    @abstractmethod
-    def validate(self, series: pd.Series) -> pd.Series:
-        ...
-
-    @abstractmethod
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
-        ...
-    
     def default_descriptive(self) -> Dict[str, Any]:
-        return {}
-
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
         return {}
     
     def default_inferential(self) -> Dict[str, Any]:
         return {}
 
-    @abstractmethod
+    # ======== OPTIONAL SERIES API (only implement in univariate plots) ========
+    def validate(self, series: pd.Series) -> pd.Series:
+        raise NotImplementedError("Series-based validate not implemented for this plot.")
+
+    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+        raise NotImplementedError("Series-based compute descriptive not implemented for this plot.")
+
+    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        return {}
+
     def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        ...
+        raise NotImplementedError("Series-based draw not implemented for this plot.")
     
     # ======== OPTIONAL FRAME API (only implement in new bi/multivariate plots) ========
     def validate_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None) -> pd.DataFrame:
@@ -186,7 +184,8 @@ class BasePlot(ABC):
 
         # ---- SERIES PATH (unchanged API) ----
         if isinstance(data, pd.Series):
-            s = self.validate(data)
+            s_in = data.copy(deep=True)
+            s = self.validate(s_in)
 
             return self._pipeline_execute(
                 is_empty=s.empty,
@@ -202,11 +201,14 @@ class BasePlot(ABC):
 
         if not cols:
             raise ValueError("For DataFrame input, provide cols=[...] with one or more column names.")
-        missing = [c for c in cols if c not in data.columns]
+        
+        # Defensive copy of the full input frame
+        df_in = data.copy(deep=True)
+        missing = [c for c in cols if c not in df_in.columns]
         if missing:
             raise KeyError(f"Columns not found: {missing}")
 
-        df = data.loc[:, list(cols)]
+        df = df_in.loc[:, list(cols)]
 
         # Opportunistic fallback to Series pipeline (zero refactors for existing plots)
         maybe_series = _pick_series_from_frame(df, cols, role_map)

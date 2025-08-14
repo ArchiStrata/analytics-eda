@@ -97,17 +97,22 @@ def bivariate_numeric_categorical_tests(
     
     # TODO: Refactor
 
-    # Metadata: Bar chart (group name on x-axis, count on y-axis) - Number of groups & Group sizes
+    # Distribution Shape & Overlap: Overlaid density plots (one curve per group) - Overlap Coefficient & Bhattacharyya Distance
+    # * Distribution Overlap: Overlaid density plots (one curve per group) — Overlap Coefficient, Bhattacharyya Distance
+    # * BivariateDistributionOverlapDensityPlot
 
-    # Distribution Overlap: Overlaid density plots (one curve per group) - Overlap Coefficient & Bhattacharyya Distance
+    # Spread & Variance Homogeneity:
+    # * Homogeneity of Variances: Boxplots (side-by-side per group to eyeball variance differences) with violin (showing distribution shape + spread) and Error bar plot (mean ± SD per group)
+    # * BivariateVarianceHomogeneityBoxPlot
 
-    # Homogeneity of Variances: Boxplots (side-by-side per group to eyeball variance differences) with violin (showing distribution shape + spread) and Error bar plot (mean ± SD per group)
-
-    # Global Hypothesis Tests: Boxplots (with group medians highlighted for Kruskal) - ANOVA & Kruskal–Wallis
+    # Central Tendency Differences (Global Hypothesis Tests): Boxplots (with group medians highlighted for Kruskal) - ANOVA & Kruskal–Wallis
+    # * BivariateGlobalTestAnovaBoxPlot
 
     # Post-hoc Pairwise Comparisons: Tukey HSD plot (confidence intervals for mean differences between each pair) and/or Heatmap of pairwise p-values - Tukey’s HSD
+    # * BivariatePosthocTukeyHsdPlot
 
     # Effect Size Estimation: Annotated boxplots (effect size shown in title or subtitle) - Eta-squared (η²), Omega-squared (ω²), Epsilon-squared (ε²)
+    # * BivariateEffectSizeBoxPlot
 
     grouped = [
         group[numeric_col].dropna().values

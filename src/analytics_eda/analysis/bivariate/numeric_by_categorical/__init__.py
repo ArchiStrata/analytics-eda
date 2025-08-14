@@ -1,1 +1,2 @@
 from .bivariate_numeric_by_categorical_analysis import bivariate_numeric_by_categorical_analysis
+from .bivariate_group_size_bar_plot import BivariateGroupSizeBarContext, BivariateGroupSizeBarPlot
