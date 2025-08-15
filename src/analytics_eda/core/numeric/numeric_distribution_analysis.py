@@ -98,6 +98,8 @@ def numeric_distribution_analysis(
         }
     )
 
+    # TODO: support passing filter_desc/transform_desc to all plots
+
     # Central Tendency
     central_tendency = {}
 

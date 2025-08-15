@@ -26,6 +26,7 @@ def compute_overlap_metrics(grouped_data: dict[str, np.ndarray]) -> dict[str, di
             - 'overlap_coeff': Overlap Coefficient (float)
             - 'bhattacharyya_dist': Bhattacharyya Distance (float)
     """
+    # TODO: remove
     labels = list(grouped_data)
     overlaps: dict[str, dict[str, float]] = {}
 

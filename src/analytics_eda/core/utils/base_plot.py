@@ -210,11 +210,6 @@ class BasePlot(ABC):
 
         df = df_in.loc[:, list(cols)]
 
-        # Opportunistic fallback to Series pipeline (zero refactors for existing plots)
-        maybe_series = _pick_series_from_frame(df, cols, role_map)
-        if maybe_series is not None:
-            return self.run(maybe_series)
-
         # True bi/multivariate path via frame hooks
         df = self.validate_frame(df, cols=cols, role_map=role_map)
 
@@ -291,13 +286,3 @@ def _label_from_roles(role_map: Optional[Mapping[str, str]]) -> Optional[str]:
     elif x: parts.append(x)
     if hue: parts.append(hue)
     return " • ".join(parts) if parts else None
-
-def _pick_series_from_frame(df: pd.DataFrame, cols: Sequence[str], role_map: Optional[Mapping[str,str]]) -> Optional[pd.Series]:
-    """Return a single Series if unambiguously specified, else None to signal multi-variate."""
-    if role_map and role_map.get("y"):
-        y = role_map["y"]
-        if y in df.columns: return df[y]
-    # No role map: if exactly one column, use it
-    if len(cols) == 1:
-        return df[cols[0]]
-    return None

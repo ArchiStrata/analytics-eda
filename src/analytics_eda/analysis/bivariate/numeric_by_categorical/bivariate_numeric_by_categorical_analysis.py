@@ -13,6 +13,7 @@
 # limitations under the License.
 from pathlib import Path
 import logging
+from typing import Optional
 import uuid
 
 import pandas as pd
@@ -30,6 +31,7 @@ def bivariate_numeric_by_categorical_analysis(
     categorical_col: str,
     report_root: str = 'reports/eda/bivariate/numeric_categorical',
     report_log_id = str(uuid.uuid4()),
+    data_source: Optional[str] = None,
     **kwargs
 ) -> str:
     """
@@ -73,9 +75,11 @@ def bivariate_numeric_by_categorical_analysis(
     report_dir = Path(report_root) / f"{numeric_col}_by_{categorical_col}"
     report_dir.mkdir(parents=True, exist_ok=True)
 
+    # TODO: remove bivariate_numeric_categorical_tests
     statistical_tests = bivariate_numeric_categorical_tests(df, numeric_col, categorical_col, report_log_id=report_log_id)
 
     # TODO: support BivariateGroupSizeBarPlot
+    # TODO: support BivariateDistributionOverlapDensityPlot
 
     segment_reports = {}
     for segment_value, group_df in df.groupby(categorical_col, observed=True):
@@ -94,6 +98,7 @@ def bivariate_numeric_by_categorical_analysis(
                 group_df[numeric_col],
                 report_root=segment_report_root,
                 report_log_id=report_log_id,
+                data_source=data_source,
                 **kwargs
             )
             segment_reports[segment_value] = report

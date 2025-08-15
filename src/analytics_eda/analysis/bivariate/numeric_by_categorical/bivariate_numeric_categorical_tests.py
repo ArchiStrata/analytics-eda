@@ -97,10 +97,6 @@ def bivariate_numeric_categorical_tests(
     
     # TODO: Refactor
 
-    # Distribution Shape & Overlap: Overlaid density plots (one curve per group) - Overlap Coefficient & Bhattacharyya Distance
-    # * Distribution Overlap: Overlaid density plots (one curve per group) — Overlap Coefficient, Bhattacharyya Distance
-    # * BivariateDistributionOverlapDensityPlot
-
     # Spread & Variance Homogeneity:
     # * Homogeneity of Variances: Boxplots (side-by-side per group to eyeball variance differences) with violin (showing distribution shape + spread) and Error bar plot (mean ± SD per group)
     # * BivariateVarianceHomogeneityBoxPlot
