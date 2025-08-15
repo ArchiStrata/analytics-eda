@@ -99,6 +99,7 @@ def bivariate_numeric_by_categorical_analysis(
                 report_root=segment_report_root,
                 report_log_id=report_log_id,
                 data_source=data_source,
+                filter_desc=f"filtered by {categorical_col}={segment_name}",
                 **kwargs
             )
             segment_reports[segment_value] = report

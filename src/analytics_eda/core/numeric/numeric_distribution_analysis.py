@@ -47,6 +47,8 @@ def numeric_distribution_analysis(
         ]
     ] = None,
     data_source: Optional[str] = None,
+    filter_desc: Optional[str] = None,
+    transform_desc: Optional[str] = None,
     plot_central_tendency_histogram_overrides: Optional[Dict[str, Any]] = None,
     plot_central_tendency_violin_overrides: Optional[Dict[str, Any]] = None,
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
@@ -98,14 +100,20 @@ def numeric_distribution_analysis(
         }
     )
 
-    # TODO: support passing filter_desc/transform_desc to all plots
+    # Convenience: base context kwargs shared by all plots
+    common_base = {
+        "save_path": report_path,
+        "data_source": data_source,
+        "filter_desc": filter_desc,
+        "transform_desc": transform_desc,
+    }
 
     # Central Tendency
     central_tendency = {}
 
     hist_ctx = build_plot_context(
         CentralTendencyHistogramContext,
-        base={"save_path": report_path, "data_source": data_source},
+        base=common_base,
         overrides=plot_central_tendency_histogram_overrides,
     )
     central_tendency["histogram"] = CentralTendencyHistogramPlot(hist_ctx).run(series)
@@ -113,7 +121,7 @@ def numeric_distribution_analysis(
 
     violin_ctx = build_plot_context(
         CentralTendencyViolinContext,
-        base={"save_path": report_path, "data_source": data_source},
+        base=common_base,
         overrides=plot_central_tendency_violin_overrides,
     )
     central_tendency["violin"] = CentralTendencyViolinPlot(violin_ctx).run(series)
@@ -122,7 +130,7 @@ def numeric_distribution_analysis(
     dispersion = {}
     box_ctx = build_plot_context(
         DispersionBoxplotContext,
-        base={"save_path": report_path, "data_source": data_source},
+        base=common_base,
         overrides=plot_dispersion_boxplot_overrides,
     )
     dispersion["boxplot"] = DispersionBoxplotPlot(box_ctx).run(series)
@@ -133,7 +141,7 @@ def numeric_distribution_analysis(
     # ECDF gap plot
     ecdf_gap_ctx = build_plot_context(
         DistributionECDFGapContext,
-        base={"save_path": report_path, "data_source": data_source},
+        base=common_base,
         overrides=plot_distribution_ecdf_gap_overrides,
     )
     shape["ecdf_gap"] = DistributionECDFGapPlot(ecdf_gap_ctx).run(series)
@@ -142,7 +150,7 @@ def numeric_distribution_analysis(
     # Density plot
     dens_ctx = build_plot_context(
         DistributionDensityContext,
-        base={"save_path": report_path, "data_source": data_source},
+        base=common_base,
         overrides=plot_distribution_density_overrides,
     )
     shape["density"] = DistributionDensityPlot(dens_ctx).run(series)
@@ -150,7 +158,7 @@ def numeric_distribution_analysis(
     # probability
     prob_ctx = build_plot_context(
         DistributionProbabilityFunctionContext,
-        base={"save_path": report_path, "data_source": data_source},
+        base=common_base,
         overrides=plot_distribution_probability_overrides,
     )
     shape["probability"] = DistributionProbabilityFunctionPlot(prob_ctx).run(series)
@@ -161,12 +169,12 @@ def numeric_distribution_analysis(
     for dist in distribution_names:
         ecdf_vs_cdf_ctx = build_plot_context(
             DistributionECDFvsCDFContext,
-            base={"save_path": report_path, "data_source": data_source, "distribution_name": dist},
+            base={**common_base, "distribution_name": dist},
             overrides=plot_distribution_ecdf_vs_cdf_overrides,
         )
         qq_ctx = build_plot_context(
             DistributionQqFitContext,
-            base={"save_path": report_path, "data_source": data_source, "distribution_name": dist},
+            base={**common_base, "distribution_name": dist},
             overrides=plot_distribution_qq_fit_overrides,
         )
 
@@ -190,6 +198,7 @@ def numeric_distribution_analysis(
             report_path=report_path,
             report_log_id=report_log_id,
             data_source=data_source,
+            filter_desc=filter_desc,
             distribution_names=distribution_names,
             plot_central_tendency_histogram_overrides=plot_central_tendency_histogram_overrides,
             plot_central_tendency_violin_overrides=plot_central_tendency_violin_overrides,

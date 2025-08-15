@@ -17,6 +17,8 @@ from typing import Any, Dict, Optional
 import uuid
 import pandas as pd
 
+from analytics_eda.core.utils import build_plot_context
+
 from ...core.categorical import validate_categorical_named_series, categorical_distribution_analysis
 from ...core.reporting import write_json_report
 from ...core.missing_data import MissingDataBarContext, MissingDataBarPlot
@@ -30,12 +32,17 @@ def univariate_categorical_analysis(
     report_root: str = 'reports/eda/univariate/categorical',
     report_log_id = str(uuid.uuid4()),
     data_source: Optional[str] = None,
+    filter_desc: Optional[str] = None,
     plot_frequency_pareto_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_density_overrides: Optional[Dict[str, Any]] = None,
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
     plot_balance_chi_square_uniform_overrides: Optional[Dict[str, Any]] = None,
     plot_balance_lorenz_curve_overrides: Optional[Dict[str, Any]] = None,
-    plot_balance_rare_categories_overrides: Optional[Dict[str, Any]] = None
+    plot_balance_rare_categories_overrides: Optional[Dict[str, Any]] = None,
+
+    plot_missing_data_bar_overrides: Optional[Dict[str, Any]] = None,
+    plot_categorical_cleanliness_bar_overrides: Optional[Dict[str, Any]] = None,
+    plot_cardinality_bar_overrides: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """
     Perform a comprehensive univariate analysis of a categorical pandas Series, 
@@ -93,17 +100,32 @@ def univariate_categorical_analysis(
     report_path = Path(report_root) / series.name.replace(' ', '_')
     report_path.mkdir(parents=True, exist_ok=True)
 
+    # Convenience: base context kwargs shared by all plots
+    common_base = {
+        "save_path": report_path,
+        "data_source": data_source,
+        "filter_desc": filter_desc,
+    }
+
     # 1. Data Quality & Standardization / categorical_variable_profiling
     # Missing Data Analysis - Detect missingness
     missing_data = {}
 
-    md_ctx = MissingDataBarContext(save_path=report_path, data_source=data_source)
+    md_ctx = build_plot_context(
+        MissingDataBarContext,
+        base=common_base,
+        overrides=plot_missing_data_bar_overrides,
+    )
     md_plot = MissingDataBarPlot(md_ctx)
     missing_data['barchart'] = md_plot.run(series_copy)
 
     # Check categorical cleanliness
     data_quality = {}
-    cat_clean_ctx = CategoricalCleanlinessBarContext(save_path=report_path, data_source=data_source)
+    cat_clean_ctx = build_plot_context(
+        CategoricalCleanlinessBarContext,
+        base=common_base,
+        overrides=plot_categorical_cleanliness_bar_overrides,
+    )
     cat_clean_plot = CategoricalCleanlinessBarPlot(cat_clean_ctx)
     data_quality['categorical_cleanliness_barchart'] = cat_clean_plot.run(series_copy)
     cleaned, category_clean_meta = cat_clean_plot.clean_series(series_copy)
@@ -112,7 +134,11 @@ def univariate_categorical_analysis(
     # Detect cardinality
     cardinality = {}
 
-    card_ctx = CardinalityBarContext(save_path=report_path, data_source=data_source)
+    card_ctx = build_plot_context(
+        CardinalityBarContext,
+        base=common_base,
+        overrides=plot_cardinality_bar_overrides,
+    )
     card_plot = CardinalityBarPlot(card_ctx)
     freq_counts = cleaned.copy().dropna().value_counts()
     cardinality['barchart'] = card_plot.run(freq_counts)
@@ -125,6 +151,7 @@ def univariate_categorical_analysis(
         report_path=report_path,
         report_log_id=report_log_id,
         data_source=data_source,
+        filter_desc=filter_desc,
         plot_frequency_pareto_overrides=plot_frequency_pareto_overrides,
         plot_distribution_density_overrides=plot_distribution_density_overrides,
         plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,

@@ -37,6 +37,7 @@ def categorical_distribution_analysis(
     report_path: Path,
     report_log_id = str(uuid.uuid4()),
     data_source: Optional[str] = None,
+    filter_desc: Optional[str] = None,
     plot_frequency_pareto_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_density_overrides: Optional[Dict[str, Any]] = None,
     plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
@@ -99,6 +100,13 @@ def categorical_distribution_analysis(
         }
     )
 
+    # Convenience: base context kwargs shared by all plots
+    common_base = {
+        "save_path": report_path,
+        "data_source": data_source,
+        "filter_desc": filter_desc,
+    }
+
     # 1. Frequency Distribution
     # What it is: A listing of each category alongside its count and proportion.
     # Why it matters: Shows which categories dominate and which are rare.
@@ -107,7 +115,7 @@ def categorical_distribution_analysis(
     # Pareto
     fp_ctx = build_plot_context(
         FrequencyParetoContext,
-        base={"save_path": report_path, "data_source": data_source},
+        base=common_base,
         overrides=plot_frequency_pareto_overrides,
     )
     fp_plot = FrequencyParetoPlot(fp_ctx)
@@ -127,7 +135,7 @@ def categorical_distribution_analysis(
     # Density plot (Histogram + KDE)
     dens_ctx = build_plot_context(
         DistributionDensityContext,
-        base={"save_path": report_path, "data_source": data_source, "xlabel": "Frequency"},
+        base={**common_base, "xlabel": "Frequency"},
         overrides=plot_distribution_density_overrides,
     )
     dens_plot = DistributionDensityPlot(dens_ctx)
@@ -136,7 +144,7 @@ def categorical_distribution_analysis(
     # Boxplot + Violin (Dispersion)
     box_ctx = build_plot_context(
         DispersionBoxplotContext,
-        base={"save_path": report_path, "data_source": data_source, "ylabel": "Frequency"},
+        base={**common_base, "ylabel": "Frequency"},
         overrides=plot_dispersion_boxplot_overrides,
     )
     box_plot = DispersionBoxplotPlot(box_ctx)
@@ -146,7 +154,7 @@ def categorical_distribution_analysis(
     # Rare categories
     rare_cat_ctx = build_plot_context(
         BalanceRareCategoriesContext,
-        base={"save_path": report_path, "data_source": data_source},
+        base=common_base,
         overrides=plot_balance_rare_categories_overrides,
     )
     rare_cat_plot = BalanceRareCategoriesPlot(rare_cat_ctx)
@@ -155,7 +163,7 @@ def categorical_distribution_analysis(
     # Chi-square goodness-of-fit against a uniform distribution
     chi_ctx = build_plot_context(
         BalanceChiSquareUniformContext,
-        base={"save_path": report_path, "data_source": data_source, "xlabel": "Frequency"},
+        base={**common_base, "xlabel": "Frequency"},
         overrides=plot_balance_chi_square_uniform_overrides,
     )
     chi_plot = BalanceChiSquareUniformPlot(chi_ctx)
@@ -164,7 +172,7 @@ def categorical_distribution_analysis(
     # Lorenz curve with Gini index
     lor_ctx = build_plot_context(
         BalanceLorenzCurveContext,
-        base={"save_path": report_path, "data_source": data_source},
+        base=common_base,
         overrides=plot_balance_lorenz_curve_overrides,
     )
     lor_plot = BalanceLorenzCurvePlot(lor_ctx)

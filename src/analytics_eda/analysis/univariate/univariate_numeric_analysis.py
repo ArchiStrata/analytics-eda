@@ -18,6 +18,8 @@ import uuid
 
 import pandas as pd
 
+from analytics_eda.core.utils import build_plot_context
+
 from ...core.numeric import CardinalityBarContext, CardinalityBarPlot, numeric_distribution_analysis
 from ...core.reporting import write_json_report
 from ...core.missing_data import MissingDataBarContext, MissingDataBarPlot
@@ -31,6 +33,7 @@ def univariate_numeric_analysis(
     report_root: str = 'reports/eda/univariate/numeric',
     report_log_id = str(uuid.uuid4()),
     data_source: Optional[str] = None,
+    filter_desc: Optional[str] = None,
     distribution_names: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon'),
     plot_central_tendency_histogram_overrides: Optional[Dict[str, Any]] = None,
     plot_central_tendency_violin_overrides: Optional[Dict[str, Any]] = None,
@@ -40,6 +43,10 @@ def univariate_numeric_analysis(
     plot_distribution_density_overrides:      Optional[Dict[str, Any]] = None,
     plot_distribution_qq_fit_overrides: Optional[Dict[str, Any]] = None,
     plot_distribution_probability_overrides: Optional[Dict[str, Any]] = None,
+
+    plot_missing_data_bar_overrides: Optional[Dict[str, Any]] = None,
+    plot_string_coercion_bar_overrides: Optional[Dict[str, Any]] = None,
+    plot_cardinality_bar_overrides: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """
     Perform a comprehensive univariate analysis on a numeric pandas Series and
@@ -74,6 +81,7 @@ def univariate_numeric_analysis(
         {
             "metadata": { ... },
             "data": {
+                "data_quality": { ... },
                 "missing_data": { ... },
                 "cardinality": { ... },
                 "distribution": { ... }
@@ -97,27 +105,42 @@ def univariate_numeric_analysis(
     report_path = Path(report_root) / series_copy.name.replace(' ', '_')
     report_path.mkdir(parents=True, exist_ok=True)
 
-    # TODO: support passing filter_desc/transform_desc to all plots
+    # Convenience: base context kwargs shared by all plots
+    common_base = {
+        "save_path": report_path,
+        "data_source": data_source,
+        "filter_desc": filter_desc,
+    }
 
     # 1. Data Quality & Standardization
     # Missing Data Analysis
     missing_data = {}
-    md_ctx = MissingDataBarContext(save_path=report_path, data_source=data_source)
+    md_ctx = build_plot_context(
+        MissingDataBarContext,
+        base=common_base,
+        overrides=plot_missing_data_bar_overrides,
+    )
     md_plot = MissingDataBarPlot(md_ctx)
-    missing_data = {
-        "barchart": md_plot.run(series_copy),
-    }
+    missing_data['barchart'] = md_plot.run(series_copy)
 
     # Check for strings in numeric series. requires removing the initial full validate_numeric_named_series check.
     data_quality = {}
-    string_coercion_ctx = StringCoercionBarContext(save_path=report_path, data_source=data_source)
+    string_coercion_ctx = build_plot_context(
+        StringCoercionBarContext,
+        base=common_base,
+        overrides=plot_string_coercion_bar_overrides,
+    )
     string_coercion_plot = StringCoercionBarPlot(string_coercion_ctx)
     data_quality["string_coercion"] = string_coercion_plot.run(series_copy)
     
     series_copy = pd.to_numeric(series_copy, errors="coerce").dropna()
 
     # Cardinality Analysis
-    card_ctx = CardinalityBarContext(save_path=report_path, data_source=data_source)
+    card_ctx = build_plot_context(
+        CardinalityBarContext,
+        base=common_base,
+        overrides=plot_cardinality_bar_overrides,
+    )
     card_plot = CardinalityBarPlot(card_ctx)
     cardinality_bar_plot_result = card_plot.run(series_copy)
     
@@ -132,6 +155,7 @@ def univariate_numeric_analysis(
         series_copy,
         is_discrete=is_discrete,
         data_source=data_source,
+        filter_desc=filter_desc,
         report_path=report_path,
         report_log_id=report_log_id,
         distribution_names=distribution_names,
