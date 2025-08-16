@@ -126,6 +126,8 @@ def numeric_distribution_analysis(
     )
     central_tendency["violin"] = CentralTendencyViolinPlot(violin_ctx).run(series)
 
+    # TODO: Central Tendency time series analysis
+
     # Dispersion
     dispersion = {}
     box_ctx = build_plot_context(
@@ -135,8 +137,12 @@ def numeric_distribution_analysis(
     )
     dispersion["boxplot"] = DispersionBoxplotPlot(box_ctx).run(series)
 
+    # TODO: Dispersion time series analysis
+
     # Shape
     shape = {}
+
+    # TODO: Shape time series analysis
 
     # ECDF gap plot
     ecdf_gap_ctx = build_plot_context(

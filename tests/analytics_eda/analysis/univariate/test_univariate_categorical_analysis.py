@@ -16,18 +16,15 @@ from analytics_eda.analysis.univariate.univariate_categorical_analysis import un
                 "data_source": "UnitTest",
             },
             {
-                # Expectations for the missing_data section
-                "missing_data": {
-                    "barchart": {
+                # Expectations for the data_quality section
+                "data_quality": {
+                    "missing_data_barchart": {
                         "descriptive_stats": {
                             "total": 11,
                             "missing": 1,
                             "pct_missing": lambda v: isclose(v, 1/11, rel_tol=1e-12, abs_tol=1e-12),
                         }
-                    }
-                },
-                # Expectations for the data_quality section
-                "data_quality": {
+                    },
                     "categorical_cleanliness_barchart": {
                         "descriptive_stats": {
                             "total": 11,
@@ -245,21 +242,13 @@ def test_univariate_categorical_analysis_report_data_driven(
     assert "data" in full
     data = full["data"]
 
-    # ---- missing_data assertions ----
-    if "missing_data" in expected_sections:
-        expected_md = expected_sections["missing_data"]
-        actual_md = data["missing_data"]
-        for plot_key, expectations in expected_md.items():
-            assert plot_key in actual_md, f"missing_data missing key: {plot_key!r}"
-            payload = actual_md[plot_key]
-            assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
-
     # ---- data_quality assertions ----
     if "data_quality" in expected_sections:
         expected_md = expected_sections["data_quality"]
+        assert "data_quality" in data, "Missing data_quality pillar"
         actual_md = data["data_quality"]
         for plot_key, expectations in expected_md.items():
-            assert plot_key in actual_md, f"data_quality missing key: {plot_key!r}"
+            assert plot_key in actual_md, f"data_quality missing plot key: {plot_key!r}"
             payload = actual_md[plot_key]
             assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
     

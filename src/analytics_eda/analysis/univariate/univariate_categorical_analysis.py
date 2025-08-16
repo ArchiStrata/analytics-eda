@@ -21,9 +21,8 @@ from analytics_eda.core.utils import build_plot_context
 
 from ...core.categorical import validate_categorical_named_series, categorical_distribution_analysis
 from ...core.reporting import write_json_report
-from ...core.missing_data import MissingDataBarContext, MissingDataBarPlot
 from ...core.numeric import CardinalityBarContext, CardinalityBarPlot
-from ...core.data_quality import CategoricalCleanlinessBarPlot, CategoricalCleanlinessBarContext
+from ...core.data_quality import CategoricalCleanlinessBarPlot, CategoricalCleanlinessBarContext, MissingDataBarContext, MissingDataBarPlot
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +75,7 @@ def univariate_categorical_analysis(
         {
             'metadata': { ... },
             'data': {
-                'missing_data': {...},
+                'data_quality': {...},
                 'cardinality': {...},
                 'distribution': {...}
             }
@@ -108,19 +107,17 @@ def univariate_categorical_analysis(
     }
 
     # 1. Data Quality & Standardization / categorical_variable_profiling
+    data_quality = {}
     # Missing Data Analysis - Detect missingness
-    missing_data = {}
-
     md_ctx = build_plot_context(
         MissingDataBarContext,
         base=common_base,
         overrides=plot_missing_data_bar_overrides,
     )
     md_plot = MissingDataBarPlot(md_ctx)
-    missing_data['barchart'] = md_plot.run(series_copy)
+    data_quality['missing_data_barchart'] = md_plot.run(series_copy)
 
     # Check categorical cleanliness
-    data_quality = {}
     cat_clean_ctx = build_plot_context(
         CategoricalCleanlinessBarContext,
         base=common_base,
@@ -162,7 +159,6 @@ def univariate_categorical_analysis(
 
     # Generate report
     eda_report = {
-        'missing_data': missing_data,
         'data_quality': data_quality,
         "cardinality": cardinality,
         'distribution': distribution_result

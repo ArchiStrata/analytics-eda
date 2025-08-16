@@ -1,2 +1,3 @@
 from .string_coercion_bar_plot import StringCoercionBarPlot, StringCoercionBarContext
 from .categorical_cleanliness_bar import CategoricalCleanlinessBarPlot, CategoricalCleanlinessBarContext
+from .missing_data_bar_plot import MissingDataBarContext, MissingDataBarPlot

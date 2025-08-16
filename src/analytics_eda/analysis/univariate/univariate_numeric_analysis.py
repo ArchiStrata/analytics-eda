@@ -22,8 +22,7 @@ from analytics_eda.core.utils import build_plot_context
 
 from ...core.numeric import CardinalityBarContext, CardinalityBarPlot, numeric_distribution_analysis
 from ...core.reporting import write_json_report
-from ...core.missing_data import MissingDataBarContext, MissingDataBarPlot
-from ...core.data_quality import StringCoercionBarPlot, StringCoercionBarContext
+from ...core.data_quality import StringCoercionBarPlot, StringCoercionBarContext, MissingDataBarContext, MissingDataBarPlot
 from ...core.utils import validate_named_series
 
 logger = logging.getLogger(__name__)
@@ -82,7 +81,6 @@ def univariate_numeric_analysis(
             "metadata": { ... },
             "data": {
                 "data_quality": { ... },
-                "missing_data": { ... },
                 "cardinality": { ... },
                 "distribution": { ... }
             }
@@ -113,18 +111,17 @@ def univariate_numeric_analysis(
     }
 
     # 1. Data Quality & Standardization
+    data_quality = {}
     # Missing Data Analysis
-    missing_data = {}
     md_ctx = build_plot_context(
         MissingDataBarContext,
         base=common_base,
         overrides=plot_missing_data_bar_overrides,
     )
     md_plot = MissingDataBarPlot(md_ctx)
-    missing_data['barchart'] = md_plot.run(series_copy)
+    data_quality['missing_data_barchart'] = md_plot.run(series_copy)
 
     # Check for strings in numeric series. requires removing the initial full validate_numeric_named_series check.
-    data_quality = {}
     string_coercion_ctx = build_plot_context(
         StringCoercionBarContext,
         base=common_base,
@@ -172,7 +169,6 @@ def univariate_numeric_analysis(
     # Generate report
     eda_report = {
         'data_quality': data_quality,
-        'missing_data': missing_data,
         'cardinality': cardinality,
         'distribution': distribution_result
     }

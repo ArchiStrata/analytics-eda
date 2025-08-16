@@ -121,6 +121,8 @@ def categorical_distribution_analysis(
     fp_plot = FrequencyParetoPlot(fp_ctx)
     frequency_distribution["pareto"] = fp_plot.run(series)
 
+    # TODO: Categorical time series analysis
+
     # 2. Balance
     # What it is:  
     #   Assessment of category balance –  

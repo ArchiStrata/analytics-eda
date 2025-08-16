@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from analytics_eda.core.missing_data import MissingDataBarContext, MissingDataBarPlot
+from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBarPlot
 
 
 @pytest.mark.parametrize(

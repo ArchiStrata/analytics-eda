@@ -21,8 +21,8 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
             },
             {
                 # Top-level expectations (from the univariate report)
-                "missing_data": {
-                    "barchart": {
+                "data_quality": {
+                    "missing_data_barchart": {
                         "descriptive_stats": {
                             "total": 121,
                             "missing": 1,
@@ -189,8 +189,8 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
             lambda: pd.Series([10, "x", 12.5, "bad", np.nan, "10", 8, "oops"], name="metric_strings"),
             {"data_source": "UnitTest"},
             {
-                "missing_data": {
-                    "barchart": {
+                "data_quality": {
+                    "missing_data_barchart": {
                         "descriptive_stats": {
                             "total": 8,
                             "missing": 1,
@@ -201,9 +201,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                             "data_source": "UnitTest",
                             "file_name": "Missing Data for metric_strings.png",
                         },
-                    }
-                },
-                "data_quality": {
+                    },
                     "string_coercion": {
                         "descriptive_stats": {
                             # We count over NON-NULL entries (dropna)
@@ -270,17 +268,15 @@ def test_univariate_numeric_analysis_report_data_driven(
 
     data = full["data"]
 
-    # ---- Top-level: missing_data ----
-    if "missing_data" in expected:
-        assert "missing_data" in data and "barchart" in data["missing_data"]
-        missing_data_payload = data["missing_data"]["barchart"]
-        assert_plot_metadata(missing_data_payload, expected["missing_data"]["barchart"], top_dir)
-
-    # ---- Optional: data_quality (string coercion) ----
+    # ---- Top-level: data_quality ----
     if "data_quality" in expected:
-        assert "data_quality" in data and "string_coercion" in data["data_quality"]
-        sc_payload = data["data_quality"]["string_coercion"]
-        assert_plot_metadata(sc_payload, expected["data_quality"]["string_coercion"], top_dir)
+        expected_md = expected["data_quality"]
+        assert "data_quality" in data, "Missing data_quality pillar"
+        actual_md = data["data_quality"]
+        for plot_key, expectations in expected_md.items():
+            assert plot_key in actual_md, f"data_quality missing plot key: {plot_key!r}"
+            payload = actual_md[plot_key]
+            assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
 
     # ---- Top-level: cardinality (plot payload) ----
     if "cardinality" in expected:
