@@ -29,7 +29,7 @@ class DispersionBoxplotContext(PlotContext):
     # plot-specific knobs
     std_outlier_multiplier: float = 4.0
 
-class DispersionBoxplotPlot(NumericSeriesMixin, BasePlot):
+class DispersionBoxPlot(NumericSeriesMixin, BasePlot):
     """
     Generate a boxplot (with violin silhouette) that effectively communicates
     the dispersion of a numeric variable, flagging extreme values and returning

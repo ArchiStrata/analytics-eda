@@ -19,7 +19,7 @@ import pandas as pd
 
 from .central_tendency_histogram_plot import CentralTendencyHistogramContext, CentralTendencyHistogramPlot
 from .central_tendency_violin_plot import CentralTendencyViolinContext, CentralTendencyViolinPlot
-from .dispersion_boxplot_plot import DispersionBoxplotContext, DispersionBoxplotPlot
+from .dispersion_box_plot import DispersionBoxplotContext, DispersionBoxPlot
 from .distribution_ecdf_gap_plot import DistributionECDFGapContext, DistributionECDFGapPlot
 from .distribution_density_plot import DistributionDensityContext, DistributionDensityPlot
 from .distribution_ecdf_vs_cdf_plot import DistributionECDFvsCDFContext, DistributionECDFvsCDFPlot
@@ -135,7 +135,7 @@ def numeric_distribution_analysis(
         base=common_base,
         overrides=plot_dispersion_boxplot_overrides,
     )
-    dispersion["boxplot"] = DispersionBoxplotPlot(box_ctx).run(series)
+    dispersion["boxplot"] = DispersionBoxPlot(box_ctx).run(series)
 
     # TODO: Dispersion time series analysis
 

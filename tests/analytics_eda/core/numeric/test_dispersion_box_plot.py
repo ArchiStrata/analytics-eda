@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from analytics_eda.core.numeric import DispersionBoxplotContext, DispersionBoxplotPlot
+from analytics_eda.core.numeric import DispersionBoxplotContext, DispersionBoxPlot
 
 
 @pytest.mark.parametrize(
@@ -24,7 +24,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
     s = series_factory()
     with pytest.raises(expected_exc, match=match):
         ctx = DispersionBoxplotContext()
-        plot = DispersionBoxplotPlot(ctx)
+        plot = DispersionBoxPlot(ctx)
 
         plot.run(s)
 
@@ -250,7 +250,7 @@ def test_plot_dispersion_boxplot_param(make_series, kwargs, expect, tmp_path, as
         kwargs["save_path"] = tmp_path
 
     ctx = DispersionBoxplotContext(**kwargs)
-    plot = DispersionBoxplotPlot(ctx)
+    plot = DispersionBoxPlot(ctx)
 
     payload = plot.run(s)
 

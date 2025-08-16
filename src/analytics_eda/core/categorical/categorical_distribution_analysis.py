@@ -25,7 +25,7 @@ from .balance_chi_square_uniform_plot import BalanceChiSquareUniformPlot, Balanc
 from .balance_lorenz_curve_plot import BalanceLorenzCurvePlot, BalanceLorenzCurveContext
 from .balance_rare_categories_plot import BalanceRareCategoriesPlot, BalanceRareCategoriesContext
 
-from ..numeric import DispersionBoxplotPlot, DispersionBoxplotContext, DistributionDensityPlot, DistributionDensityContext
+from ..numeric import DispersionBoxPlot, DispersionBoxplotContext, DistributionDensityPlot, DistributionDensityContext
 
 from ..reporting import write_json_report
 from ..utils.build_plot_context import build_plot_context
@@ -149,7 +149,7 @@ def categorical_distribution_analysis(
         base={**common_base, "ylabel": "Frequency"},
         overrides=plot_dispersion_boxplot_overrides,
     )
-    box_plot = DispersionBoxplotPlot(box_ctx)
+    box_plot = DispersionBoxPlot(box_ctx)
     balance["boxplot"] = box_plot.run(freq_counts)
 
 
