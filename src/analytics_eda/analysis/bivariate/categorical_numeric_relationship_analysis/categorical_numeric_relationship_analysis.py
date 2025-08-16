@@ -25,11 +25,11 @@ from .bivariate_numeric_categorical_tests import bivariate_numeric_categorical_t
 
 logger = logging.getLogger(__name__)
 
-def bivariate_numeric_by_categorical_analysis(
+def categorical_numeric_relationship_analysis(
     df: pd.DataFrame,
     numeric_col: str,
     categorical_col: str,
-    report_root: str = 'reports/eda/bivariate/numeric_categorical',
+    report_root: str = 'reports/eda/bivariate/categorical_numeric_relationship_analysis',
     report_log_id = str(uuid.uuid4()),
     data_source: Optional[str] = None,
     **kwargs
@@ -53,7 +53,7 @@ def bivariate_numeric_by_categorical_analysis(
         - eda report with statistical test results and per-segment univariate reports.
     """
     logger.info(
-        "Starting bivariate_numeric_by_categorical_analysis",
+        "Starting categorical_numeric_relationship_analysis",
         extra={
             'numeric_col': numeric_col,
             'categorical_col': categorical_col,
@@ -72,7 +72,7 @@ def bivariate_numeric_by_categorical_analysis(
     if not is_numeric_dtype(df[numeric_col]):
         raise TypeError(f"Column '{numeric_col}' must be numeric.")
 
-    report_dir = Path(report_root) / f"{numeric_col}_by_{categorical_col}"
+    report_dir = Path(report_root) / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis"
     report_dir.mkdir(parents=True, exist_ok=True)
 
     # TODO: remove bivariate_numeric_categorical_tests
@@ -127,7 +127,7 @@ def bivariate_numeric_by_categorical_analysis(
     full_report = {
         'metadata': {
             'version': '0.1.0',
-            'report_name': 'bivariate_numeric_by_categorical_analysis',
+            'report_name': 'categorical_numeric_relationship_analysis',
             'parameters': {
                 'numeric_col': numeric_col,
                 'categorical_col': categorical_col
@@ -136,11 +136,11 @@ def bivariate_numeric_by_categorical_analysis(
         'data': eda_report
     }
 
-    report_path = report_dir / f"{numeric_col}_by_{categorical_col}_bivariate_analysis_report.json"
+    report_path = report_dir / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis_report.json"
     full_report = write_json_report(full_report, report_path)
 
     logger.info(
-        "Completed bivariate_numeric_by_categorical_analysis",
+        "Completed categorical_numeric_relationship_analysis",
         extra={
             'numeric_col': numeric_col,
             'categorical_col': categorical_col,

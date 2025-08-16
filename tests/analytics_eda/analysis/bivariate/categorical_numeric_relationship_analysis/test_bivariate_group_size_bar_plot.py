@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import pytest
 
-from analytics_eda.analysis.bivariate.numeric_by_categorical.bivariate_group_size_bar_plot import (
+from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.bivariate_group_size_bar_plot import (
     BivariateGroupSizeBarContext, BivariateGroupSizeBarPlot
 )
 

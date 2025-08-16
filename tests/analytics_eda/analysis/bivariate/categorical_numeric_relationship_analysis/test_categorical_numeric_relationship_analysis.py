@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 import json
 
-from analytics_eda.analysis.bivariate.numeric_by_categorical.bivariate_numeric_by_categorical_analysis import bivariate_numeric_by_categorical_analysis
+from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.categorical_numeric_relationship_analysis import categorical_numeric_relationship_analysis
 
 @pytest.fixture
 def sample_df():
@@ -14,13 +14,13 @@ def sample_df():
 def test_missing_categorical_column(sample_df):
     df = sample_df.drop(columns=['category'])
     with pytest.raises(KeyError) as exc:
-        bivariate_numeric_by_categorical_analysis(df, 'value', 'category')
+        categorical_numeric_relationship_analysis(df, 'value', 'category')
     assert "Categorical column 'category' not found." in str(exc.value)
 
 def test_missing_numeric_column(sample_df):
     df = sample_df.drop(columns=['value'])
     with pytest.raises(KeyError) as exc:
-        bivariate_numeric_by_categorical_analysis(df, 'value', 'category')
+        categorical_numeric_relationship_analysis(df, 'value', 'category')
     assert "Numeric column 'value' not found." in str(exc.value)
 
 def test_invalid_categorical_dtype(sample_df):
@@ -28,7 +28,7 @@ def test_invalid_categorical_dtype(sample_df):
     df = sample_df.copy()
     df['category'] = df['category'].map({'A': 1, 'B': 2})
     with pytest.raises(TypeError) as exc:
-        bivariate_numeric_by_categorical_analysis(df, 'value', 'category')
+        categorical_numeric_relationship_analysis(df, 'value', 'category')
     assert "must be categorical or object" in str(exc.value)
 
 def test_invalid_numeric_dtype(sample_df):
@@ -36,7 +36,7 @@ def test_invalid_numeric_dtype(sample_df):
     df = sample_df.copy()
     df['value'] = df['value'].astype(str)
     with pytest.raises(TypeError) as exc:
-        bivariate_numeric_by_categorical_analysis(df, 'value', 'category')
+        categorical_numeric_relationship_analysis(df, 'value', 'category')
     assert "must be numeric" in str(exc.value)
 
 def test_integration_creates_report(tmp_path, caplog, sample_df):
@@ -46,10 +46,12 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
     report_root = tmp_path / "reports"
 
     # Run the analysis; function returns a Path
-    report_path = bivariate_numeric_by_categorical_analysis(
+    numeric_col = 'value'
+    categorical_col = 'category'
+    report_path = categorical_numeric_relationship_analysis(
         sample_df,
-        numeric_col='value',
-        categorical_col='category',
+        numeric_col=numeric_col,
+        categorical_col=categorical_col,
         report_root=str(report_root)
     )
 
@@ -57,8 +59,8 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
     assert report_path.exists(), f"Expected report at {report_path}, but not found."
 
     # 2. Assert the returned path matches the expected structure
-    expected_dir = report_root / "value_by_category"
-    expected_file = expected_dir / "value_by_category_bivariate_analysis_report.json"
+    expected_dir = report_root / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis"
+    expected_file = expected_dir / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis_report.json"
     assert report_path == expected_file
 
     # 3. Load and verify JSON structure
@@ -81,7 +83,7 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
     records = caplog.records
 
     # a. Start log
-    start_log = next((r for r in records if "Starting bivariate_numeric_by_categorical_analysis" in r.message), None)
+    start_log = next((r for r in records if "Starting categorical_numeric_relationship_analysis" in r.message), None)
     assert start_log is not None
     assert start_log.numeric_col == 'value'
     assert start_log.categorical_col == 'category'
@@ -98,7 +100,7 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
         assert hasattr(r, 'report_log_id')
 
     # c. Completion log
-    complete_log = next((r for r in records if "Completed bivariate_numeric_by_categorical_analysis" in r.message), None)
+    complete_log = next((r for r in records if "Completed categorical_numeric_relationship_analysis" in r.message), None)
     assert complete_log is not None
     assert complete_log.numeric_col == 'value'
     assert complete_log.categorical_col == 'category'
