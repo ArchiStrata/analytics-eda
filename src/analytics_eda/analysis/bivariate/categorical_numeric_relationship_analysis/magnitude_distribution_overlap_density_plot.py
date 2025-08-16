@@ -25,7 +25,7 @@ from ....core.utils.base_plot import PlotContext, BasePlot
 # ---------------- Context ----------------
 
 @dataclass
-class BivariateDistributionOverlapDensityContext(PlotContext):
+class MagnitudeDistributionOverlapDensityContext(PlotContext):
     title_template: str = "Distribution Shape & Overlap for {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "Density"
@@ -42,7 +42,7 @@ class BivariateDistributionOverlapDensityContext(PlotContext):
 
 # -------------- Plot ---------------------
 
-class BivariateDistributionOverlapDensityPlot(BasePlot):
+class MagnitudeDistributionOverlapDensityPlot(BasePlot):
     """
     Compare numeric distributions across categories and quantify their overlap.
 
@@ -213,7 +213,7 @@ class BivariateDistributionOverlapDensityPlot(BasePlot):
         role_map: Optional[Mapping[str, str]] = None
     ):
         """Overlay ≤4 groups; facet 5+ groups. All share common x/y limits."""
-        ctx = self.ctx  # type: BivariateDistributionOverlapDensityContext
+        ctx = self.ctx  # type: MagnitudeDistributionOverlapDensityContext
         labels: List[str] = desc["group_labels"]
         labels_raw = desc.get("group_labels_raw", labels)
         grid: np.ndarray = desc["grid"]

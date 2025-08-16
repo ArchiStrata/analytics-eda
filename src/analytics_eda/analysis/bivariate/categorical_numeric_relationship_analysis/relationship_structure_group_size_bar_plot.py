@@ -24,7 +24,7 @@ from ....core.utils.base_plot import PlotContext, BasePlot
 # ---------------- Context ----------------
 
 @dataclass
-class BivariateGroupSizeBarContext(PlotContext):
+class RelationshipStructureGroupSizeBarContext(PlotContext):
     title_template: str = "Group Sizes for {name}{modifiers}"
     xlabel: str = "Group"
     ylabel: str = "Total"
@@ -40,7 +40,7 @@ class BivariateGroupSizeBarContext(PlotContext):
 
 # -------------- Plot ---------------------
 
-class BivariateGroupSizeBarPlot(BasePlot):
+class RelationshipStructureGroupSizeBarPlot(BasePlot):
     """
     Shows the sum of the numeric values in each category (ΣY by X), highlighting groups that contribute most magnitude.
 

@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import pytest
 
-from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.bivariate_group_size_bar_plot import (
-    BivariateGroupSizeBarContext, BivariateGroupSizeBarPlot
+from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.relationship_structure_group_size_bar_plot import (
+    RelationshipStructureGroupSizeBarContext, RelationshipStructureGroupSizeBarPlot
 )
 
 @pytest.mark.parametrize(
@@ -92,15 +92,15 @@ from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.
         "custom_labels",
     ],
 )
-def test_bivariate_group_size_bar_param(make_df, cat_col, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_relationship_structure_group_size_bar_param(make_df, cat_col, kwargs, expect, tmp_path, assert_plot_metadata):
     df = make_df()
 
     # if saving is requested, write into tmp_path
     if "file_name" in kwargs:
         kwargs = {**kwargs, "save_path": tmp_path}
 
-    ctx = BivariateGroupSizeBarContext(**kwargs)
-    plot = BivariateGroupSizeBarPlot(ctx)
+    ctx = RelationshipStructureGroupSizeBarContext(**kwargs)
+    plot = RelationshipStructureGroupSizeBarPlot(ctx)
 
     # DF-only API; explicitly point x-role to the categorical column
     payload = plot.run(df, cols=[cat_col, "value"], role_map={"x": cat_col})

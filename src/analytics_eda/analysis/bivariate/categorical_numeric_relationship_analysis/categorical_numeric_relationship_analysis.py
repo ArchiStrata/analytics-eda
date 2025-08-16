@@ -13,11 +13,15 @@
 # limitations under the License.
 from pathlib import Path
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 import uuid
 
 import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_object_dtype
+
+from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.magnitude_distribution_overlap_density_plot import MagnitudeDistributionOverlapDensityContext, MagnitudeDistributionOverlapDensityPlot
+from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.relationship_structure_group_size_bar_plot import RelationshipStructureGroupSizeBarContext, RelationshipStructureGroupSizeBarPlot
+from analytics_eda.core.utils import build_plot_context
 
 from ...univariate import univariate_numeric_analysis
 from ....core.reporting import write_json_report
@@ -31,8 +35,11 @@ def categorical_numeric_relationship_analysis(
     report_root: str = 'reports/eda/bivariate/categorical_numeric_relationship_analysis',
     report_log_id = str(uuid.uuid4()),
     data_source: Optional[str] = None,
+
+    plot_relationship_structure_group_size_bar_overrides: Optional[Dict[str, Any]] = None,
+    plot_magnitude_distribution_overlap_density_overrides: Optional[Dict[str, Any]] = None,
     **kwargs
-) -> str:
+) -> Dict:
     """
     Run univariate numeric analysis on segments defined by a categorical column.
 
@@ -45,7 +52,8 @@ def categorical_numeric_relationship_analysis(
         **kwargs: Additional arguments passed to univariate_numeric_analysis (e.g., alpha, iqr_multiplier).
     
     Returns:
-     str: File path to the saved JSON report as written by `write_json_report`.
+     Dict:
+        - report_file_path: File path to the saved JSON report as written by `write_json_report`.
     """
     logger.info(
         "Starting categorical_numeric_relationship_analysis",
@@ -67,16 +75,32 @@ def categorical_numeric_relationship_analysis(
     if not is_numeric_dtype(df[numeric_col]):
         raise TypeError(f"Column '{numeric_col}' must be numeric.")
 
-    report_dir = Path(report_root) / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis"
-    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = Path(report_root) / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis"
+    report_path.mkdir(parents=True, exist_ok=True)
 
-    # TODO: relationship_structure - What does the relationship look like?
+    # Always work from a copy
+    df_copy = df.copy()
+
+    # Convenience: base context kwargs shared by all plots
+    common_base = {
+        "save_path": report_path,
+        "data_source": data_source,
+    }
+
+    # Relationship Structure - What does the relationship look like?
     relationship_structure = {}
-    # TODO: support BivariateGroupSizeBarPlot
+
+    rs_group_size_bar_ctx = build_plot_context(
+        RelationshipStructureGroupSizeBarContext,
+        base=common_base,
+        overrides=plot_relationship_structure_group_size_bar_overrides,
+    )
+    rs_group_size_bar_plot = RelationshipStructureGroupSizeBarPlot(rs_group_size_bar_ctx)
+    relationship_structure['group_size_barchart'] = rs_group_size_bar_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
     # TODO: Spread & Variance Homogeneity:
     # * Homogeneity of Variances: Boxplots (side-by-side per group to eyeball variance differences) with violin (showing distribution shape + spread) and Error bar plot (mean ± SD per group)
-    # * BivariateVarianceHomogeneityBoxPlot - 
+    # * RelationshipStructureVarianceHomogeneityBoxPlot
 
         # bart_stat, bart_p = bartlett(*grouped)
         # results['bartlett'] = {
@@ -93,9 +117,9 @@ def categorical_numeric_relationship_analysis(
         # }
 
     numeric_distribution_by_category = {}
-    for category, group_df in df.groupby(categorical_col, observed=True):
+    for category, group_df in df_copy.groupby(categorical_col, observed=True):
         category_slug = str(category).replace(" ", "_")
-        segment_report_root = report_dir / f"{categorical_col}_{category_slug}"
+        category_report_root = report_path / f"{categorical_col}_{category_slug}"
         logger.debug("Running univariate analysis for category",
                 extra={
                     'category': category,
@@ -107,7 +131,7 @@ def categorical_numeric_relationship_analysis(
         try:
             report = univariate_numeric_analysis(
                 group_df[numeric_col],
-                report_root=segment_report_root,
+                report_root=category_report_root,
                 report_log_id=report_log_id,
                 data_source=data_source,
                 filter_desc=f"filtered by {categorical_col}={category_slug}",
@@ -132,12 +156,19 @@ def categorical_numeric_relationship_analysis(
     
     relationship_structure['numeric_distribution_by_category'] = numeric_distribution_by_category
     
-    # TODO: magnitude_of_association - How strongly are the two variables related?
+    # Magnitude of Association - How strongly are the two variables related?
     magnitude_of_association = {}
-    # TODO: support BivariateDistributionOverlapDensityPlot
 
-    # Central Tendency Differences (Global Hypothesis Tests): Boxplots (with group medians highlighted for Kruskal) - ANOVA & Kruskal–Wallis
-    # * BivariateGlobalTestAnovaBoxPlot
+    mag_dist_overlap_density_ctx = build_plot_context(
+        MagnitudeDistributionOverlapDensityContext,
+        base=common_base,
+        overrides=plot_magnitude_distribution_overlap_density_overrides,
+    )
+    mag_dist_overlap_density_plot = MagnitudeDistributionOverlapDensityPlot(mag_dist_overlap_density_ctx)
+    magnitude_of_association['distribution_overlap_density'] = mag_dist_overlap_density_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
+
+    # TODO: Central Tendency Differences (Global Hypothesis Tests): Boxplots (with group medians highlighted for Kruskal) - ANOVA & Kruskal–Wallis
+    # * MagnitudeGlobalTestAnovaBoxPlot
 
         # anova_stat, anova_p = f_oneway(*grouped)
         # results['anova'] = {
@@ -153,10 +184,8 @@ def categorical_numeric_relationship_analysis(
         #     'reject': bool(kruskal_p < alpha)
         # }
 
-    # Effect Size Estimation: Annotated boxplots (effect size shown in title or subtitle) - Eta-squared (η²), Omega-squared (ω²), Epsilon-squared (ε²)
-    # * BivariateEffectSizeBoxPlot
-
-    # Effect Size Estimation
+    # TODO: Effect Size Estimation: Annotated boxplots (effect size shown in title or subtitle) - Eta-squared (η²), Omega-squared (ω²), Epsilon-squared (ε²)
+    # * MagnitudeEffectSizeBoxPlot
 
     # Flattened series for total SS
     # all_values = df[numeric_col].dropna()
@@ -192,7 +221,7 @@ def categorical_numeric_relationship_analysis(
     direction_of_association = {}
 
     # Post-hoc Pairwise Comparisons: Tukey HSD plot (confidence intervals for mean differences between each pair) and/or Heatmap of pairwise p-values - Tukey’s HSD
-    # * BivariatePosthocTukeyHsdPlot
+    # * DirectionPosthocTukeyHsdPlot
 
     # Post-hoc Tukey’s HSD (only if ANOVA significant)
                 # tukey = pairwise_tukeyhsd(
@@ -227,7 +256,7 @@ def categorical_numeric_relationship_analysis(
         'data': eda_report
     }
 
-    report_file_path = report_dir / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis_report.json"
+    report_file_path = report_path / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis_report.json"
     full_report = write_json_report(full_report, report_file_path)
 
     logger.info(

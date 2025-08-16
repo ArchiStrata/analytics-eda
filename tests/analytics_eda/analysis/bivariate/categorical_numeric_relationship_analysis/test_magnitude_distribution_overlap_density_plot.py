@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.bivariate_distribution_overlap_density_plot import (
-    BivariateDistributionOverlapDensityContext,
-    BivariateDistributionOverlapDensityPlot,
+from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.magnitude_distribution_overlap_density_plot import (
+    MagnitudeDistributionOverlapDensityContext,
+    MagnitudeDistributionOverlapDensityPlot,
 )
 
 # --- small helper to synthesize grouped normal data ---
@@ -82,14 +82,14 @@ def _make_normal_groups(specs, n_per_group=200, seed=0):
     ],
     ids=["empty_df", "two_groups_high_overlap", "two_groups_low_overlap", "five_groups_faceted"],
 )
-def test_bivariate_distribution_overlap_density_param(make_df, cat_col, kwargs, expect_keys, tmp_path, assert_plot_metadata):
+def test_magnitude_distribution_overlap_density_param(make_df, cat_col, kwargs, expect_keys, tmp_path, assert_plot_metadata):
     df = make_df()
 
     if "file_name" in kwargs:
         kwargs = {**kwargs, "save_path": tmp_path}
 
-    ctx = BivariateDistributionOverlapDensityContext(**kwargs)
-    plot = BivariateDistributionOverlapDensityPlot(ctx)
+    ctx = MagnitudeDistributionOverlapDensityContext(**kwargs)
+    plot = MagnitudeDistributionOverlapDensityPlot(ctx)
 
     payload = plot.run(df, cols=[cat_col, "value"], role_map={"x": cat_col, "y": "value"})
 

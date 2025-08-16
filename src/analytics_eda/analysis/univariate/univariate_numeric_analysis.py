@@ -128,7 +128,7 @@ def univariate_numeric_analysis(
         overrides=plot_string_coercion_bar_overrides,
     )
     string_coercion_plot = StringCoercionBarPlot(string_coercion_ctx)
-    data_quality["string_coercion"] = string_coercion_plot.run(series_copy)
+    data_quality["string_coercion_barchart"] = string_coercion_plot.run(series_copy)
     
     series_copy = pd.to_numeric(series_copy, errors="coerce").dropna()
 

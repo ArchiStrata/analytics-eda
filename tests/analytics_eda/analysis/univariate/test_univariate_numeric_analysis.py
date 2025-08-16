@@ -202,7 +202,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                             "file_name": "Missing Data for metric_strings.png",
                         },
                     },
-                    "string_coercion": {
+                    "string_coercion_barchart": {
                         "descriptive_stats": {
                             # We count over NON-NULL entries (dropna)
                             "total": 8,
