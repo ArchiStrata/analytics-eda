@@ -9,4 +9,4 @@ The full API documentation is under construction.
 
 ## Bivariate
 
-- [bivariate_numeric_categorical_analysis](/src/analytics_eda/bivariate/bivariate_numeric_categorical/bivariate_numeric_categorical_analysis.py)
+- [categorical_numeric_relationship_analysis](/src/analytics_eda/bivariate/categorical_numeric_relationship_analysis/categorical_numeric_relationship_analysis.py)
