@@ -21,6 +21,7 @@ from pandas.api.types import is_numeric_dtype, is_object_dtype
 
 from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.magnitude_distribution_overlap_density_plot import MagnitudeDistributionOverlapDensityContext, MagnitudeDistributionOverlapDensityPlot
 from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.relationship_structure_group_size_bar_plot import RelationshipStructureGroupSizeBarContext, RelationshipStructureGroupSizeBarPlot
+from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.relationship_structure_variance_homogeneity_box_plot import RelationshipStructureVarianceHomogeneityBoxPlot, RelationshipStructureVarianceHomogeneityContext
 from analytics_eda.core.utils import build_plot_context
 
 from ...univariate import univariate_numeric_analysis
@@ -37,6 +38,7 @@ def categorical_numeric_relationship_analysis(
     data_source: Optional[str] = None,
 
     plot_relationship_structure_group_size_bar_overrides: Optional[Dict[str, Any]] = None,
+    plot_relationship_structure_variance_homogeneity_box_overrides: Optional[Dict[str, Any]] = None,
     plot_magnitude_distribution_overlap_density_overrides: Optional[Dict[str, Any]] = None,
     **kwargs
 ) -> Dict:
@@ -98,23 +100,13 @@ def categorical_numeric_relationship_analysis(
     rs_group_size_bar_plot = RelationshipStructureGroupSizeBarPlot(rs_group_size_bar_ctx)
     relationship_structure['group_size_barchart'] = rs_group_size_bar_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
-    # TODO: Spread & Variance Homogeneity:
-    # * Homogeneity of Variances: Boxplots (side-by-side per group to eyeball variance differences) with violin (showing distribution shape + spread) and Error bar plot (mean ± SD per group)
-    # * RelationshipStructureVarianceHomogeneityBoxPlot
-
-        # bart_stat, bart_p = bartlett(*grouped)
-        # results['bartlett'] = {
-        #     'statistic': float(bart_stat),
-        #     'p_value': float(bart_p),
-        #     'reject': bool(bart_p < alpha)
-        # }
-
-        # lev_stat, lev_p = levene(*grouped)
-        # results['levene'] = {
-        #     'statistic': float(lev_stat),
-        #     'p_value': float(lev_p),
-        #     'reject': bool(lev_p < alpha)
-        # }
+    rs_var_homogeneity_box_ctx = build_plot_context(
+        RelationshipStructureVarianceHomogeneityContext,
+        base=common_base,
+        overrides=plot_relationship_structure_variance_homogeneity_box_overrides,
+    )
+    rs_var_homogeneity_box_plot = RelationshipStructureVarianceHomogeneityBoxPlot(rs_var_homogeneity_box_ctx)
+    relationship_structure['variance_homogeneity_boxplot'] = rs_var_homogeneity_box_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
     numeric_distribution_by_category = {}
     for category, group_df in df_copy.groupby(categorical_col, observed=True):
