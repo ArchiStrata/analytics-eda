@@ -48,23 +48,25 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
     # Run the analysis; function returns a Path
     numeric_col = 'value'
     categorical_col = 'category'
-    report_path = categorical_numeric_relationship_analysis(
+    response = categorical_numeric_relationship_analysis(
         sample_df,
         numeric_col=numeric_col,
         categorical_col=categorical_col,
         report_root=str(report_root)
     )
 
+    report_file_path = response['report_file_path']
+
     # 1. Assert the JSON report file exists
-    assert report_path.exists(), f"Expected report at {report_path}, but not found."
+    assert report_file_path.exists(), f"Expected report at {report_file_path}, but not found."
 
     # 2. Assert the returned path matches the expected structure
     expected_dir = report_root / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis"
     expected_file = expected_dir / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis_report.json"
-    assert report_path == expected_file
+    assert report_file_path == expected_file
 
     # 3. Load and verify JSON structure
-    loaded = json.loads(report_path.read_text())
+    loaded = json.loads(report_file_path.read_text())
 
     assert 'metadata' in loaded
     assert 'version' in loaded['metadata']
@@ -74,10 +76,18 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
     assert 'data' in loaded
     eda_report = loaded['data']
 
-    assert 'statistical_tests' in eda_report, "Missing 'statistical_tests' in report"
-    assert 'segments_report' in eda_report, "Missing 'segments_report' in report"
+    assert 'relationship_structure' in eda_report, "Missing 'relationship_structure' in report"
+
+    actual_relationship_structure = eda_report['relationship_structure']
+    assert 'numeric_distribution_by_category' in actual_relationship_structure, "Missing 'numeric_distribution_by_category' in relationship_structure"
+
+    actual_numeric_distribution_by_category = actual_relationship_structure['numeric_distribution_by_category']
     # Check that each category appears
-    assert set(eda_report['segments_report'].keys()) == {'A', 'B'}
+    assert set(actual_numeric_distribution_by_category.keys()) == {'A', 'B'}
+
+    assert 'magnitude_of_association' in eda_report, "Missing 'magnitude_of_association' in report"
+
+    assert 'direction_of_association' in eda_report, "Missing 'direction_of_association' in report"
 
     # Logging assertions
     records = caplog.records
@@ -90,13 +100,13 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
     assert start_log.report_root == str(report_root)
     assert hasattr(start_log, 'report_log_id')
 
-    # b. Segment logs
-    segment_logs = [r for r in records if r.message == "Running univariate analysis for segment"]
-    assert len(segment_logs) == 2  # Expect 2 segments: A and B
-    for r in segment_logs:
+    # b. Category logs
+    category_logs = [r for r in records if r.message == "Running univariate analysis for category"]
+    assert len(category_logs) == 2  # Expect 2 categories: A and B
+    for r in category_logs:
         assert r.numeric_col == 'value'
         assert r.categorical_col == 'category'
-        assert hasattr(r, 'segment')
+        assert hasattr(r, 'category')
         assert hasattr(r, 'report_log_id')
 
     # c. Completion log
@@ -104,5 +114,5 @@ def test_integration_creates_report(tmp_path, caplog, sample_df):
     assert complete_log is not None
     assert complete_log.numeric_col == 'value'
     assert complete_log.categorical_col == 'category'
-    assert complete_log.report_path == str(report_path)
+    assert complete_log.report_file_path == str(report_file_path)
     assert hasattr(complete_log, 'report_log_id')

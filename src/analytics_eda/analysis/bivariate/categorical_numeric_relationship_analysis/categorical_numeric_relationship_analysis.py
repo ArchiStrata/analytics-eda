@@ -21,7 +21,6 @@ from pandas.api.types import is_numeric_dtype, is_object_dtype
 
 from ...univariate import univariate_numeric_analysis
 from ....core.reporting import write_json_report
-from .bivariate_numeric_categorical_tests import bivariate_numeric_categorical_tests
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +46,6 @@ def categorical_numeric_relationship_analysis(
     
     Returns:
      str: File path to the saved JSON report as written by `write_json_report`.
-
-    Report structure:
-        - metadata # Report metadata
-        - eda report with statistical test results and per-segment univariate reports.
     """
     logger.info(
         "Starting categorical_numeric_relationship_analysis",
@@ -75,19 +70,35 @@ def categorical_numeric_relationship_analysis(
     report_dir = Path(report_root) / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis"
     report_dir.mkdir(parents=True, exist_ok=True)
 
-    # TODO: remove bivariate_numeric_categorical_tests
-    statistical_tests = bivariate_numeric_categorical_tests(df, numeric_col, categorical_col, report_log_id=report_log_id)
-
+    # TODO: relationship_structure - What does the relationship look like?
+    relationship_structure = {}
     # TODO: support BivariateGroupSizeBarPlot
-    # TODO: support BivariateDistributionOverlapDensityPlot
 
-    segment_reports = {}
-    for segment_value, group_df in df.groupby(categorical_col, observed=True):
-        segment_name = str(segment_value).replace(" ", "_")
-        segment_report_root = report_dir / f"{categorical_col}_{segment_name}"
-        logger.debug("Running univariate analysis for segment",
+    # TODO: Spread & Variance Homogeneity:
+    # * Homogeneity of Variances: Boxplots (side-by-side per group to eyeball variance differences) with violin (showing distribution shape + spread) and Error bar plot (mean ± SD per group)
+    # * BivariateVarianceHomogeneityBoxPlot - 
+
+        # bart_stat, bart_p = bartlett(*grouped)
+        # results['bartlett'] = {
+        #     'statistic': float(bart_stat),
+        #     'p_value': float(bart_p),
+        #     'reject': bool(bart_p < alpha)
+        # }
+
+        # lev_stat, lev_p = levene(*grouped)
+        # results['levene'] = {
+        #     'statistic': float(lev_stat),
+        #     'p_value': float(lev_p),
+        #     'reject': bool(lev_p < alpha)
+        # }
+
+    numeric_distribution_by_category = {}
+    for category, group_df in df.groupby(categorical_col, observed=True):
+        category_slug = str(category).replace(" ", "_")
+        segment_report_root = report_dir / f"{categorical_col}_{category_slug}"
+        logger.debug("Running univariate analysis for category",
                 extra={
-                    'segment': segment_value,
+                    'category': category,
                     'numeric_col': numeric_col,
                     'categorical_col': categorical_col,
                     'report_log_id': report_log_id
@@ -99,29 +110,109 @@ def categorical_numeric_relationship_analysis(
                 report_root=segment_report_root,
                 report_log_id=report_log_id,
                 data_source=data_source,
-                filter_desc=f"filtered by {categorical_col}={segment_name}",
+                filter_desc=f"filtered by {categorical_col}={category_slug}",
                 **kwargs
             )
-            segment_reports[segment_value] = report
+            numeric_distribution_by_category[category] = report
         except Exception as e:
-            # NOTE: If a segment analysis fails we still want to continue with the remaining segements.
+            # NOTE: If a category analysis fails we still want to continue with the remaining categories.
             logger.exception(
                 "univariate_numeric_analysis failed", 
                 extra={
-                    'segment': segment_value,
+                    'category': category,
                     'numeric_col': numeric_col,
                     'categorical_col': categorical_col,
                     'report_log_id': report_log_id
                 }
             )
-            segment_reports[segment_value] = {
+            numeric_distribution_by_category[category] = {
                 'error': str(e),
                 'report_log_id': report_log_id
             }
+    
+    relationship_structure['numeric_distribution_by_category'] = numeric_distribution_by_category
+    
+    # TODO: magnitude_of_association - How strongly are the two variables related?
+    magnitude_of_association = {}
+    # TODO: support BivariateDistributionOverlapDensityPlot
+
+    # Central Tendency Differences (Global Hypothesis Tests): Boxplots (with group medians highlighted for Kruskal) - ANOVA & Kruskal–Wallis
+    # * BivariateGlobalTestAnovaBoxPlot
+
+        # anova_stat, anova_p = f_oneway(*grouped)
+        # results['anova'] = {
+        #     'statistic': float(anova_stat),
+        #     'p_value': float(anova_p),
+        #     'reject': bool(anova_p < alpha)
+        # }
+
+        # kruskal_stat, kruskal_p = kruskal(*grouped)
+        # results['kruskal'] = {
+        #     'statistic': float(kruskal_stat),
+        #     'p_value': float(kruskal_p),
+        #     'reject': bool(kruskal_p < alpha)
+        # }
+
+    # Effect Size Estimation: Annotated boxplots (effect size shown in title or subtitle) - Eta-squared (η²), Omega-squared (ω²), Epsilon-squared (ε²)
+    # * BivariateEffectSizeBoxPlot
+
+    # Effect Size Estimation
+
+    # Flattened series for total SS
+    # all_values = df[numeric_col].dropna()
+    # grand_mean = all_values.mean()
+    # ss_total = ((all_values - grand_mean) ** 2).sum()
+
+    # # SS_between by looping over grouped + their means
+    # ss_between = sum(
+    # len(g) * (g.mean() - grand_mean) ** 2
+    # for g in grouped
+    # )
+    # ss_within = ss_total - ss_between
+
+    # k = len(grouped)
+    # N = len(all_values)
+    # ms_within = ss_within / (N - k)
+
+    # eta2   = ss_between / ss_total if ss_total > 0 else None
+    # omega2 = (
+    # (ss_between - (k - 1) * ms_within) /
+    # (ss_total + ms_within)
+    # ) if ss_total + ms_within > 0 else None
+
+    # eps2 = (kruskal_stat - k + 1) / (N - k) if N > k else None
+
+    # results['effect_size'] = {
+    #     'eta_squared':   eta2,
+    #     'omega_squared': omega2,
+    #     'epsilon_squared': eps2
+    # }
+
+    # TODO: direction_of_association - Is the relationship positive, negative, or neutral?
+    direction_of_association = {}
+
+    # Post-hoc Pairwise Comparisons: Tukey HSD plot (confidence intervals for mean differences between each pair) and/or Heatmap of pairwise p-values - Tukey’s HSD
+    # * BivariatePosthocTukeyHsdPlot
+
+    # Post-hoc Tukey’s HSD (only if ANOVA significant)
+                # tukey = pairwise_tukeyhsd(
+                #     endog=df[numeric_col],
+                #     groups=df[categorical_col],
+                #     alpha=alpha
+                # )
+                # # Convert summary to dict or DataFrame
+                # tukey_df = pd.DataFrame(
+                #     tukey.summary().data[1:],
+                #     columns=tukey.summary().data[0]
+                # )
+                # results['tukey_hsd'] = {
+                #     'pairs': tukey_df.to_dict(orient='records')
+                # }
 
     eda_report = {
-        'statistical_tests': statistical_tests,
-        'segments_report': segment_reports
+        'relationship_structure': relationship_structure,
+        'magnitude_of_association': magnitude_of_association,
+        'direction_of_association': direction_of_association,
     }
 
     full_report = {
@@ -136,8 +227,8 @@ def categorical_numeric_relationship_analysis(
         'data': eda_report
     }
 
-    report_path = report_dir / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis_report.json"
-    full_report = write_json_report(full_report, report_path)
+    report_file_path = report_dir / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis_report.json"
+    full_report = write_json_report(full_report, report_file_path)
 
     logger.info(
         "Completed categorical_numeric_relationship_analysis",
@@ -145,8 +236,10 @@ def categorical_numeric_relationship_analysis(
             'numeric_col': numeric_col,
             'categorical_col': categorical_col,
             'report_log_id': report_log_id,
-            'report_path': str(report_path)
+            'report_file_path': str(report_file_path)
         }
     )
 
-    return report_path
+    return {
+        'report_file_path': report_file_path
+    }
