@@ -49,6 +49,10 @@ class BasePlot(ABC):
     def default_descriptive(self) -> Dict[str, Any]:
         return {}
     
+    # TODO: "draft_findings" - rule, statement
+    # Draft descriptive findings per plot 
+    # Draft inferential findings per plot 
+    
     def default_inferential(self) -> Dict[str, Any]:
         return {}
 
