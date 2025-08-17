@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 import json
 
-from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.categorical_numeric_relationship_analysis import categorical_numeric_relationship_analysis
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.categorical_numeric_relationship_analysis import categorical_numeric_relationship_analysis
 
 @pytest.fixture
 def sample_df():

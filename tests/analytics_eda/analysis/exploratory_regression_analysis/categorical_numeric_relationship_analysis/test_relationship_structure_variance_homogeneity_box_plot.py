@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.relationship_structure_variance_homogeneity_box_plot import (
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.relationship_structure_variance_homogeneity_box_plot import (
     RelationshipStructureVarianceHomogeneityContext,
     RelationshipStructureVarianceHomogeneityBoxPlot,
 )

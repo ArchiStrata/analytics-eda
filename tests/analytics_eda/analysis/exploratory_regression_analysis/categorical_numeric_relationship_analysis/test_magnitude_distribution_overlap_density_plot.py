@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from analytics_eda.analysis.bivariate.categorical_numeric_relationship_analysis.magnitude_distribution_overlap_density_plot import (
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_distribution_overlap_density_plot import (
     MagnitudeDistributionOverlapDensityContext,
     MagnitudeDistributionOverlapDensityPlot,
 )
