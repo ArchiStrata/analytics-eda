@@ -19,6 +19,7 @@ import uuid
 import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_object_dtype
 
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.direction_posthoc_tukey_hsd_plot import DirectionPosthocTukeyHsdContext, DirectionPosthocTukeyHsdPlot
 from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_central_tendency_anova_kruskal_plot import MagnitudeCentralTendencyAnovaKruskalContext, MagnitudeCentralTendencyAnovaKruskalPlot
 from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_distribution_overlap_density_plot import MagnitudeDistributionOverlapDensityContext, MagnitudeDistributionOverlapDensityPlot
 from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_effect_size_bar_plot import MagnitudeEffectSizeBarContext, MagnitudeEffectSizeBarPlot
@@ -44,6 +45,7 @@ def categorical_numeric_relationship_analysis(
     plot_magnitude_distribution_overlap_density_overrides: Optional[Dict[str, Any]] = None,
     plot_magnitude_central_tendency_anova_kruskal_overrides: Optional[Dict[str, Any]] = None,
     plot_magnitude_effect_size_barchart_overrides: Optional[Dict[str, Any]] = None,
+    plot_dir_post_hoc_tukey_hsd_overrides: Optional[Dict[str, Any]] = None,
     **kwargs
 ) -> Dict:
     """
@@ -184,23 +186,13 @@ def categorical_numeric_relationship_analysis(
     # Direction of Association - Is the relationship positive, negative, or neutral?
     direction_of_association = {}
 
-    # TODO: Post-hoc Pairwise Comparisons: Tukey HSD plot (confidence intervals for mean differences between each pair) and/or Heatmap of pairwise p-values - Tukey’s HSD
-    # * DirectionPosthocTukeyHsdPlot
-
-    # Post-hoc Tukey’s HSD (only if ANOVA significant)
-                # tukey = pairwise_tukeyhsd(
-                #     endog=df[numeric_col],
-                #     groups=df[categorical_col],
-                #     alpha=alpha
-                # )
-                # # Convert summary to dict or DataFrame
-                # tukey_df = pd.DataFrame(
-                #     tukey.summary().data[1:],
-                #     columns=tukey.summary().data[0]
-                # )
-                # results['tukey_hsd'] = {
-                #     'pairs': tukey_df.to_dict(orient='records')
-                # }
+    dir_post_hoc_tukey_hsd_ctx = build_plot_context(
+        DirectionPosthocTukeyHsdContext,
+        base=common_base,
+        overrides=plot_dir_post_hoc_tukey_hsd_overrides,
+    )
+    dir_post_hoc_tukey_hsd_plot = DirectionPosthocTukeyHsdPlot(dir_post_hoc_tukey_hsd_ctx)
+    direction_of_association['posthoc_tukey_hsd'] = dir_post_hoc_tukey_hsd_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
     eda_report = {
         'relationship_structure': relationship_structure,
