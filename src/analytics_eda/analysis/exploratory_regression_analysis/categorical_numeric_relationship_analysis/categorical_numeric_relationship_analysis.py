@@ -21,6 +21,7 @@ from pandas.api.types import is_numeric_dtype, is_object_dtype
 
 from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_central_tendency_anova_kruskal_plot import MagnitudeCentralTendencyAnovaKruskalContext, MagnitudeCentralTendencyAnovaKruskalPlot
 from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_distribution_overlap_density_plot import MagnitudeDistributionOverlapDensityContext, MagnitudeDistributionOverlapDensityPlot
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_effect_size_bar_plot import MagnitudeEffectSizeBarContext, MagnitudeEffectSizeBarPlot
 from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.relationship_structure_group_size_bar_plot import RelationshipStructureGroupSizeBarContext, RelationshipStructureGroupSizeBarPlot
 from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.relationship_structure_variance_homogeneity_box_plot import RelationshipStructureVarianceHomogeneityBoxPlot, RelationshipStructureVarianceHomogeneityContext
 from analytics_eda.core.utils import build_plot_context
@@ -42,6 +43,7 @@ def categorical_numeric_relationship_analysis(
     plot_relationship_structure_variance_homogeneity_box_overrides: Optional[Dict[str, Any]] = None,
     plot_magnitude_distribution_overlap_density_overrides: Optional[Dict[str, Any]] = None,
     plot_magnitude_central_tendency_anova_kruskal_overrides: Optional[Dict[str, Any]] = None,
+    plot_magnitude_effect_size_barchart_overrides: Optional[Dict[str, Any]] = None,
     **kwargs
 ) -> Dict:
     """
@@ -170,44 +172,19 @@ def categorical_numeric_relationship_analysis(
     mag_central_tendency_anova_kruskal_plot = MagnitudeCentralTendencyAnovaKruskalPlot(mag_central_tendency_anova_kruskal_ctx)
     magnitude_of_association['central_tendency_anova_kruskal_plot'] = mag_central_tendency_anova_kruskal_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
-    # TODO: Effect Size Estimation: Annotated boxplots (effect size shown in title or subtitle) - Eta-squared (η²), Omega-squared (ω²), Epsilon-squared (ε²)
-    # * MagnitudeEffectSizeBoxPlot
-    # Bar chart of effect sizes (Eta-squared (η²), Omega-squared (ω²), Epsilon-squared (ε²) on y-axis; label test/statistic on x-axis)
 
-    # Flattened series for total SS
-    # all_values = df[numeric_col].dropna()
-    # grand_mean = all_values.mean()
-    # ss_total = ((all_values - grand_mean) ** 2).sum()
+    mag_effect_size_barchart_ctx = build_plot_context(
+        MagnitudeEffectSizeBarContext,
+        base=common_base,
+        overrides=plot_magnitude_effect_size_barchart_overrides,
+    )
+    mag_effect_size_barchart_plot = MagnitudeEffectSizeBarPlot(mag_effect_size_barchart_ctx)
+    magnitude_of_association['effect_size_barchart'] = mag_effect_size_barchart_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
-    # # SS_between by looping over grouped + their means
-    # ss_between = sum(
-    # len(g) * (g.mean() - grand_mean) ** 2
-    # for g in grouped
-    # )
-    # ss_within = ss_total - ss_between
-
-    # k = len(grouped)
-    # N = len(all_values)
-    # ms_within = ss_within / (N - k)
-
-    # eta2   = ss_between / ss_total if ss_total > 0 else None
-    # omega2 = (
-    # (ss_between - (k - 1) * ms_within) /
-    # (ss_total + ms_within)
-    # ) if ss_total + ms_within > 0 else None
-
-    # eps2 = (kruskal_stat - k + 1) / (N - k) if N > k else None
-
-    # results['effect_size'] = {
-    #     'eta_squared':   eta2,
-    #     'omega_squared': omega2,
-    #     'epsilon_squared': eps2
-    # }
-
-    # TODO: direction_of_association - Is the relationship positive, negative, or neutral?
+    # Direction of Association - Is the relationship positive, negative, or neutral?
     direction_of_association = {}
 
-    # Post-hoc Pairwise Comparisons: Tukey HSD plot (confidence intervals for mean differences between each pair) and/or Heatmap of pairwise p-values - Tukey’s HSD
+    # TODO: Post-hoc Pairwise Comparisons: Tukey HSD plot (confidence intervals for mean differences between each pair) and/or Heatmap of pairwise p-values - Tukey’s HSD
     # * DirectionPosthocTukeyHsdPlot
 
     # Post-hoc Tukey’s HSD (only if ANOVA significant)
