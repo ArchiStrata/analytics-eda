@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass
 import os
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union

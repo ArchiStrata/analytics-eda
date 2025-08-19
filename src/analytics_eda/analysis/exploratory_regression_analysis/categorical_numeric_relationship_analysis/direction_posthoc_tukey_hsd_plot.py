@@ -18,7 +18,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
-from .utils import resolve_cat_col, resolve_num_col, truncate_labels
+from ..utils.utils import resolve_cat_col, resolve_num_col, truncate_labels
 from ....core.utils.base_plot import PlotContext, BasePlot
 
 

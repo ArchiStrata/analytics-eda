@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from .utils import resolve_cat_col, resolve_num_col, dropna_on, truncate_labels, postprocess_series, agg_sum
+from ..utils.utils import resolve_cat_col, resolve_num_col, dropna_on, truncate_labels, postprocess_series, agg_sum
 
 from ....core.utils.base_plot import PlotContext, BasePlot
 

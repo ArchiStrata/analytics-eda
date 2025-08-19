@@ -19,7 +19,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from scipy.stats import f_oneway, kruskal
 
-from .utils import (
+from ..utils.utils import (
     resolve_cat_col,
     resolve_num_col,
     grouped_arrays,

@@ -23,10 +23,25 @@ def resolve_cat_col(df: pd.DataFrame, cols: Sequence[str] | None, role_map: Mapp
         raise KeyError(f"Categorical column '{col}' not found. Provide cols=['<cat>', ...] or role_map['x'].")
     return col
 
-def resolve_num_col(df: pd.DataFrame, cols: Sequence[str] | None, role_map: Mapping[str, str] | None) -> str:
-    col = (role_map or {}).get("y") or (cols[1] if (cols and len(cols) >= 2) else None)
+def resolve_num_col(
+    df: pd.DataFrame,
+    cols: Sequence[str] | None,
+    role_map: Mapping[str, str] | None,
+    role: str = "y"
+) -> str:
+    """
+    Resolve a numeric column for a given role ('x' or 'y').
+    Defaults to 'y' for backward compatibility.
+    """
+    if role == "y":
+        col = (role_map or {}).get("y") or (cols[1] if (cols and len(cols) >= 2) else None)
+    elif role == "x":
+        col = (role_map or {}).get("x") or (cols[0] if (cols and len(cols) >= 1) else None)
+    else:
+        raise ValueError(f"Unsupported role '{role}', expected 'x' or 'y'.")
+
     if not col or col not in df.columns:
-        raise KeyError(f"Numeric column '{col}' not found. Provide cols=['<cat>','<num>'] or role_map['y'].")
+        raise KeyError(f"Numeric column for role '{role}' not found. Provided cols={cols}, role_map={role_map}.")
     return col
 
 def dropna_on(df: pd.DataFrame, col: str) -> pd.DataFrame:

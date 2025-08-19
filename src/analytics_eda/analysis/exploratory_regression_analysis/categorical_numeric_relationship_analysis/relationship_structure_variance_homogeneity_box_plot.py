@@ -18,7 +18,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from scipy.stats import bartlett, levene
 
-from .utils import (
+from ..utils.utils import (
     resolve_cat_col, resolve_num_col, grouped_arrays, truncate_labels
 )
 from ....core.utils.base_plot import PlotContext, BasePlot
