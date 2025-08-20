@@ -15,11 +15,4 @@ from .magnitude_association_scatter_ols_plot import MagnitudeAssociationScatterO
 # ** Homoscedasticity test (e.g., Breusch–Pagan, White’s test, optional)
 # ** Outlier/influence diagnostics (Cook’s distance, leverage, optional if going deeper)
 
-# TODO: Direction of Association: Scatter Plot + OLS Regression Line (Trend Line)
-# * Descriptive Stats:
-# ** Slope coefficient (β₁) from OLS (captures the direction and steepness)
-# ** Intercept (β₀, for context)
-# ** Sign of slope (positive, negative, or ~0)
-# * Inferential Stats:
-# ** Significance test for slope (t-test, p-value for H₀: β₁ = 0)
-# ** Confidence interval for slope (β₁) (range of plausible directions)
+from .direction_association_scatter_ols_trend_plot import DirectionAssociationScatterOLSTrendContext, DirectionAssociationScatterOLSTrendPlot
