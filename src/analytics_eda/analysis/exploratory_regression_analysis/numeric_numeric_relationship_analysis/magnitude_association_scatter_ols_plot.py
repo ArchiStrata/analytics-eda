@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -96,42 +96,43 @@ class MagnitudeAssociationScatterOLSPlot(BasePlot):
         y = df[y_col].to_numpy()
         n = len(x)
 
+        out: Dict[str, Any] = {
+            "params": {
+                "include_spearman": bool(getattr(self.ctx, "include_spearman", True)),
+            },
+            "n_obs": float(n),
+            "pearson_r": np.nan,
+            "spearman_rho": np.nan,
+            "r2": np.nan,
+            "adj_r2": np.nan,
+            "slope": np.nan,
+            "intercept": np.nan,
+        }
+
         if n < 2:
-            return {
-                "n_obs": float(n),
-                "pearson_r": np.nan,
-                "spearman_rho": np.nan,
-                "r2": np.nan,
-                "adj_r2": np.nan,
-                "slope": np.nan,
-                "intercept": np.nan,
-            }
+            return out
 
         # OLS (degree=1)
         slope, intercept = np.polyfit(x, y, 1)
+        out["slope"] = float(slope)
+        out["intercept"] = float(intercept)
 
-        # Pearson r
+        # Pearson r and R²
         r = float(np.corrcoef(x, y)[0, 1])
         r2 = r * r
+        out["pearson_r"] = r
+        out["r2"] = r2
 
         # Adjusted R² (p=1 predictor)
         p = 1
-        adj_r2 = 1.0 - (1.0 - r2) * (n - 1) / max(1, (n - p - 1))
+        out["adj_r2"] = 1.0 - (1.0 - r2) * (n - 1) / max(1, (n - p - 1))
 
         # Optional Spearman's rho (monotonic strength)
-        rho = np.nan
-        if getattr(self.ctx, "include_spearman", True):
+        if out["params"]["include_spearman"]:
             rho = float(sps.spearmanr(x, y).correlation)
+            out["spearman_rho"] = rho
 
-        return {
-            "n_obs": float(n),
-            "pearson_r": r,
-            "spearman_rho": rho,
-            "r2": r2,
-            "adj_r2": adj_r2,
-            "slope": float(slope),
-            "intercept": float(intercept),
-        }
+        return out
 
     def compute_inferential_frame(
         self,
@@ -143,16 +144,26 @@ class MagnitudeAssociationScatterOLSPlot(BasePlot):
     ) -> Dict[str, float]:
         n = int(desc.get("n_obs", 0))
         r = desc.get("pearson_r", np.nan)
-        alpha = getattr(self.ctx, "alpha", 0.05)
+        alpha = float(getattr(self.ctx, "alpha", 0.05))
 
-        if not (n >= 3) or not np.isfinite(r):
-            return {
-                "p_value_r": np.nan,
-                "r_ci_low": np.nan, "r_ci_high": np.nan,
-                "r2_ci_low": np.nan, "r2_ci_high": np.nan,
+        # Always include params
+        out: Dict[str, Any] = {
+            "params": {
+                "alpha": alpha,
             }
+        }
 
-        # Use resolved columns (not raw cols[0]/cols[1])
+        # Not enough info or missing r → return params only
+        if not (n >= 3) or not np.isfinite(r):
+            out["pearson_correlation"] = {
+                "statistic": float(r) if np.isfinite(r) else np.nan,
+                "p_value": np.nan,
+                "ci_r": (np.nan, np.nan),
+                "ci_r2": (np.nan, np.nan),
+            }
+            return out
+
+        # Use resolved columns for p-value
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         _, p_val = sps.pearsonr(df[x_col], df[y_col])
@@ -161,27 +172,33 @@ class MagnitudeAssociationScatterOLSPlot(BasePlot):
         EPS = 1e-12
         if abs(r) >= 1.0 - EPS:
             r = float(np.sign(r))  # snap to exactly ±1
-            r_ci_low = r_ci_high = r
-            r2_ci_low = r2_ci_high = 1.0
-            return {
-                "p_value_r": float(p_val),     # SciPy returns 0.0 here
-                "r_ci_low": r_ci_low, "r_ci_high": r_ci_high,
-                "r2_ci_low": r2_ci_low, "r2_ci_high": r2_ci_high,
+            out["pearson_correlation"] = {
+                "statistic": r,
+                "p_value": float(p_val),    # SciPy returns 0.0 here
+                "reject": bool(p_val < alpha),
+                "ci_r": (r, r),
+                "ci_r2": (1.0, 1.0),
             }
+            return out
 
-        # Regular Fisher z CI
+        # Fisher z CI for r, then map to R² CI via squaring endpoints
         z = 0.5 * np.log((1 + r) / (1 - r))
         se = 1.0 / np.sqrt(n - 3)
         zcrit = sps.norm.ppf(1 - alpha / 2.0)
         z_lo, z_hi = z - zcrit * se, z + zcrit * se
         r_lo, r_hi = np.tanh(z_lo), np.tanh(z_hi)
-        r2_lo, r2_hi = max(0.0, r_lo * r_lo), max(0.0, r_hi * r_hi)
 
-        return {
-            "p_value_r": float(p_val),
-            "r_ci_low": float(r_lo), "r_ci_high": float(r_hi),
-            "r2_ci_low": float(r2_lo), "r2_ci_high": float(r2_hi),
+        r2_lo = max(0.0, r_lo * r_lo)
+        r2_hi = max(0.0, r_hi * r_hi)
+
+        out["pearson_correlation"] = {
+            "statistic": float(r),
+            "p_value": float(p_val),
+            "reject": bool(p_val < alpha),
+            "ci_r": (float(r_lo), float(r_hi)),
+            "ci_r2": (float(r2_lo), float(r2_hi)),
         }
+        return out
 
     def draw_frame(
         self,

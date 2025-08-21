@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -27,7 +27,7 @@ from ....core.utils.base_plot import PlotContext, BasePlot
 
 @dataclass
 class DirectionAssociationScatterOLSTrendContext(PlotContext):
-    title_template: str = "Trend Line (OLS): {y} vs {x}{modifiers}"
+    title_template: str = "Direction of Association (OLS Trend): {y} vs {x}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
     figsize: Tuple[int, int] = (8, 6)
@@ -38,22 +38,25 @@ class DirectionAssociationScatterOLSTrendContext(PlotContext):
 
 class DirectionAssociationScatterOLSTrendPlot(BasePlot):
     """
-    Direction is about the sign and steepness of the relationship. An OLS slope (β₁)
-    gives a clear, unit‑based indication of whether Y increases, decreases, or is flat
-    as X changes.
+    Reveal the **direction** of the relationship between two numeric variables using
+    the OLS slope (β₁). The slope’s sign and size answer whether Y tends to increase,
+    decrease, or remain flat as X changes.
 
-    Why
+    Why this matters (purpose)
     ---
-    Stakeholders need to know *which way* the relationship goes and whether that slope
-    is statistically different from zero. This plot isolates that question without
-    duplicating magnitude metrics (e.g., r, R²).
+    Business decisions often hinge on *which way* an effect goes. By focusing narrowly
+    on β₁ (not on overall fit magnitude like R²), this plot cleanly communicates
+    whether higher X tends to push Y up or down—and whether that trend is
+    statistically distinguishable from zero.
 
-    What
-    ----
-    - Inputs: numeric X and Y (rows with NA in either are dropped).
-    - Descriptive stats: slope β₁, intercept β₀, sign of slope (+/–/~0), n.
-    - Inferential stats: t‑test for H₀: β₁=0 (p‑value), and CI for β₁.
-    - Output: payload with descriptive_stats, inferential_stats, and chart_metadata.
+    What this plot does (high level)
+    --------------------------------
+    - Plots a scatter of Y vs X with the **OLS trend line**.
+    - Reports **descriptive** direction metrics: slope β₁, intercept β₀, slope sign, n.
+    - Runs an **inferential** t-test for H₀: β₁ = 0, with p-value, α, decision (reject),
+      and a confidence interval for β₁.
+    - Returns a payload with `descriptive_stats`, `inferential_stats` (grouped by test name),
+      and `chart_metadata`.
     """
 
     # provide {x} and {y} to the title template
@@ -66,8 +69,34 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
     ) -> Dict[str, str]:
         x_col = (role_map or {}).get("x") or (cols[0] if cols else "")
         y_col = (role_map or {}).get("y") or (cols[1] if cols and len(cols) >= 2 else "")
-        return {"x": x_col, "y": y_col, "extra_desc": "OLS trend"}
+        return {"x": x_col, "y": y_col}
 
+    # ---- Defaults for empty/degenerate inputs ----
+    def default_descriptive(self) -> Dict[str, Any]:
+        return {
+            "params": {
+                # Add descriptive parameters here if the context ever includes any
+            },
+            "n_obs": 0.0,
+            "slope": float("nan"),
+            "intercept": float("nan"),
+            "slope_sign": float("nan"),
+        }
+
+    def default_inferential(self) -> Dict[str, Any]:
+        alpha = float(getattr(self.ctx, "alpha", 0.05))
+        return {
+            "params": {"alpha": alpha},
+            "slope_t_test": {
+                "statistic": float("nan"),
+                "df": float("nan"),
+                "p_value": float("nan"),
+                "alpha": alpha,
+                "reject": False,
+                "ci": (float("nan"), float("nan")),
+            }
+        }
+    
     # ---------- Frame API ----------
     def validate_frame(
         self,
@@ -88,47 +117,66 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
         *,
         cols: Sequence[str],
         role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Any]:
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         x = df[x_col].to_numpy()
         y = df[y_col].to_numpy()
-        n = len(x)
+        n = int(len(x))
 
-        if n < 2 or np.all(x == x[0]):  # not enough info or zero variance in X
-            return {
-                "n_obs": float(n),
-                "slope": np.nan,
-                "intercept": np.nan,
-                "slope_sign": np.nan,  # +1 / -1 / 0; nan when undefined
-            }
+        out: Dict[str, Any] = {
+            "params": {
+                # echo descriptive params from context here if/when added
+            },
+            "n_obs": float(n),
+            "slope": float("nan"),
+            "intercept": float("nan"),
+            "slope_sign": float("nan"),
+        }
+
+        # Not enough info or zero variance in X
+        if n < 2 or np.all(x == x[0]):
+            return out
 
         # OLS slope/intercept
         slope, intercept = np.polyfit(x, y, 1)
         slope_sign = float(np.sign(slope)) if np.isfinite(slope) and slope != 0 else 0.0
 
-        return {
-            "n_obs": float(n),
+        out.update({
             "slope": float(slope),
             "intercept": float(intercept),
             "slope_sign": slope_sign,
-        }
+        })
+        return out
 
     def compute_inferential_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, float],
+        desc: Dict[str, Any],
         *,
         cols: Sequence[str],
         role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Any]:
+        alpha = float(getattr(self.ctx, "alpha", 0.05))
         n = int(desc.get("n_obs", 0))
         slope = desc.get("slope", np.nan)
-        alpha = getattr(self.ctx, "alpha", 0.05)
+        intercept = desc.get("intercept", 0.0)
 
-        # guard: need at least 3 points for slope test in simple regression
+        out: Dict[str, Any] = {
+            "params": {"alpha": alpha}
+        }
+
+        # guard: need at least 3 points and finite slope
         if not (n >= 3) or not np.isfinite(slope):
-            return {"slope_p_value": np.nan, "slope_ci_low": np.nan, "slope_ci_high": np.nan}
+            out["slope_t_test"] = {
+                "statistic": np.nan,
+                "df": np.nan,
+                "p_value": np.nan,
+                "alpha": alpha,
+                "reject": False,
+                "ci": (np.nan, np.nan),
+            }
+            return out
 
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
@@ -138,21 +186,33 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
         x_mean = np.mean(x)
         sxx = np.sum((x - x_mean) ** 2)
         if sxx <= 0:
-            return {"slope_p_value": np.nan, "slope_ci_low": np.nan, "slope_ci_high": np.nan}
+            out["slope_t_test"] = {
+                "statistic": np.nan,
+                "df": np.nan,
+                "p_value": np.nan,
+                "alpha": alpha,
+                "reject": False,
+                "ci": (np.nan, np.nan),
+            }
+            return out
 
-        # residuals & standard error
-        y_hat = slope * x + desc.get("intercept", 0.0)
+        # residuals & standard error of slope
+        y_hat = slope * x + intercept
         resid = y - y_hat
-        s2 = np.sum(resid ** 2) / max(1, (n - 2))         # residual variance
+        s2 = np.sum(resid ** 2) / max(1, (n - 2))  # residual variance
         se_slope = np.sqrt(s2 / sxx) if s2 >= 0 else np.nan
 
         if not np.isfinite(se_slope) or se_slope == 0:
             # perfect fit: p=0, CI collapses at slope
-            return {
-                "slope_p_value": 0.0,
-                "slope_ci_low": float(slope),
-                "slope_ci_high": float(slope),
+            out["slope_t_test"] = {
+                "statistic": float("inf"),
+                "df": float(n - 2),
+                "p_value": 0.0,
+                "alpha": alpha,
+                "reject": True,
+                "ci": (float(slope), float(slope)),
             }
+            return out
 
         # t-test for slope and (1-alpha) CI
         t_stat = slope / se_slope
@@ -162,11 +222,15 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
         ci_low = slope - tcrit * se_slope
         ci_high = slope + tcrit * se_slope
 
-        return {
-            "slope_p_value": float(p_val),
-            "slope_ci_low": float(ci_low),
-            "slope_ci_high": float(ci_high),
+        out["slope_t_test"] = {
+            "statistic": float(t_stat),
+            "df": float(dfree),
+            "p_value": float(p_val),
+            "alpha": alpha,
+            "reject": bool(p_val < alpha),
+            "ci": (float(ci_low), float(ci_high)),
         }
+        return out
 
     def draw_frame(
         self,

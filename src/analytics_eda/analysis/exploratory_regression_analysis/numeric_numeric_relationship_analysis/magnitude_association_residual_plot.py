@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -103,19 +103,26 @@ class MagnitudeAssociationResidualPlot(BasePlot):
         y = df[y_col].to_numpy()
         n = len(x)
 
+        # include any descriptive parameters here (none specific now; keep scaffold)
+        out: Dict[str, Any] = {
+            "params": {
+                # add future descriptive controls here if introduced
+            },
+            "n_obs": float(n),
+            "resid_mean": np.nan,
+            "resid_std": np.nan,
+            "resid_min": np.nan,
+            "resid_max": np.nan,
+            "resid_range": np.nan,
+            # also expose slope/intercept used to compute fitted/residuals
+            "slope": np.nan,
+            "intercept": np.nan,
+        }
+
         if n < 2 or np.all(x == x[0]):
             # Not enough information to form residuals
-            return {
-                "n_obs": float(n),
-                "resid_mean": np.nan,
-                "resid_std": np.nan,
-                "resid_min": np.nan,
-                "resid_max": np.nan,
-                "resid_range": np.nan,
-                # stash minimal fields for draw/inference safety
-                "slope": np.nan,
-                "intercept": np.nan,
-            }
+            self._cache = {}
+            return out
 
         slope, intercept = self._ols_fit(x, y)
         fitted = slope * x + intercept
@@ -127,11 +134,10 @@ class MagnitudeAssociationResidualPlot(BasePlot):
         resid_max = float(np.max(resid))
         resid_range = float(resid_max - resid_min)
 
-        # keep fitted/residuals for downstream steps (not plotted as stats text)
+        # cache for inference/draw
         self._cache = {"fitted": fitted, "residuals": resid}
 
-        return {
-            "n_obs": float(n),
+        out.update({
             "resid_mean": resid_mean,
             "resid_std": resid_std,
             "resid_min": resid_min,
@@ -139,7 +145,8 @@ class MagnitudeAssociationResidualPlot(BasePlot):
             "resid_range": resid_range,
             "slope": float(slope),
             "intercept": float(intercept),
-        }
+        })
+        return out
 
     def compute_inferential_frame(
         self,
@@ -149,66 +156,101 @@ class MagnitudeAssociationResidualPlot(BasePlot):
         cols: Sequence[str],
         role_map: Optional[Mapping[str, str]] = None
     ) -> Dict[str, float]:
+        alpha = float(getattr(self.ctx, "alpha", 0.05))
         n = int(desc.get("n_obs", 0))
         resid = (getattr(self, "_cache", {}) or {}).get("residuals", None)
-        x_col = resolve_num_col(df, cols, role_map, role="x")
-        x = df[x_col].to_numpy()
 
-        out = {
-            "shapiro_W": np.nan,
-            "shapiro_p": np.nan,
-            "bp_stat": np.nan,
-            "bp_df": np.nan,
-            "bp_p": np.nan,
-            "white_stat": np.nan,
-            "white_df": np.nan,
-            "white_p": np.nan,
+        out: Dict[str, Any] = {
+            "params": {"alpha": alpha}
         }
 
+        # Not enough data to run tests
         if resid is None or n < 3:
+            out["normality_shapiro"] = {
+                "statistic": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False
+            }
+            out["homoscedasticity_breusch_pagan"] = {
+                "statistic": np.nan, "df": np.nan, "p_value": np.nan,
+                "alpha": alpha, "reject": False
+            }
+            out["homoscedasticity_white"] = {
+                "statistic": np.nan, "df": np.nan, "p_value": np.nan,
+                "alpha": alpha, "reject": False
+            }
             return out
 
-        # --- Shapiro–Wilk normality (SciPy requires 3 <= n <= 5000) ---
+        # Shapiro–Wilk (3 <= n <= 5000 per SciPy)
         try:
             if 3 <= n <= 5000:
                 W, pW = sps.shapiro(resid.astype(float))
-                out["shapiro_W"] = float(W)
-                out["shapiro_p"] = float(pW)
+                out["normality_shapiro"] = {
+                    "statistic": float(W),
+                    "p_value": float(pW),
+                    "alpha": alpha,
+                    "reject": bool(pW < alpha),
+                }
+            else:
+                out["normality_shapiro"] = {
+                    "statistic": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False
+                }
         except Exception:
-            pass
+            out["normality_shapiro"] = {
+                "statistic": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False
+            }
 
-        # --- Breusch–Pagan (auxiliary regression: e^2 ~ 1 + x) ---
-        # Test stat ~ chi2 with df = k (k = number of regressors excluding intercept = 1)
+        # Breusch–Pagan: e^2 ~ 1 + x
         try:
+            x_col = resolve_num_col(df, cols, role_map, role="x")
+            x = df[x_col].to_numpy()
             e2 = resid ** 2
             X = np.column_stack([np.ones(n), x])
-            # OLS for auxiliary regression
             beta = np.linalg.pinv(X) @ e2
             yhat = X @ beta
             ss_tot = np.sum((e2 - e2.mean()) ** 2)
             ss_res = np.sum((e2 - yhat) ** 2)
             r2_aux = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
-            bp_stat = n * r2_aux
+            bp_stat = float(n * r2_aux)
             bp_df = 1
             bp_p = float(sps.chi2.sf(bp_stat, df=bp_df))
-            out.update({"bp_stat": float(bp_stat), "bp_df": float(bp_df), "bp_p": bp_p})
+            out["homoscedasticity_breusch_pagan"] = {
+                "statistic": bp_stat,
+                "df": float(bp_df),
+                "p_value": bp_p,
+                "alpha": alpha,
+                "reject": bool(bp_p < alpha),
+            }
         except Exception:
-            pass
+            out["homoscedasticity_breusch_pagan"] = {
+                "statistic": np.nan, "df": np.nan, "p_value": np.nan,
+                "alpha": alpha, "reject": False
+            }
 
-        # --- White test (e^2 ~ 1 + x + x^2); df = 2 (exclude intercept) ---
+        # White test: e^2 ~ 1 + x + x^2
         try:
+            x_col = resolve_num_col(df, cols, role_map, role="x")
+            x = df[x_col].to_numpy()
+            e2 = resid ** 2
             Xw = np.column_stack([np.ones(n), x, x ** 2])
             beta_w = np.linalg.pinv(Xw) @ e2
             yhat_w = Xw @ beta_w
             ss_tot_w = np.sum((e2 - e2.mean()) ** 2)
             ss_res_w = np.sum((e2 - yhat_w) ** 2)
             r2_aux_w = 1.0 - ss_res_w / ss_tot_w if ss_tot_w > 0 else 0.0
-            white_stat = n * r2_aux_w
+            white_stat = float(n * r2_aux_w)
             white_df = 2
             white_p = float(sps.chi2.sf(white_stat, df=white_df))
-            out.update({"white_stat": float(white_stat), "white_df": float(white_df), "white_p": white_p})
+            out["homoscedasticity_white"] = {
+                "statistic": white_stat,
+                "df": float(white_df),
+                "p_value": white_p,
+                "alpha": alpha,
+                "reject": bool(white_p < alpha),
+            }
         except Exception:
-            pass
+            out["homoscedasticity_white"] = {
+                "statistic": np.nan, "df": np.nan, "p_value": np.nan,
+                "alpha": alpha, "reject": False
+            }
 
         return out
 

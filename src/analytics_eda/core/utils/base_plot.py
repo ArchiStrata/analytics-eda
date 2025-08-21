@@ -167,6 +167,7 @@ class BasePlot(ABC):
             **fmt_all,
         ).strip()
 
+        # TODO: support plots having semantic version. Each plot will need to override plot_semantic_version
         md = {
             "title": title,
             "xlabel": self.ctx.xlabel,
