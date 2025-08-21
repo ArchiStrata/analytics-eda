@@ -84,7 +84,7 @@ from analytics_eda.core.categorical.categorical_distribution_analysis import cat
                             "extreme_upper_count": 0
                         },
                     },
-                    "chi2_gof_uniform": {
+                    "chi_square_uniform": {
                         "chart_metadata":  {
                             "title": "Chi-Square Goodness-of-Fit: pets",
                             "xlabel": "Frequency",

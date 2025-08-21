@@ -147,7 +147,7 @@ def numeric_numeric_relationship_analysis(
         overrides=plot_direction_scatter_ols_trend_overrides,
     )
     dir_trend_plot = DirectionAssociationScatterOLSTrendPlot(dir_trend_ctx)
-    direction_of_association["ols_trend"] = dir_trend_plot.run(
+    direction_of_association["scatter_ols_trend"] = dir_trend_plot.run(
         df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col}
     )
 

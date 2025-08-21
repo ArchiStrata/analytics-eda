@@ -179,7 +179,7 @@ from analytics_eda.analysis.univariate.univariate_categorical_analysis import un
                                 "extreme_upper_count": 0
                             },
                         },
-                        "chi2_gof_uniform": {
+                        "chi_square_uniform": {
                             "chart_metadata":  {
                                 "title": "Chi-Square Goodness-of-Fit: pets",
                                 "xlabel": "Frequency",

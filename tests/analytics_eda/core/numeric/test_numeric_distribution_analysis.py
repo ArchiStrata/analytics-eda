@@ -101,7 +101,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     "file_name": "ECDF vs. Theoretical CDF of norm (fitted to norm).png"
                                 }
                             },
-                            "qq": {
+                            "qq_fit": {
                                 "descriptive_stats": {
                                     "intercept": 0.00010465900704410797,
                                     "slope": 0.9983392874998688,
@@ -159,7 +159,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     "data_source": "UnitTest"
                                 }
                             },
-                            "qq": {
+                            "qq_fit": {
                                 "descriptive_stats": {
                                     "intercept": None,
                                     "slope": None,
@@ -212,7 +212,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     "data_source": "UnitTest"
                                 }
                             },
-                            "qq": {
+                            "qq_fit": {
                                 "descriptive_stats": {
                                     "intercept": None,
                                     "slope": None,
@@ -267,7 +267,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     "data_source": "UnitTest"
                                 }
                             },
-                            "qq": {
+                            "qq_fit": {
                                 "descriptive_stats": {
                                     "intercept": None,
                                     "slope": None,

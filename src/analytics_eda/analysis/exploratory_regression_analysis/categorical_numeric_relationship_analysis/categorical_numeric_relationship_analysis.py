@@ -172,7 +172,7 @@ def categorical_numeric_relationship_analysis(
         overrides=plot_magnitude_central_tendency_anova_kruskal_overrides,
     )
     mag_central_tendency_anova_kruskal_plot = MagnitudeCentralTendencyAnovaKruskalPlot(mag_central_tendency_anova_kruskal_ctx)
-    magnitude_of_association['central_tendency_anova_kruskal_plot'] = mag_central_tendency_anova_kruskal_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
+    magnitude_of_association['central_tendency_anova_kruskal'] = mag_central_tendency_anova_kruskal_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
 
     mag_effect_size_barchart_ctx = build_plot_context(
@@ -180,8 +180,8 @@ def categorical_numeric_relationship_analysis(
         base=common_base,
         overrides=plot_magnitude_effect_size_barchart_overrides,
     )
-    mag_effect_size_barchart_plot = MagnitudeEffectSizeBarPlot(mag_effect_size_barchart_ctx)
-    magnitude_of_association['effect_size_barchart'] = mag_effect_size_barchart_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
+    mag_effect_size_bar_plot = MagnitudeEffectSizeBarPlot(mag_effect_size_barchart_ctx)
+    magnitude_of_association['effect_size_barchart'] = mag_effect_size_bar_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
     # Direction of Association - Is the relationship positive, negative, or neutral?
     direction_of_association = {}

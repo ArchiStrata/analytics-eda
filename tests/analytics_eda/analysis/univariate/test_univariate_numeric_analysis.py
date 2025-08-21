@@ -96,7 +96,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                                         "file_name": "ECDF vs. Theoretical CDF of metric (fitted to norm).png"
                                     }
                                 },
-                                "qq": {
+                                "qq_fit": {
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
                                     "chart_metadata": {
@@ -119,7 +119,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                                         "data_source": "UnitTest"
                                     }
                                 },
-                                "qq": {
+                                "qq_fit": {
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
                                     "chart_metadata": {
@@ -145,7 +145,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                                         "data_source": "UnitTest"
                                     }
                                 },
-                                "qq": {
+                                "qq_fit": {
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
                                     "chart_metadata": {
@@ -167,7 +167,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                                         "data_source": "UnitTest"
                                     }
                                 },
-                                "qq": {
+                                "qq_fit": {
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
                                     "chart_metadata": {

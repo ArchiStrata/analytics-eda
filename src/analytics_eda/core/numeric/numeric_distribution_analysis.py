@@ -186,14 +186,14 @@ def numeric_distribution_analysis(
 
         distribution_fits[dist] = {
             "ecdf_vs_cdf": DistributionECDFvsCDFPlot(ecdf_vs_cdf_ctx).run(series),
-            "qq": DistributionQqFitPlot(qq_ctx).run(series),
+            "qq_fit": DistributionQqFitPlot(qq_ctx).run(series),
         }
     
     shape['distribution_fits'] = distribution_fits
 
     # optionally evaluate transforms on the 'norm' residuals
     if evaluate_transforms_fn and 'norm' in distribution_fits:
-        norm_qq = distribution_fits['norm']['qq']
+        norm_qq = distribution_fits['norm']['qq_fit']
         descriptive_stats   = norm_qq['descriptive_stats']
         inferential_stats   = norm_qq.get('inferential_stats', {})
         transforms_meta = evaluate_transforms_fn(

@@ -170,7 +170,7 @@ def categorical_distribution_analysis(
         overrides=plot_balance_chi_square_uniform_overrides,
     )
     chi_plot = BalanceChiSquareUniformPlot(chi_ctx)
-    balance["chi2_gof_uniform"] = chi_plot.run(series)
+    balance["chi_square_uniform"] = chi_plot.run(series)
 
     # Lorenz curve with Gini index
     lor_ctx = build_plot_context(
