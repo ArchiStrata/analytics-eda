@@ -1,32 +1,47 @@
 # Plot Style Rules
 
-Plot Class
+## Plot Class
 
-- Plot class name should include the {{Pillar}}{{Plot Purpose}}Plot. The plot purpose may include the type of plot used (i.e. histogram, violin).
-- Python file name should be snake case of plot class name.
-- Plot class docstring must include the big idea, why the plot is important (purpose), and what the plot does at a high-level for a business user.
-- Plot class should focus on a single big idea (purpose) for effective data story telling.
+- Class name must follow the format: `{{Pillar}}{{PlotPurpose}}Plot`.  
+  _Example: `CentralTendencyHistogramPlot`_
+- Python file name must be the **snake_case** version of the class name.
+- Each class must focus on **one big idea (purpose)** for clear data storytelling.
+- Docstring requirements:
+  - First sentence states the **big idea** (no header).
+  - Include **Why this matters** (purpose).
+  - Include **What this plot does** (high-level explanation for a business user).
 
-Descriptive Statistics (default_descriptive, compute_descriptive, compute_descriptive_frame)
+## Descriptive Statistics
 
-- override default_descriptive to include default descriptive stats only if need to return descriptive stats when the series or dataframe is empty.
-- use compute_descriptive for plots that work with Series or compute_descriptive_frame for plots that work with Dataframe.
-- if there are any descriptive stat params in the context they are included in descriptive_stats.
+_(default_descriptive, compute_descriptive, compute_descriptive_frame)_
 
-Interential Statistics (default_inferential, compute_inferential, compute_inferential_frame)
+- Override `default_descriptive` only when descriptive stats must be returned for an empty **Series** or **DataFrame**.
+- Use `compute_descriptive` for **Series**; use `compute_descriptive_frame` for **DataFrames**.
+- Any descriptive stat parameters in context must be included in `descriptive_stats`.
 
-- override default_inferential to include default inferential stats only if need to return inferential stats when the series or dataframe is empty.
-- use compute_inferential for plots that work with Series or compute_inferential_frame for plots that work with Dataframe.
-- if there are any inferential stat params in the context they are included in inferential_stats.
-- inferential_stats are organized by their name.
-- interential hypothesis tests should include statistic, p-value, alpha, and reject.
+## Inferential Statistics
 
-Chart Metadata (Plot Context & title_kwargs)
+_(default_inferential, compute_inferential, compute_inferential_frame)_
 
-- title_template should be clear concise professional and tell an effective data story
-- xlabel and ylabel should be clear concise professional and tell an effective data story
-- title_kwargs should only be overridden if additional information is required in the title to tell an effective data story.
+- Override `default_inferential` only when inferential stats must be returned for an empty **Series** or **DataFrame**.
+- Use `compute_inferential` for **Series**; use `compute_inferential_frame` for **DataFrames**.
+- Any inferential stat parameters in context must be included in `inferential_stats`.
+- `inferential_stats` must be organized by name.
+- Hypothesis tests must include: **Statistic, P-Value, Alpha, Reject**.
 
-Visual Draw (draw, draw_frame)
+## Chart Metadata
 
-- Use draw when the plot uses Series or draw_frame when the plot uses Dataframe.
+_(Plot Context & title_kwargs)_
+
+- `title_template` must be clear, concise, and professional, effectively telling the data story.
+- `xlabel` and `ylabel` must be clear, concise, and professional, effectively telling the data story.
+- Override `title_kwargs` only when additional title information is required for storytelling.
+
+## Visual Draw
+
+_(draw, draw_frame)_
+
+- Use `draw` for **Series**; use `draw_frame` for **DataFrames**.
+- Ensure the visual communicates a **single big idea** that tells an effective data story.
+- Do not omit labels or units on axes.
+- Use `colorblind` friendly palette.
