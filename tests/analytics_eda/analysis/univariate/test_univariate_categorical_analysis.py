@@ -5,7 +5,7 @@ from math import isclose
 from analytics_eda.analysis.univariate.univariate_categorical_analysis import univariate_categorical_analysis
     
 @pytest.mark.parametrize(
-    "make_series, kwargs, expected_sections",
+    "make_series, kwargs, expected_report_data",
     [
         (
             lambda: pd.Series(
@@ -223,55 +223,19 @@ from analytics_eda.analysis.univariate.univariate_categorical_analysis import un
     ids=["basic_report"],
 )
 def test_univariate_categorical_analysis_report_data_driven(
-    tmp_path, load_and_validate_report, assert_plot_metadata,
-    make_series, kwargs, expected_sections
+    tmp_path, assert_report_data,
+    make_series, kwargs, expected_report_data
 ):
+    # Arrange
     s = make_series()
-    # point the root to tmp_path so files land where we can check them
+    
+    # Act
     out = univariate_categorical_analysis(
         s, report_root=str(tmp_path), **kwargs
     )
-    # load the final univariate report
-    full = load_and_validate_report(out, tmp_path)
 
-    # assert metadata
-    assert 'metadata' in full
-    for key in ("version", "report_name", "parameters"):
-        assert key in full['metadata']
-
-    assert "data" in full
-    data = full["data"]
-
-    # ---- data_quality assertions ----
-    if "data_quality" in expected_sections:
-        expected_md = expected_sections["data_quality"]
-        assert "data_quality" in data, "Missing data_quality pillar"
-        actual_md = data["data_quality"]
-        for plot_key, expectations in expected_md.items():
-            assert plot_key in actual_md, f"data_quality missing plot key: {plot_key!r}"
-            payload = actual_md[plot_key]
-            assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
-    
-    # ---- cardinality assertions ----
-    if "cardinality" in expected_sections:
-        expected_cardinality = expected_sections["cardinality"]
-        actual_cardinality = data["cardinality"]
-        for plot_key, expectations in expected_cardinality.items():
-            assert plot_key in actual_cardinality, f"cardinality missing key: {plot_key!r}"
-            payload = actual_cardinality[plot_key]
-            assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
-
-    # ---- distribution assertions (nested report with plots) ----
-    if "distribution" in expected_sections:
-        dist_full = load_and_validate_report(data["distribution"], tmp_path / s.name.replace(' ', '_'))
-        dist = dist_full["data"]
-
-        # check expected sections/plots
-        for section, plots in expected_sections["distribution"].items():
-            assert section in dist
-            for plot_key, expectations in plots.items():
-                payload = dist[section][plot_key]
-                assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
+    # Assert
+    assert_report_data(out, expected_report_data, tmp_path / s.name.replace(' ', '_'))
 
 
 @pytest.mark.parametrize(

@@ -6,7 +6,7 @@ from math import isclose
 from analytics_eda.analysis.univariate.univariate_numeric_analysis import univariate_numeric_analysis
 
 @pytest.mark.parametrize(
-    "make_series, kwargs, expected",
+    "make_series, kwargs, expected_report_data",
     [
         (
             # Slightly noisy numeric data with a single NaN to exercise missing_data
@@ -247,11 +247,10 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
 )
 def test_univariate_numeric_analysis_report_data_driven(
     tmp_path,
-    load_and_validate_report,
-    assert_plot_metadata,
+    assert_report_data,
     make_series,
     kwargs,
-    expected,
+    expected_report_data,
 ):
     # Arrange
     s = make_series()
@@ -259,78 +258,9 @@ def test_univariate_numeric_analysis_report_data_driven(
     # Act: run univariate numeric analysis and load the top-level report
     out = univariate_numeric_analysis(s, report_root=str(tmp_path), **kwargs)
     top_dir = tmp_path / s.name.replace(" ", "_")
-    full = load_and_validate_report(out, top_dir)
 
-    # ---- Top-level metadata sanity ----
-    assert "metadata" in full and "data" in full
-    for key in ("version", "report_name", "parameters"):
-        assert key in full["metadata"]
-
-    data = full["data"]
-
-    # ---- Top-level: data_quality ----
-    if "data_quality" in expected:
-        expected_md = expected["data_quality"]
-        assert "data_quality" in data, "Missing data_quality pillar"
-        actual_md = data["data_quality"]
-        for plot_key, expectations in expected_md.items():
-            assert plot_key in actual_md, f"data_quality missing plot key: {plot_key!r}"
-            payload = actual_md[plot_key]
-            assert_plot_metadata(payload, expectations, tmp_path / s.name.replace(' ', '_'))
-
-    # ---- Top-level: cardinality (plot payload) ----
-    if "cardinality" in expected:
-        assert "cardinality" in data and "barchart" in data["cardinality"]
-        card_payload = data["cardinality"]["barchart"]
-        assert_plot_metadata(card_payload, expected["cardinality"]["barchart"], top_dir)
-
-    # ---- Nested distribution report ----
-    if "distribution" in expected:
-        dist_full = load_and_validate_report(data["distribution"], top_dir)
-        dist = dist_full["data"]
-        # Expect core sections
-        assert set(dist.keys()) == {"central_tendency", "dispersion", "shape"}
-
-        # Central Tendency plots
-        for plot_key, exp in expected["distribution"]["central_tendency"].items():
-            assert plot_key in dist["central_tendency"], f"Missing central_tendency plot {plot_key!r}"
-            assert_plot_metadata(dist["central_tendency"][plot_key], exp, top_dir)
-
-        # Dispersion plots
-        for plot_key, exp in expected["distribution"]["dispersion"].items():
-            assert plot_key in dist["dispersion"], f"Missing dispersion plot {plot_key!r}"
-            assert_plot_metadata(dist["dispersion"][plot_key], exp, top_dir)
-
-        # Shape plots (except distribution_fits, handled below)
-        for plot_key, exp in expected["distribution"]["shape"].items():
-            assert plot_key in dist["shape"], f"Missing shape plot {plot_key!r}"
-
-            # Distribution fits (per-named distribution)
-            if plot_key == "distribution_fits":
-                expected_distribution_fits = exp
-                actual_distribution_fits = dist["shape"][plot_key]
-
-                for dist_name, plots in expected_distribution_fits.items():
-                    assert dist_name in actual_distribution_fits
-                    actual_distribution_fit = actual_distribution_fits[dist_name]
-
-                    for dist_plot_key, dist_exp in plots.items():
-                        assert dist_plot_key in actual_distribution_fit, f"missing distribution.{dist_plot_key}"
-                        payload = actual_distribution_fit[dist_plot_key]
-                        assert_plot_metadata(payload, dist_exp, top_dir)
-            elif plot_key == "transforms":
-                if kwargs.get("evaluate_transforms_fn") is not None:
-                    expected_transforms = exp
-                    actual_transforms = dist["shape"][plot_key]
-
-                    for transform_name, expected_data in expected_transforms.items():
-                        assert transform_name in actual_transforms
-                        actual_transform_report_meta = actual_transforms[transform_name]
-                        full_transform_report = load_and_validate_report(actual_transform_report_meta, top_dir / transform_name)
-                        report_t = full_transform_report["data"]
-                        assert report_t is not None, f"{transform_name!r} entry missing nested 'data'"
-            else:
-                assert_plot_metadata(dist["shape"][plot_key], exp, top_dir)
+    # Assert
+    assert_report_data(out, expected_report_data, top_dir)
 
 
 @pytest.mark.parametrize(

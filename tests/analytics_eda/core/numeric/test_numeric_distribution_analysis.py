@@ -24,7 +24,7 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
 
 
 @pytest.mark.parametrize(
-    "make_series, kwargs, expected_distribution",
+    "make_series, kwargs, expected_report_data",
     [
         # --------------------------
         # Baseline (no transforms)
@@ -446,10 +446,9 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
 def test_numeric_distribution_analysis_param(
     make_series,
     kwargs,
-    expected_distribution,
+    expected_report_data,
     tmp_path,
-    load_and_validate_report,
-    assert_plot_metadata,
+    assert_report_data
 ):
     # Arrange
     s = make_series()
@@ -457,59 +456,5 @@ def test_numeric_distribution_analysis_param(
     # Act: run the full numeric distribution analysis (which writes nested reports)
     out = numeric_distribution_analysis(s, report_path=tmp_path, **kwargs)
 
-    # Load the nested "distribution" report
-    dist_loaded = load_and_validate_report(response=out, report_dir=tmp_path)["data"]  # fixture reads latest JSON under root
-
-    # Assert the three distribution subsections exist
-    assert set(dist_loaded.keys()) == {"central_tendency", "dispersion", "shape"}
-
-    # ---- central_tendency ----
-    for plot_key, exp in expected_distribution["central_tendency"].items():
-        assert plot_key in dist_loaded["central_tendency"], f"missing central_tendency.{plot_key}"
-        payload = dist_loaded["central_tendency"][plot_key]
-        assert_plot_metadata(payload, exp, tmp_path)
-
-    # ---- dispersion ----
-    for plot_key, exp in expected_distribution["dispersion"].items():
-        assert plot_key in dist_loaded["dispersion"], f"missing dispersion.{plot_key}"
-        payload = dist_loaded["dispersion"][plot_key]
-        assert_plot_metadata(payload, exp, tmp_path)
-
-    # ---- shape ----
-    for plot_key, exp in expected_distribution["shape"].items():
-        assert plot_key in dist_loaded["shape"], f"missing shape.{plot_key}"
-
-        # Distribution fits (per-named distribution)
-        if plot_key == "distribution_fits":
-            expected_distribution_fits = exp
-            actual_distribution_fits = dist_loaded["shape"][plot_key]
-
-            for dist_name, plots in expected_distribution_fits.items():
-                assert dist_name in actual_distribution_fits
-                actual_distribution_fit = actual_distribution_fits[dist_name]
-
-                for dist_plot_key, dist_exp in plots.items():
-                    assert dist_plot_key in actual_distribution_fit, f"missing distribution.{dist_plot_key}"
-                    payload = actual_distribution_fit[dist_plot_key]
-                    assert_plot_metadata(payload, dist_exp, tmp_path)
-        elif plot_key == "transforms":
-            if kwargs.get("evaluate_transforms_fn") is not None:
-                expected_transforms = exp
-                actual_transforms = dist_loaded["shape"][plot_key]
-
-                for transform_name, expected_data in expected_transforms.items():
-                    assert transform_name in actual_transforms
-                    actual_transform_report_meta = actual_transforms[transform_name]
-                    full_transform_report = load_and_validate_report(actual_transform_report_meta, tmp_path / transform_name)
-                    report_t = full_transform_report["data"]
-                    assert report_t is not None, f"{transform_name!r} entry missing nested 'data'"
-
-                    # ---- central_tendency ----
-                    if "central_tendency" in expected_data:
-                        for plot_key, exp in expected_data["central_tendency"].items():
-                            assert plot_key in report_t["central_tendency"], f"missing central_tendency.{plot_key}"
-                            payload = report_t["central_tendency"][plot_key]
-                            assert_plot_metadata(payload, exp, tmp_path)
-        else:
-            payload = dist_loaded["shape"][plot_key]
-            assert_plot_metadata(payload, exp, tmp_path)
+    # Assert
+    assert_report_data(out, expected_report_data, tmp_path)

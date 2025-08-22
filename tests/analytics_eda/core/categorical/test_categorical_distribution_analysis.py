@@ -4,7 +4,7 @@ import pandas as pd
 from analytics_eda.core.categorical.categorical_distribution_analysis import categorical_distribution_analysis
 
 @pytest.mark.parametrize(
-    "make_series, kwargs, expected_sections",
+    "make_series, kwargs, expected_report_data",
     [
         (
             # modestly imbalanced categories to populate all plots
@@ -152,11 +152,10 @@ from analytics_eda.core.categorical.categorical_distribution_analysis import cat
 )
 def test_categorical_distribution_analysis_report_data_driven(
     tmp_path,
-    load_and_validate_report,
-    assert_plot_metadata,
+    assert_report_data,
     make_series,
     kwargs,
-    expected_sections,
+    expected_report_data,
 ):
     # Arrange
     s = make_series()
@@ -167,24 +166,9 @@ def test_categorical_distribution_analysis_report_data_driven(
         report_path=tmp_path,
         **kwargs,
     )
-    full_report = load_and_validate_report(out, tmp_path)
 
     # Assert
-    assert "data" in full_report
-    report = full_report["data"]
-
-    # Sections present
-    assert set(report.keys()) == set(expected_sections.keys())
-
-    # For each expected section/plot: assert metadata + (optional) stats
-    for section, plots in expected_sections.items():
-        assert section in report, f"Missing section {section!r}"
-        for plot_key, expectations in plots.items():
-            assert plot_key in report[section], f"Missing plot {plot_key!r} in section {section!r}"
-
-            payload = report[section][plot_key]
-            
-            assert_plot_metadata(payload, expectations, tmp_path)
+    assert_report_data(out, expected_report_data, tmp_path)
 
 
 @pytest.mark.parametrize(
