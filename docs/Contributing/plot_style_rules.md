@@ -18,6 +18,15 @@ _(default_descriptive, compute_descriptive, compute_descriptive_frame)_
 - Override `default_descriptive` only when descriptive stats must be returned for an empty **Series** or **DataFrame**.
 - Use `compute_descriptive` for **Series**; use `compute_descriptive_frame` for **DataFrames**.
 - Any descriptive stat parameters in context must be included in `descriptive_stats`.
+- **Draft Findings (recommended):** Override `draft_descriptive_findings` to return short, human-readable statements derived strictly from `desc`.
+  - Keep findings factual, concise, and **non-interpretive**.
+  - Limit to ~1–3 bullet-sized statements per plot to respect cognitive load.
+  - Use consistent, machine-readable keys so reports can aggregate across plots.
+  - Prefer key–value phrasing (e.g., `"central_tendency": "Median > Mean (right-skewed hint)"`).
+  - Include units and rounding consistent with the plot.
+  - Do not duplicate raw numbers already present in `descriptive_stats`; instead, summarize them.
+  - If `desc` is empty or insufficient, return `{}`.
+  - Example keys: `summary`, `distribution`, `cardinality`, `coverage`, `outliers`, `data_quality`.
 
 ## Inferential Statistics
 
@@ -28,6 +37,17 @@ _(default_inferential, compute_inferential, compute_inferential_frame)_
 - Any inferential stat parameters in context must be included in `inferential_stats`.
 - `inferential_stats` must be organized by name.
 - Hypothesis tests must include: **Statistic, P-Value, Alpha, Reject**.
+- **Draft Findings (recommended):** Override `draft_inferential_findings` to return short, human-readable statements that summarize _only what is supported_ by `inf` (optionally using `desc` for context).
+  - Keep findings concise, factual, and focused strictly on statistical evidence.
+  - Limit to ~1–3 bullet-sized statements per plot to respect cognitive load.
+  - Use consistent, machine-readable keys so reports can aggregate across plots.
+  - Report decision and direction with threshold (e.g., `"t_test": "Difference is statistically significant at α=0.05 (p=0.012)"`).
+  - Include **effect size** and **confidence intervals** when available.
+  - Do not duplicate raw numbers already present in `inferential_stats`; instead, summarize them.
+  - When assumptions fail (normality, equal variance, independence), include a finding that flags it.
+  - Avoid practical/causal claims—focus on statistical evidence only.
+  - If `inf` is empty or tests are invalid, return `{}`.
+  - Example keys: `hypothesis_tests`, `model_fit`, `assumptions`, `effect_size`.
 
 ## Chart Metadata
 
@@ -36,6 +56,12 @@ _(Plot Context & title_kwargs)_
 - `title_template` must be clear, concise, and professional, effectively telling the data story.
 - `xlabel` and `ylabel` must be clear, concise, and professional, effectively telling the data story.
 - Override `title_kwargs` only when additional title information is required for storytelling.
+- **Semantic Versioning (recommended):** Each plot must define a semantic version via `plot_semantic_version`.
+  - Default version is **`0.1.0`**, which indicates the plot is in an **experimental or draft state**.
+  - Update the version to **`1.0.0`** once the plot is **production-ready** (stable API, validated output schema, consistent visual design).
+  - Increment **minor version** (e.g., `1.1.0`) for **backward-compatible enhancements** (new descriptive stats, styling options, additional draft findings).
+  - Increment **patch version** (e.g., `1.0.1`) for **bug fixes or minor corrections**.
+  - Increment **major version** (e.g., `2.0.0`) when introducing **breaking changes** to plot behavior, schema, or interpretation.
 
 ## Visualization Design
 

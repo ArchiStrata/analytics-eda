@@ -20,7 +20,6 @@ import matplotlib.pyplot as plt
 from scipy import stats
 
 from ..utils.base_plot import BasePlot, PlotContext
-from ..utils.build_chart_title import build_chart_title
 from .validate_numeric_named_series import NumericSeriesMixin
 
 DistributionName = Literal['norm', 'lognorm', 'gamma', 'expon']
@@ -69,7 +68,7 @@ class DistributionQqFitPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # Put the distribution into the title modifiers via build_chart_title
+    # Put the distribution into the title modifiers
     def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
         dist = self.ctx.distribution_name
         return {

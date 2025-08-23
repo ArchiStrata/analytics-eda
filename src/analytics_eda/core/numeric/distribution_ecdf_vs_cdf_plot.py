@@ -73,11 +73,7 @@ class DistributionECDFvsCDFPlot(NumericSeriesMixin, BasePlot):
     def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
         dist = self.ctx.distribution_name
         return {
-            # shows up inside "(...)" via build_chart_title's modifiers
             "fit_desc": f"fitted to {dist}",
-            # optional extras (uncomment if you want them in modifiers too)
-            # "extra_desc": f"alpha={self.ctx.alpha:g}",
-            # also make {dist} available in case your template uses it
             "dist": dist,
         }
 
