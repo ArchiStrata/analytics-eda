@@ -16,7 +16,7 @@ from analytics_eda.core.data_quality import (
             {
                 "chart_metadata": {
                     "title": "Categorical Cleanliness for empty_cat",
-                    "xlabel": "Count",
+                    "xlabel": "Percent of non‑null",
                     "ylabel": "Issue Type",
                     "data_source": None,
                     "file_name": None,   # skip means nothing saved
@@ -99,7 +99,7 @@ from analytics_eda.core.data_quality import (
                 "chart_metadata": {
                     "file_name": "cleanliness.png",
                     "title": "Categorical Cleanliness for save_me",
-                    "xlabel": "Count",
+                    "xlabel": "Percent of non‑null",
                     "ylabel": "Issue Type",
                     "data_source": None,
                 },

@@ -26,6 +26,7 @@ class MissingDataBarContext(PlotContext):
     xlabel: str = "Status"
     ylabel: str = "Percentage of Total"
     format_value_axis_as_percent: bool = True
+    show_count_in_label: bool = False
 
 
 class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
@@ -127,13 +128,16 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
 
         bars = ax.bar(labels, pcts, color=colors)
 
-        # Annotate bars: % on first line, count in parentheses
+        # Always show percent; optionally append count
+        bar_labels = [f"{pct*100:.1f}%{f' (n={c:,})' if self.ctx.show_count_in_label else ''}"
+            for pct, c in zip(pcts, counts)]
+
         ax.bar_label(
             bars,
-            labels=[f"{pct*100:.1f}%\n({cnt:,})" for pct, cnt in zip(pcts, counts)],
+            labels=bar_labels,
             label_type="edge",
             padding=3,
-            fontsize="small",
+            fontsize="small"
         )
 
         return fig, ax

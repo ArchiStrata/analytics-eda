@@ -13,13 +13,11 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Any, Tuple, Optional, List, Iterable
+from typing import Dict, Any, Optional, List, Iterable
 import re
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from ..utils.base_plot import BasePlot, PlotContext
 from ..utils.named_series_mixin import NamedSeriesMixin
@@ -43,14 +41,15 @@ class CategoricalCleanlinessBarContext(PlotContext):
       casing is not the group's canonical (most frequent) casing are flagged.
     """
     title_template: str = "Categorical Cleanliness for {name}{modifiers}"
-    xlabel: str = "Count"
+    xlabel: str = "Percent of non‑null"
     ylabel: str = "Issue Type"
-    figsize: Tuple[int, int] = (10, 6)
+    is_orientation_vertical: bool = False
+    format_value_axis_as_percent: bool = True
 
-    # Plot/logic knobs
-    show_percent_labels: bool = True            # annotate bars with % of non-null
+    # labeling knobs
+    show_count_in_label: bool = False
+
     sort_by_count_ascending: bool = False       # sort bars by count
-    max_bars: Optional[int] = None              # not usually needed (we have 4 bars), but kept for parity
 
     # Cleanliness rules
     # Regex of allowed characters. Default allows letters, digits, whitespace, common punctuation: -_/.,&()'
@@ -118,9 +117,13 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, BasePlot):
     Notes
     -----
     - Percentages use the non-null base (`total_nonnull`).
-    - Ordering can be configured via `sort_by_count_ascending`; you may also cap
-      bars with `max_bars` (mostly moot here since there are four issues).
+    - Ordering can be configured via `sort_by_count_ascending`.
     """
+    def plot_semantic_version(self) -> str:
+        """
+        Return the semantic version of this plot implementation.
+        """
+        return "1.0.0"
 
     # ---- defaults when empty ----
     def default_descriptive(self) -> Dict[str, Any]:
@@ -220,12 +223,6 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, BasePlot):
         counts_ordered = np.array(counts, dtype=int)[order]
         pcts_ordered = (counts_ordered / max(1, total_nonnull)).astype(float)
 
-        # Optional cap (mostly redundant with 4 bars)
-        if self.ctx.max_bars is not None and self.ctx.max_bars > 0:
-            labels_ordered = labels_ordered[: int(self.ctx.max_bars)]
-            counts_ordered = counts_ordered[: int(self.ctx.max_bars)]
-            pcts_ordered = pcts_ordered[: int(self.ctx.max_bars)]
-
         desc = {
             "total": total,
             "total_nonnull": total_nonnull,
@@ -250,34 +247,29 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, BasePlot):
         return {}
 
     # ---- draw ----
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        sns.set_palette("colorblind")
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
-
+    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
         labels: List[str] = desc["issue_labels"]
         counts: List[int] = desc["issue_counts"]
         pcts: List[float] = desc["issue_pcts"]
 
-        # Horizontal bar chart (labels are short, but horizontal stays consistent with other data-quality plots)
-        sns.barplot(x=counts, y=labels, ax=ax)
+        # Horizontal bar chart
+        bars = ax.barh(labels, counts, color=palette[0])
 
-        # Labels & title
-        ax.set_title(chart_metadata["title"])
-        ax.set_xlabel(chart_metadata["xlabel"] or "Count")
-        ax.set_ylabel(chart_metadata["ylabel"] or "Issue Type")
+        # Always show percent; optionally append count
+        lab = [f"{pct*100:.1f}%{f' (n={c:,})' if self.ctx.show_count_in_label else ''}"
+            for pct, c in zip(pcts, counts)]
 
-        # Annotate with percentages of non-null if requested
-        if self.ctx.show_percent_labels:
-            for i, (v, pct) in enumerate(zip(counts, pcts)):
-                ax.text(v, i, f" {v} ({pct*100:.1f}%)", va="center", ha="left", fontsize="small")
+        ax.bar_label(
+            bars,
+            labels=lab,
+            label_type="edge",
+            padding=3,
+            fontsize="small"
+        )
 
-        # Footer summary
+        # Footer
         footer = (
-            f"N (non-null) = {desc['total_nonnull']:,}; "
-            f"Whitespace = {desc['n_whitespace']:,}; "
-            f"Mixed Casing = {desc['n_mixed_case']:,}; "
-            f"Non-Standard Chars = {desc['n_nonstandard_chars']:,}; "
-            f"Invalid = {desc['n_invalid_category']:,}"
+            f"N (non-null) = {desc['total_nonnull']:,}"
         )
         fig.text(0.99, 0.01, footer, ha="right", va="bottom", fontsize="small", color="gray")
 
