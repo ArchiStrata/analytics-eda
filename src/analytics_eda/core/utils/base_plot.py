@@ -19,7 +19,9 @@ import os
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 from matplotlib import pyplot as plt
+from matplotlib.ticker import MultipleLocator, PercentFormatter
 import seaborn as sns
+import numpy as np
 import pandas as pd
 
 Desc = Union[str, Sequence[str], None]
@@ -350,6 +352,32 @@ class BasePlot(ABC):
         if not subtitle:
             return
         self._subtitle_queue.append((ax, subtitle, fontsize, color, gap_from_axes_pts))
+
+    def ensure_y_headroom_for_annotations(
+        self,
+        ax,
+        top_values,
+        *,
+        label_offset: float = 0.02,
+        extra_pad: float = 0.04,
+        max_extra: float = 0.20,
+        keep_ticks_to_100: bool = True,
+    ):
+        """
+        Ensure vertical headroom so annotations above bars/points don't overlap the top spine.
+        - `top_values`: iterable of bar/point heights (data units).
+        - `label_offset`: how far above the top you place the label (same units).
+        - `extra_pad`: extra space above the label.
+        - `max_extra`: cap how much beyond 1.0 we extend (for 0..1 data).
+        - `keep_ticks_to_100`: if True, keep y-ticks ≤ 100% even if ylim > 1.0.
+        """
+        max_bar = float(np.max(top_values)) if len(top_values) else 0.0
+        desired_top = max_bar + label_offset + extra_pad
+        ylim_top = max(1.0, min(1.0 + max_extra, desired_top))
+        ax.set_ylim(0, ylim_top)
+        if keep_ticks_to_100:
+            ax.yaxis.set_major_locator(MultipleLocator(0.2))
+            ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
 
     def _apply_metadata_to_axes(self, ax, chart_metadata: Dict[str, Any]):
         if chart_metadata.get("title"):

@@ -136,6 +136,15 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
                 ha="center", va="bottom", fontsize=10,
             )
 
+        self.ensure_y_headroom_for_annotations(
+            ax,
+            [b.get_height() for b in bars],
+            label_offset=0.02,
+            extra_pad=0.04,
+            max_extra=0.20,
+            keep_ticks_to_100=True,
+        )
+
         ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
 
         return fig, ax
