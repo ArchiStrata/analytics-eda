@@ -19,6 +19,7 @@ import os
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 from matplotlib import pyplot as plt
+import seaborn as sns
 import pandas as pd
 
 Desc = Union[str, Sequence[str], None]
@@ -36,7 +37,9 @@ class PlotContext:
     xlabel: str = ""
     ylabel: str = ""
     data_source: Optional[str] = None
-    figsize: Tuple[int, int] = (10, 6)
+
+    figsize: Tuple[int, int] = (14, 9)
+    dpi: int = 200   
     save_path: Optional[str] = None
     file_name: Optional[str] = None
     show: bool = False
@@ -75,9 +78,19 @@ class BasePlot(ABC):
     def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
         return {}
 
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
+    def draw(
+        self,
+        s: pd.Series,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+        *,
+        fig,
+        ax,
+        palette,
+    ):
         raise NotImplementedError("Series-based draw not implemented for this plot.")
-    
+
     # ======== OPTIONAL FRAME API (only implement in new bi/multivariate plots) ========
     def validate_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None) -> pd.DataFrame:
         """Override in frame-aware plots; default is identity."""
@@ -89,9 +102,20 @@ class BasePlot(ABC):
     def compute_inferential_frame(self, df: pd.DataFrame, desc: Dict[str, Any], *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None) -> Dict[str, Any]:
         return {}
 
-    def draw_frame(self, df: pd.DataFrame, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any], *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None):
+    def draw_frame(
+        self,
+        df: pd.DataFrame,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+        *,
+        cols: Sequence[str],
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
+    ):
         raise NotImplementedError("Frame-based draw not implemented for this plot.")
-
     # ======== Metadata & Title (works for both) ========
     def plot_semantic_version(self) -> str:
         """
@@ -242,7 +266,9 @@ class BasePlot(ABC):
                 build_md=lambda: self._chart_metadata(series=s),
                 desc_fn=lambda: self.compute_descriptive(s),
                 inf_fn=lambda desc: self.compute_inferential(s, desc),
-                draw_fn=lambda desc, inf, md: self.draw(s, desc, inf, md),
+                draw_fn=lambda desc, inf, md, fig, ax, palette: self.draw(
+                    s, desc, inf, md, fig=fig, ax=ax, palette=palette
+                ),
             )
 
         # ---- FRAME PATH ----
@@ -268,9 +294,18 @@ class BasePlot(ABC):
             build_md=lambda: self._chart_metadata(cols=cols, role_map=role_map),
             desc_fn=lambda: self.compute_descriptive_frame(df, cols=cols, role_map=role_map),
             inf_fn=lambda desc: self.compute_inferential_frame(df, desc, cols=cols, role_map=role_map),
-            draw_fn=lambda desc, inf, md: self.draw_frame(df, desc, inf, md, cols=cols, role_map=role_map),
+            draw_fn=lambda desc, inf, md, fig, ax, palette: self.draw_frame(
+                df, desc, inf, md, cols=cols, role_map=role_map, fig=fig, ax=ax, palette=palette
+            ),
         )
 
+    # central place to create a publication-quality fig + colorblind palette
+    def _new_figure_and_palette(self):
+        fig, ax = plt.subplots(figsize=self.ctx.figsize, dpi=self.ctx.dpi)
+        palette = sns.color_palette("colorblind")
+        # apply palette to this axis' property cycle so lines/bars use it by default
+        ax.set_prop_cycle(color=palette)
+        return fig, ax, palette
 
     def _finalize_figure(self, fig, chart_md: Dict[str, Any]) -> Optional[str]:
         """Add source, layout, save/show; return saved file name (or None)."""
@@ -285,7 +320,7 @@ class BasePlot(ABC):
         if self.ctx.save_path:
             saved_name = self.ctx.file_name or f'{chart_md["title"]}.png'
             os.makedirs(self.ctx.save_path, exist_ok=True)
-            fig.savefig(os.path.join(self.ctx.save_path, saved_name), bbox_inches="tight")
+            fig.savefig(os.path.join(self.ctx.save_path, saved_name), bbox_inches="tight", dpi=getattr(self.ctx, "dpi", None))
         if self.ctx.show:
             plt.show()
         return saved_name
@@ -297,7 +332,7 @@ class BasePlot(ABC):
         build_md: Callable[[], Dict[str, Any]],
         desc_fn: Callable[[], Dict[str, Any]],
         inf_fn: Callable[[Dict[str, Any]], Dict[str, Any]],
-        draw_fn: Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any]], Tuple[Any, Any]],
+        draw_fn: Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any], Any, Any, Any], Tuple[Any, Any]],
     ) -> Dict[str, Any]:
         """Shared execution flow for both Series and Frame paths."""
         chart_md = build_md()
@@ -326,8 +361,9 @@ class BasePlot(ABC):
                 "draft_inferential_findings": self.draft_inferential_findings(inf, desc) or {},
                 "chart_metadata": chart_md,
             }
-
-        fig, _ = draw_fn(desc, inf, chart_md)
+        
+        fig, ax, palette = self._new_figure_and_palette()
+        fig, _ = draw_fn(desc, inf, chart_md, fig, ax, palette)
         chart_md["file_name"] = self._finalize_figure(fig, chart_md)
 
         return {
@@ -337,19 +373,3 @@ class BasePlot(ABC):
             "draft_inferential_findings": self.draft_inferential_findings(inf, desc) or {},
             "chart_metadata": chart_md,
         }
-
-# --- tiny helpers to avoid changing existing plots ---
-
-class _NameProxy:
-    """Object with .name so build_chart_title behaves consistently for frame inputs."""
-    def __init__(self, name: str): self.name = name
-
-def _label_from_roles(role_map: Optional[Mapping[str, str]]) -> Optional[str]:
-    if not role_map: return None
-    y = role_map.get("y"); x = role_map.get("x"); hue = role_map.get("hue")
-    parts = []
-    if y and x: parts.append(f"{y} by {x}")
-    elif y: parts.append(y)
-    elif x: parts.append(x)
-    if hue: parts.append(hue)
-    return " • ".join(parts) if parts else None

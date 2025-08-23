@@ -15,7 +15,7 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
             {
                 "chart_metadata": {
                     "title": "Missing Data for empty_col",
-                    "xlabel": "",
+                    "xlabel": "Status",
                     "ylabel": "Percentage of Total",
                     "data_source": None,
                     "file_name": None,
@@ -99,7 +99,7 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
                 "chart_metadata": {
                     "file_name": "missing.png",
                     "title": "Missing Data for save_me",
-                    "xlabel": "",
+                    "xlabel": "Status",
                     "ylabel": "Percentage of Total",
                     "data_source": None,
                 },

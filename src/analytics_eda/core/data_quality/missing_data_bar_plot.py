@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 
 from ..utils.base_plot import BasePlot, PlotContext
@@ -26,14 +24,20 @@ from ..utils.named_series_mixin import NamedSeriesMixin
 @dataclass
 class MissingDataBarContext(PlotContext):
     title_template: str = "Missing Data for {name}{modifiers}"
-    xlabel: str = ""
+    xlabel: str = "Status"
     ylabel: str = "Percentage of Total"
-    figsize: Tuple[int, int] = (8, 6)
 
 
 class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
     """
-    Bar chart of Present vs Missing with percentage y-axis and count/% annotations.
+    Shows the share of missing values to quickly assess data quality risk.
+
+    Why this matters:
+    - Missingness inflates bias and reduces statistical power; early visibility guides cleaning/imputation.
+
+    What this plot does:
+    - Computes present/missing counts and percentages, and annotates bars with both.
+    - Y-axis is percentage for quick scanning.
 
     Returns BasePlot.run() schema:
       {
@@ -47,9 +51,14 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
           "pcts": np.ndarray[float]
         },
         "inferential_stats": {},
-        "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
+        "chart_metadata": {"title","xlabel","ylabel","data_source","file_name","version"}
       }
     """
+    def plot_semantic_version(self) -> str:
+        """
+        Return the semantic version of this plot implementation.
+        """
+        return "1.0.0"
 
     # Defaults when empty
     def default_descriptive(self) -> Dict[str, Any]:
@@ -68,7 +77,7 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
         status = s.isna().map({False: "Present", True: "Missing"})
         counts = (
             status.value_counts()
-            .reindex(["Present", "Missing"])
+            .reindex(["Missing", "Present"]) 
             .fillna(0)
             .astype(int)
         )
@@ -77,10 +86,7 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
         missing = int(counts.loc["Missing"])
         pct_missing = float(missing / total) if total else 0.0
 
-        if total:
-            pcts = (counts / total * 100.0).to_numpy(dtype=float)
-        else:
-            pcts = np.array([0.0, 0.0], dtype=float)
+        pcts = (counts / total).to_numpy(dtype=float) if total else np.array([0.0, 0.0], dtype=float)
 
         return {
             "total": total,
@@ -90,44 +96,54 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
             "counts": counts.to_numpy(dtype=int),
             "pcts": pcts,
         }
+    
+    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+        if not desc or desc.get("total", 0) == 0:
+            return {}
+        pct = desc.get("pct_missing", 0.0) * 100
+        return {
+            "summary": f"{pct:.1f}% missing ({desc['missing']:,} of {desc['total']:,}); assess impact and plan handling."
+        }
 
     # No inferential stats
     def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
         return {}
 
     # Draw chart
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        sns.set_palette("colorblind")
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
 
         labels = desc["labels"]
         pcts = desc["pcts"]
         counts = desc["counts"]
 
-        bars = ax.bar(labels, pcts)
+        # Color scheme: Missing = palette[0], Present = grey
+        colors = [palette[0] if lbl == "Missing" else "#B0B0B0" for lbl in labels]
 
-        # Annotate counts and %
-        for i, (bar, pct, cnt) in enumerate(zip(bars, pcts, counts)):
+        bars = ax.bar(labels, pcts, color=colors)
+
+        # Annotate bars: % on first line, count in parentheses
+        for bar, pct, cnt in zip(bars, pcts, counts):
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + 1,
-                f"{cnt:,}\n({pct:.1f}%)",
-                ha="center",
-                va="bottom",
-                fontsize=10,
+                bar.get_height() + 0.02,
+                f"{pct*100:.1f}%\n({cnt:,})",
+                ha="center", va="bottom", fontsize=10,
             )
 
         # Title & axis labels
         title = chart_metadata["title"]
-        # Keep the concise title in chart title; show counts/% as subtitle-like info
-        subtitle = f"{desc['missing']:,} of {desc['total']:,} values ({desc['pct_missing']*100:.1f}%) missing"
-        ax.set_title(f"{title}: {subtitle}", pad=12)
+        subtitle = f"{desc['pct_missing']*100:.1f}% of {desc['total']:,} values missing"
 
-        ax.set_xlabel(chart_metadata["xlabel"])
-        ax.set_ylabel(chart_metadata["ylabel"])
-        ax.yaxis.set_major_formatter(PercentFormatter())
-        ax.grid(axis="y", linestyle="--", alpha=0.5)
-        sns.despine(left=True)
-        fig.tight_layout()
+        ax.set_title(title, pad=6, fontsize=12, fontweight="bold")
+        ax.text(
+            0.5, 1.02, subtitle,
+            ha="center", va="bottom",
+            transform=ax.transAxes,
+            fontsize=10, color="gray"
+        )
+
+        ax.set_xlabel(chart_metadata["xlabel"])     # "Status"
+        ax.set_ylabel(chart_metadata["ylabel"])     # "Percentage of Total"
+        ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
 
         return fig, ax

@@ -141,3 +141,27 @@ _(Plot Context & title_kwargs)_
 ### Draw Functions
 
 - Use `draw` for **Series**; use `draw_frame` for **DataFrame**.
+
+## Unit Testing
+
+All plots must have a data driven pytest that covers:
+
+1. Empty Series/DataFrame and assert on
+2. for each plot specific scenario save the plot so that it can be inspected and assert on expected chart_metadata, descriptive_stats, draft_descriptive_findings, inferential_stats, and draft_inferential_findings based on the Plot implementation.
+
+chart_metadata
+
+- title
+- xlabel
+- ylabel
+- data_source
+- version
+- file_name - only if save_path was included in plot context.
+
+descriptive_stats
+
+draft_descriptive_findings
+
+inferential_stats
+
+draft_inferential_findings
