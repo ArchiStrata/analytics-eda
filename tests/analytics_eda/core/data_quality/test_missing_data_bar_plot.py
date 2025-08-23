@@ -13,66 +13,71 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
             lambda: pd.Series([], dtype="float64", name="empty_col"),
             {},
             {
-                "chart_metadata": {
-                    "title": "Missing Data for empty_col",
-                    "xlabel": "Status",
-                    "ylabel": "Percentage of Total",
-                    "data_source": None,
-                    "file_name": None,
-                },
-                "descriptive_stats": {
-                    "total": 0,
-                    "missing": 0,
-                    "pct_missing": 0.0,
-                },
+            "chart_metadata": {
+                "title": "Missing Data for empty_col",
+                "xlabel": "Status",
+                "ylabel": "Percentage of Total",
+                "data_source": None,
+                "version": "1.0.0",
+                "file_name": None,
+            },
+            "descriptive_stats": {
+                "total": 0,
+                "missing": 0,
+                "pct_missing": 0.0,
+            },
+            "inferential_stats": {},
+            "draft_inferential_findings": {},
+            "draft_descriptive_findings": {},  # empty base ⇒ no finding
             },
         ),
 
         # 1) No missing values
         (
             lambda: pd.Series([1, 2, 3], dtype="float64", name="no_nans"),
-            {},
+            {"file_name": "missing.png"},
             {
-                "descriptive_stats": {
-                    "total": 3,
-                    "missing": 0,
-                    "pct_missing": 0.0,
-                },
+            "descriptive_stats": {"total": 3, "missing": 0, "pct_missing": 0.0},
+            "inferential_stats": {},
+            "draft_inferential_findings": {},
+            "draft_descriptive_findings": lambda d: "summary" in d and "0.0% missing" in d["summary"],
+            "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
             },
         ),
 
         # 2) Some missing values (counts use full length including NaNs)
         (
             lambda: pd.Series([1, np.nan, 2, np.nan], name="some_nans"),
-            {},
+            {"file_name": "missing.png"},
             {
-                "descriptive_stats": {
-                    "total": 4,
-                    "missing": 2,
-                    "pct_missing": 0.5,
-                },
+            "descriptive_stats": {"total": 4, "missing": 2, "pct_missing": 0.5},
+            "inferential_stats": {},
+            "draft_inferential_findings": {},
+            "draft_descriptive_findings": lambda d: "summary" in d and "50.0% missing" in d["summary"],
+            "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
             },
         ),
 
         # 3) All missing values
         (
             lambda: pd.Series([np.nan, np.nan, np.nan], name="all_nans"),
-            {},
+            {"file_name": "missing.png", "show_count_in_label": True},
             {
-                "descriptive_stats": {
-                    "total": 3,
-                    "missing": 3,
-                    "pct_missing": 1.0,
-                },
+            "descriptive_stats": {"total": 3, "missing": 3, "pct_missing": 1.0},
+            "inferential_stats": {},
+            "draft_inferential_findings": {},
+            "draft_descriptive_findings": lambda d: "summary" in d and "100.0% missing" in d["summary"],
+            "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
             },
         ),
 
         # 4) Title uses name override via context kwargs
         (
             lambda: pd.Series([1, np.nan, 2], name="ignored"),
-            {"name": "Revenue"},
+            {"file_name": "missing.png", "name": "Revenue"},
             {
                 "chart_metadata": {
+                    "file_name": "missing.png",
                     "title": "Missing Data for Revenue",
                 },
             },
@@ -81,32 +86,13 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
         # 5) Axis labels + data_source overrides
         (
             lambda: pd.Series([1, 2, np.nan], name="labeled"),
-            {"xlabel": "Status", "ylabel": "Percent", "data_source": "UnitTest"},
-            {
-                "chart_metadata": {
-                    "xlabel": "Status",
-                    "ylabel": "Percent",
-                    "data_source": "UnitTest",
-                },
-            },
-        ),
-
-        # 6) Save with explicit filename, verify PNG signature
-        (
-            lambda: pd.Series([1, np.nan, 2, 3, np.nan], name="save_me"),
-            {"file_name": "missing.png"},
+            {"file_name": "missing.png", "xlabel": "Status", "ylabel": "Percent", "data_source": "UnitTest"},
             {
                 "chart_metadata": {
                     "file_name": "missing.png",
-                    "title": "Missing Data for save_me",
                     "xlabel": "Status",
-                    "ylabel": "Percentage of Total",
-                    "data_source": None,
-                },
-                "descriptive_stats": {
-                    "total": 5,
-                    "missing": 2,
-                    "pct_missing": 2 / 5,
+                    "ylabel": "Percent",
+                    "data_source": "UnitTest",
                 },
             },
         ),
@@ -118,10 +104,9 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
         "all_missing",
         "title_name_override",
         "labels_and_source_override",
-        "save_with_png_signature",
     ],
 )
-def test_plot_missing_data_barchart_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_missing_data_bar_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
 
     # If a file_name is provided, also set save_path to tmp_path

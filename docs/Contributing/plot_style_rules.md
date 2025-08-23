@@ -144,10 +144,13 @@ _(Plot Context & title_kwargs)_
 
 ## Unit Testing
 
-All plots must have a data driven pytest that covers:
+All plots must have a data driven pytest called test\_{{plot snake case}}\_data_driven
 
-1. Empty Series/DataFrame and assert on
+The data driven test covers:
+
+1. Empty Series/DataFrame and assert on expected chart_metadata and descriptive_stats
 2. for each plot specific scenario save the plot so that it can be inspected and assert on expected chart_metadata, descriptive_stats, draft_descriptive_findings, inferential_stats, and draft_inferential_findings based on the Plot implementation.
+3. Plot specific scenarios should cover the Plot's Context.
 
 chart_metadata
 

@@ -19,7 +19,8 @@ from analytics_eda.core.data_quality import (
                     "xlabel": "Percent of non‑null",
                     "ylabel": "Issue Type",
                     "data_source": None,
-                    "file_name": None,   # skip means nothing saved
+                    "version": "1.0.0",
+                    "file_name": None,
                 },
                 "descriptive_stats": {
                     "total": 0,
@@ -27,6 +28,9 @@ from analytics_eda.core.data_quality import (
                     "issue_counts": [0, 0, 0, 0],
                     "issue_pcts": [0.0, 0.0, 0.0, 0.0],
                 },
+                "inferential_stats": {},
+                "draft_inferential_findings": {},
+                "draft_descriptive_findings": {},
             },
         ),
 
@@ -36,13 +40,16 @@ from analytics_eda.core.data_quality import (
             lambda: pd.Series(["Apple", "Banana", "Pear", None], name="clean"),
             {"allowed_categories": ["Apple", "Banana", "Pear"], "case_sensitive_allowed": True},
             {
-                "chart_metadata": {"file_name": None},
+                "chart_metadata": {"file_name": None, "version": "1.0.0"},
                 "descriptive_stats": {
                     "total": 4,
                     "total_nonnull": 3,
                     "issue_counts": lambda xs: sum(xs) == 0,
                     "issue_pcts":   lambda xs: all(abs(v) < 1e-12 for v in xs),
                 },
+                "inferential_stats": {},
+                "draft_inferential_findings": {},
+                "draft_descriptive_findings": lambda d: isinstance(d, dict) and "summary" in d and "No cleanliness issues" in d["summary"],
             },
         ),
 
@@ -57,11 +64,14 @@ from analytics_eda.core.data_quality import (
                 name="messy"
             ),
             {
+                "file_name": "cleanliness.png",
                 "allowed_categories": ["Apple", "Banana", "Pear"],  # case-insensitive by default
                 # keep default allowed_char_pattern
+                "show_count_in_label": True,
             },
             {
                 "chart_metadata": {
+                    "file_name": "cleanliness.png",
                     "title": "Categorical Cleanliness for messy",
                 },
                 "descriptive_stats": {
@@ -72,43 +82,38 @@ from analytics_eda.core.data_quality import (
                         "Leading/Trailing Whitespace", "Mixed Casing",
                         "Non-Standard Characters", "Invalid Category"
                     },
-                    "issue_counts": lambda counts: isinstance(counts, list) and len(counts) == 4
+                    # Expect multiset [2,2,1,1] (order agnostic)
+                    "issue_counts": lambda cs: sorted(cs) == [1,1,2,2],
+                    # Percents must match counts / 10 (order agnostic)
+                    "issue_pcts":   lambda ps: sorted(round(p, 6) for p in ps) == sorted(round(x/10.0,6) for x in [1,1,2,2]),
                 },
+                "inferential_stats": {},
+                "draft_inferential_findings": {},
+                # Allow either top order due to tie; require both top issues appear
+                "draft_descriptive_findings": lambda d: (
+                    isinstance(d, dict)
+                    and "summary" in d
+                    and "coverage" in d
+                    and (
+                    ("Invalid Category" in d.get("summary","") and "Mixed Casing" in d.get("secondary",""))
+                    or ("Mixed Casing" in d.get("summary","") and "Invalid Category" in d.get("secondary",""))
+                    )
+                ),
             },
         ),
 
         # 3) Custom title via context name override; axis labels + data_source overrides
         (
             lambda: pd.Series([" a ", "A", "a", "ok"], name="ignored"),
-            {"name": "Customers", "xlabel": "Rows", "ylabel": "Issue", "data_source": "UnitTest"},
+            {"file_name": "cleanliness.png", "name": "Customers", "xlabel": "Rows", "ylabel": "Issue", "data_source": "UnitTest"},
             {
                 "chart_metadata": {
+                    "file_name": "cleanliness.png",
                     "title": "Categorical Cleanliness for Customers",
                     "xlabel": "Rows",
                     "ylabel": "Issue",
                     "data_source": "UnitTest",
-                },
-            },
-        ),
-
-        # 4) Save with explicit filename (and at least one issue so it actually saves)
-        (
-            lambda: pd.Series(["ok", "OK", "ok "], name="save_me"),  # mixed casing + whitespace
-            {"file_name": "cleanliness.png"},
-            {
-                "chart_metadata": {
-                    "file_name": "cleanliness.png",
-                    "title": "Categorical Cleanliness for save_me",
-                    "xlabel": "Percent of non‑null",
-                    "ylabel": "Issue Type",
-                    "data_source": None,
-                },
-                "descriptive_stats": {
-                    "total": 3,
-                    "total_nonnull": 3,
-                    # At least one issue should be nonzero (exact split depends on canonical choice);
-                    # just ensure there is signal.
-                    "issue_counts": lambda xs: sum(xs) >= 1,
+                    "version": "1.0.0",
                 },
             },
         ),
@@ -118,10 +123,9 @@ from analytics_eda.core.data_quality import (
         "no_issues_skips",
         "mixed_issues",
         "labels_and_source_override",
-        "save_with_png_signature",
     ],
 )
-def test_plot_categorical_cleanliness_bar_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_categorical_cleanliness_bar_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
 
     # If a file_name is provided, also set save_path to tmp_path

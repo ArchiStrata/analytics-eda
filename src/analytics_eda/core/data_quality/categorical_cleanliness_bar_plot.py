@@ -82,18 +82,6 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, BasePlot):
       • Non-Standard Characters (not matching an allowed regex)
       • Invalid Category (not in an optional allowlist)
 
-    How
-    ----
-    - Coerces to NA-aware strings and strips whitespace for checks.
-    - Mixed casing is detected by grouping stripped labels case-insensitively
-      and flagging any label whose casing differs from the canonical (most
-      frequent) case for that token.
-    - Non-standard characters are flagged using `allowed_char_pattern` (regex).
-    - Invalid categories are those not present in `allowed_categories`
-      (with optional case-sensitivity and empty-as-invalid handling).
-    - Bars display counts; annotations include percentages of the non-null base.
-    - If no issues are found, plotting is skipped and `skip_plot` is set.
-
     Returns (BasePlot.run schema)
     ------------------------------
       {

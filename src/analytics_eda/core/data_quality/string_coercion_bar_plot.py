@@ -13,11 +13,9 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Any, Tuple, Optional, List
+from typing import Dict, Any, Optional, List
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from ..utils.base_plot import BasePlot, PlotContext
 from ..utils.named_series_mixin import NamedSeriesMixin
@@ -30,13 +28,14 @@ class StringCoercionBarContext(PlotContext):
     attempting numeric coercion and collecting the values that fail to parse.
     """
     title_template: str = "Non-Numeric (String) Values in {name}{modifiers}"
-    xlabel: str = "Count"
+    xlabel: str = "Percent of non‑null"
     ylabel: str = "Category"
-    figsize: Tuple[int, int] = (10, 6)
+    is_orientation_vertical: bool = False
+    format_value_axis_as_percent: bool = True
 
     # plot-specific knobs
     max_bars: Optional[int] = 30          # cap the number of distinct strings shown (smallest first if many ties)
-    show_percent_labels: bool = True      # annotate bars with % of total (non-null base)
+    show_count_in_label: bool = False
     sort_ascending: bool = True           # sort by count
     include_na_literal: bool = False      # if True, include literal strings like "NaN", "None" if they fail coercion
 
@@ -55,12 +54,6 @@ class StringCoercionBarPlot(NamedSeriesMixin, BasePlot):
         Values that fail to coerce (and are not missing) are treated as non-numeric
         “string categories”, which are tallied and plotted in a horizontal bar chart.
 
-    How:
-        - Build mask of non-null values where coercion → NaN.
-        - Count unique string representations of those values.
-        - Optionally cap the number of bars and annotate with percentages of total
-          *non-null* observations.
-
     Returns (BasePlot.run schema):
       {
         "descriptive_stats": {
@@ -68,15 +61,17 @@ class StringCoercionBarPlot(NamedSeriesMixin, BasePlot):
           "total_nonnull": int,         # total non-null observations
           "n_non_numeric": int,         # number of observations failing coercion
           "pct_non_numeric": float,     # of total_nonnull
-          "k_non_numeric": int,         # number of distinct non-numeric categories
-          # payload for draw:
-          "labels": List[str],          # category labels (strings)
-          "counts": List[int],          # counts per label
+          "k_non_numeric": int         # number of distinct non-numeric categories
         },
         "inferential_stats": {},
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
+    def plot_semantic_version(self) -> str:
+        """
+        Return the semantic version of this plot implementation.
+        """
+        return "1.0.0"
 
     # Defaults when empty
     def default_descriptive(self) -> Dict[str, Any]:
@@ -86,8 +81,9 @@ class StringCoercionBarPlot(NamedSeriesMixin, BasePlot):
             "n_non_numeric": 0,
             "pct_non_numeric": 0.0,
             "k_non_numeric": 0,
-            "labels": [],
-            "counts": [],
+            "category_labels": [],
+            "category_counts": [],
+            "category_pcts": [],
         }
 
     # Compute descriptive stats (+ payload for drawing)
@@ -128,14 +124,21 @@ class StringCoercionBarPlot(NamedSeriesMixin, BasePlot):
         if self.ctx.max_bars is not None and self.ctx.max_bars > 0:
             counts = counts.iloc[: int(self.ctx.max_bars)]
 
+        # per-category percents for bar labels (and plotting, if desired)
+        per_category_pcts = (counts.astype(int) / max(1, total_nonnull)).astype(float)
+
         desc = {
+            "params": {
+                "include_na_literal": bool(self.ctx.include_na_literal),
+            },
             "total": total,
             "total_nonnull": total_nonnull,
             "n_non_numeric": n_non_numeric,
-            "pct_non_numeric": pct_non_numeric,
+            "pct_non_numeric": pct_non_numeric, # overall summary %
             "k_non_numeric": k_non_numeric,
-            "labels": counts.index.tolist(),
-            "counts": counts.astype(int).tolist(),
+            "category_labels": counts.index.tolist(),
+            "category_counts": counts.astype(int).tolist(),
+            "category_pcts": per_category_pcts.tolist(),               # per-category %
         }
 
         # Skip plotting when nothing to show
@@ -145,40 +148,80 @@ class StringCoercionBarPlot(NamedSeriesMixin, BasePlot):
 
         return desc
 
+    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+        if not desc or desc.get("total_nonnull", 0) == 0:
+            return {}
+
+        overall_pct = desc.get("pct_non_numeric", 0.0) * 100
+        labels = desc.get("category_labels", [])
+        pcts   = desc.get("category_pcts", [])
+        counts = desc.get("category_counts", [])
+
+        # No issues
+        if desc.get("n_non_numeric", 0) == 0:
+            return {
+                "summary": "No non‑numeric tokens detected among non‑null values.",
+                "coverage": f"Base = {desc.get('total_nonnull', 0):,} non‑null rows."
+            }
+
+        # Build top entries (bars are already sorted by count/your setting, but guard anyway)
+        if not labels or not pcts:
+            return {
+                "summary": f"Non‑numeric share: {overall_pct:.1f}% of non‑null.",
+                "coverage": f"Base = {desc.get('total_nonnull', 0):,} non‑null rows."
+            }
+
+        # Find top1 and (if present) top2 by percent
+        order = np.argsort(pcts)[::-1]
+        top1 = order[0]
+        msg = {
+            "summary": f"Non‑numeric share: {overall_pct:.1f}% of non‑null.",
+            "top_issue": f"{labels[top1]} ({pcts[top1]*100:.1f}%; n={counts[top1]:,}).",
+            "coverage": f"Base = {desc.get('total_nonnull', 0):,} non‑null rows."
+        }
+        if len(order) > 1:
+            top2 = order[1]
+            msg["secondary"] = f"Next: {labels[top2]} ({pcts[top2]*100:.1f}%; n={counts[top2]:,})."
+        return msg
+
     # No inferential stats
     def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
         return {}
 
     # Draw chart
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        sns.set_palette("colorblind")
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
 
-        labels: List[str] = desc["labels"]
-        counts: List[int] = desc["counts"]
-        total_nonnull = max(1, int(desc["total_nonnull"]))  # avoid divide-by-zero
+        labels: List[str] = desc["category_labels"]
+        counts: List[int] = desc["category_counts"]
+        pcts:   List[float] = desc.get("category_pcts", [])
 
-        # Horizontal bar chart (safer for long string labels)
-        # Ensure ascending order (already handled in compute, but keep robust)
-        order_idx = np.argsort(counts) if self.ctx.sort_ascending else np.argsort(counts)[::-1]
-        counts_sorted = np.array(counts)[order_idx]
-        labels_sorted = np.array(labels, dtype=object)[order_idx]
+        # Respect existing sort choice (desc already sorted). Just build arrays.
+        labels_arr = np.array(labels, dtype=object)
+        counts_arr = np.array(counts, dtype=int)
+        pcts_arr   = np.array(pcts, dtype=float)
 
-        sns.barplot(x=counts_sorted, y=labels_sorted, ax=ax)
+        # Horizontal bar chart
+        bars = ax.barh(labels_arr, pcts_arr, color=self.neutral_grey())  # start all gray
 
-        # Labels & title
-        ax.set_title(chart_metadata["title"])
-        ax.set_xlabel(chart_metadata["xlabel"] or "Count")
-        ax.set_ylabel(chart_metadata["ylabel"] or "Category")
+        # Highlight the top issue (largest pcts):
+        # If sorted ascending, the last bar is the top; else the first.
+        highlight_idx = -1 if self.ctx.sort_ascending else 0
+        if len(bars) > 0:
+            bars[highlight_idx].set_color(palette[0])
 
-        # Annotate with percentages of total non-null if requested
-        if self.ctx.show_percent_labels:
-            for i, v in enumerate(counts_sorted):
-                pct = 100.0 * (v / total_nonnull)
-                ax.text(
-                    v, i, f" {v} ({pct:.1f}%)",
-                    va="center", ha="left", fontsize="small"
-                )
+        # Always show percent; optionally append count
+        bar_labels = [
+            f"{pct*100:.1f}%{f' (n={cnt:,})' if self.ctx.show_count_in_label else ''}"
+            for pct, cnt in zip(pcts_arr, counts_arr)
+        ]
+
+        ax.bar_label(
+            bars,
+            labels=bar_labels,
+            label_type="edge",
+            padding=3,
+            fontsize="small"
+        )
 
         # Footer summary
         footer = (
