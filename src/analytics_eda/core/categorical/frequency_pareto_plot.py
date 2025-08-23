@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from typing import Dict, Any, Optional
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from ..utils.base_plot import BasePlot, PlotContext
 from .validate_categorical_named_series import CategoricalSeriesMixin
@@ -42,7 +41,6 @@ class FrequencyParetoPlot(CategoricalSeriesMixin, BasePlot):
       }
     """
 
-    # (2) defaults when input is empty
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "mode": None,
@@ -58,7 +56,6 @@ class FrequencyParetoPlot(CategoricalSeriesMixin, BasePlot):
             "threshold_count": 0,
         }
 
-    # (3) descriptive stats (+ payload for drawing)
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         counts = s.value_counts()
 
@@ -94,21 +91,14 @@ class FrequencyParetoPlot(CategoricalSeriesMixin, BasePlot):
         }
         return desc
 
-    # (4) no inferential stats for Pareto
     def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
         return {}
 
-    # (5) draw
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        title = chart_metadata["title"]
-        xlabel = chart_metadata["xlabel"] or "Value"
-        ylabel = chart_metadata["ylabel"] or "Count"
+    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
 
         # Colors
         muted = "#999999"
         accent = "#0072B2"
-
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
 
         idx = desc["counts_index"]
         vals = desc["counts_values"]
@@ -132,10 +122,6 @@ class FrequencyParetoPlot(CategoricalSeriesMixin, BasePlot):
                 ax.text(width, bar.get_y() + bar.get_height() / 2,
                         f"{int(count)} ({pct:.1f}%)", ha="left", va="center")
 
-            # Axes & labels
-            ax.set_xlabel(ylabel)
-            ax.set_ylabel(xlabel)
-
             # Cumulative % on the top axis
             ax2 = ax.twiny()
             ax2.plot(cum, ticks, marker="o", linestyle="-", color="black")
@@ -156,8 +142,6 @@ class FrequencyParetoPlot(CategoricalSeriesMixin, BasePlot):
                         f"{int(count)}\n({pct:.1f}%)", ha="center", va="bottom")
 
             # Axes & labels
-            ax.set_xlabel(xlabel)
-            ax.set_ylabel(ylabel)
             ax.set_xticks(ticks)
             ax.set_xticklabels(idx, rotation=45, ha="right")
 
@@ -170,12 +154,9 @@ class FrequencyParetoPlot(CategoricalSeriesMixin, BasePlot):
                 ax2.axhline(80, color=accent, linestyle="--")
                 ax2.text(ticks[-1], 80, "80% threshold", ha="right", va="bottom", color=accent)
 
-        # Title
-        ax.set_title(title)
 
-        # Footnote + (BasePlot.run adds data_source footer if provided)
+        # Footnote
         fig.text(0.99, 0.01, f"Cumulative count at 80%: {thr_count}",
                  ha="right", va="bottom", fontsize=8, color="gray")
 
         return fig, ax
-

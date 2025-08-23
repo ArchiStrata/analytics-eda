@@ -17,7 +17,6 @@ from typing import Dict, Any
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
 
 from ..utils.base_plot import BasePlot, PlotContext
 from .validate_categorical_named_series import CategoricalSeriesMixin
@@ -98,14 +97,7 @@ class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
     def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
         return {}
 
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        sns.set_palette("colorblind")
-
-        title = chart_metadata["title"]
-        xlabel = chart_metadata["xlabel"] or "Cumulative share of categories"
-        ylabel = chart_metadata["ylabel"] or "Cumulative share of counts"
-
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
 
         # Lorenz curve
         x_lorenz = desc["x_lorenz"]
@@ -119,9 +111,6 @@ class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
         ax.fill_between(x_lorenz, y_lorenz, x_lorenz, alpha=0.25)
 
         # Labels & title
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
         ax.legend()
 
         # Annotation

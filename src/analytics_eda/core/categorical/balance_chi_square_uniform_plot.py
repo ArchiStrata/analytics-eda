@@ -15,8 +15,6 @@
 from dataclasses import dataclass
 from typing import Dict, Any
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 from scipy.stats import chisquare
 
 from ..utils.base_plot import BasePlot, PlotContext
@@ -43,11 +41,9 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
       }
     """
 
-    # (2) default response for empty data
     def default_descriptive(self) -> Dict[str, Any]:
         return {"total": 0, "k": 0, "categories": [], "observed": [], "expected": []}
 
-    # (3) descriptive stats
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         freq = s.value_counts()
         categories = sorted(freq.index.tolist())
@@ -64,7 +60,6 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
             "expected": expected,
         }
 
-    # (4) inferential stats
     def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
         inf: Dict[str, Any] = {}
         k = desc["k"]
@@ -90,15 +85,7 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
             res["chi2_gof_null_uniform"]["warning"] = warning
         return res
 
-    # (5) draw
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        sns.set_palette("colorblind")
-
-        title = chart_metadata["title"]
-        xlabel = chart_metadata["xlabel"] or "Value"
-        ylabel = chart_metadata["ylabel"] or "Frequency"
-
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
         cats = desc["categories"]
         x = range(len(cats))
         width = 0.35
@@ -108,9 +95,6 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
 
         ax.set_xticks(list(x))
         ax.set_xticklabels(cats, rotation=45, ha="right")
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.set_title(title)
         ax.legend()
 
         # annotation

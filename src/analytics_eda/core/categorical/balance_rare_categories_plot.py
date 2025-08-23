@@ -17,7 +17,6 @@ from typing import Dict, Any, Tuple, Optional, List
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
 
 from ..utils.base_plot import BasePlot, PlotContext
 from .validate_categorical_named_series import CategoricalSeriesMixin
@@ -57,14 +56,6 @@ class BalanceRareCategoriesPlot(CategoricalSeriesMixin, BasePlot):
         Filters categories whose counts fall below a configurable lower-frequency 
         threshold (either as a proportion of total count or as an absolute count) 
         and plots them in a horizontal bar chart for easy inspection.
-
-    How:
-        - Computes counts for each category (excluding NAs by default).
-        - Determines a cutoff from `extreme_lower_bound`:
-            * If <1: treated as a proportion (e.g., 0.01 = 1% of total count).
-            * If ≥1: treated as an absolute count threshold.
-        - Selects categories at or below this cutoff.
-        - Optionally caps number of bars and annotates with percentages.
 
     Returns (BasePlot.run schema):
       {
@@ -149,10 +140,7 @@ class BalanceRareCategoriesPlot(CategoricalSeriesMixin, BasePlot):
         return {}
 
     # ---- drawing ----
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-
-        sns.set_palette("colorblind")
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
 
         cats: List[str] = desc["rare_categories"]
         vals: List[int] = desc["rare_counts"]
@@ -164,11 +152,6 @@ class BalanceRareCategoriesPlot(CategoricalSeriesMixin, BasePlot):
         cats_sorted = np.array(cats, dtype=object)[order_idx]
 
         sns.barplot(x=vals_sorted, y=cats_sorted, ax=ax)
-
-        # Labels & title
-        ax.set_title(chart_metadata["title"])
-        ax.set_xlabel(chart_metadata["xlabel"] or "Count")
-        ax.set_ylabel(chart_metadata["ylabel"] or "Category")
 
         # Annotate with percentages if requested
         if self.ctx.show_percent_labels:
