@@ -27,7 +27,7 @@ from ....core.utils.base_plot import PlotContext, BasePlot
 
 @dataclass
 class DirectionAssociationScatterOLSTrendContext(PlotContext):
-    title_template: str = "Direction of Association (OLS Trend): {y} vs {x}{modifiers}"
+    title_template: str = "Direction of Association (OLS Trend): {ylabel} vs {xlabel}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
     figsize: Tuple[int, int] = (8, 6)
@@ -58,18 +58,6 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
     - Returns a payload with `descriptive_stats`, `inferential_stats` (grouped by test name),
       and `chart_metadata`.
     """
-
-    # provide {x} and {y} to the title template
-    def title_kwargs(
-        self,
-        *,
-        series=None,
-        cols: Sequence[str] | None = None,
-        role_map: Mapping[str, str] | None = None,
-    ) -> Dict[str, str]:
-        x_col = (role_map or {}).get("x") or (cols[0] if cols else "")
-        y_col = (role_map or {}).get("y") or (cols[1] if cols and len(cols) >= 2 else "")
-        return {"x": x_col, "y": y_col}
 
     # ---- Defaults for empty/degenerate inputs ----
     def default_descriptive(self) -> Dict[str, Any]:

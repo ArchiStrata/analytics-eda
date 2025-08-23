@@ -99,11 +99,11 @@ from analytics_eda.analysis.univariate.univariate_categorical_analysis import un
                         },
                         "inferential_stats": {},
                         "chart_metadata": {
-                            "title": "Value Counts (Top 10) of count for Cardinality",
+                            "title": "Cardinality — Top 10 Value Counts for count",
                             "xlabel": "Value",
                             "ylabel": "Count",
                             "data_source": "UnitTest",
-                            "file_name": "Value Counts (Top 10) of count for Cardinality.png",
+                            "file_name": "Cardinality — Top 10 Value Counts for count.png",
                             "top_k": 10
                         }
                     }

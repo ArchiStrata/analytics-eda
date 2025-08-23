@@ -25,7 +25,7 @@ from ....core.utils.base_plot import PlotContext, BasePlot
 
 @dataclass
 class RelationshipStructureScatterContext(PlotContext):
-    title_template: str = "Scatter Plot of {x} vs {y}{modifiers}"
+    title_template: str = "Scatter Plot of {xlabel} vs {ylabel}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
     figsize: Tuple[int, int] = (8, 6)
@@ -77,16 +77,6 @@ class RelationshipStructureScatterPlot(BasePlot):
       - chart_metadata:
           {"title","xlabel","ylabel","data_source","file_name"}
     """
-
-    # --- provide {x} and {y} to the title template ---
-    def title_kwargs(
-        self,
-        *,
-        series=None,
-        cols: Sequence[str] | None = None,
-        role_map: Mapping[str, str] | None = None,
-    ) -> Dict[str, Any]:
-        return role_map
 
     # ---------- Frame API ----------
     def validate_frame(

@@ -27,7 +27,7 @@ from ....core.utils.base_plot import PlotContext, BasePlot
 
 @dataclass
 class RelationshipStructureScatterLowessContext(PlotContext):
-    title_template: str = "Scatter Plot of {x} vs {y}{modifiers}"
+    title_template: str = "LOWESS smooth Scatter Plot of {xlabel} vs {ylabel}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
     figsize: Tuple[int, int] = (8, 6)
@@ -62,18 +62,6 @@ class RelationshipStructureScatterLowessPlot(BasePlot):
     iters : int
         Robustness iterations (reweighting). 0–1 are common for EDA.
     """
-
-    # Provide {x} and {y} for the title template and add a subtle descriptor
-    def title_kwargs(
-        self,
-        *,
-        series=None,
-        cols: Sequence[str] | None = None,
-        role_map: Mapping[str, str] | None = None,
-    ) -> Dict[str, Any]:
-        x_col = (role_map or {}).get("x") or (cols[0] if cols else "")
-        y_col = (role_map or {}).get("y") or (cols[1] if cols and len(cols) >= 2 else "")
-        return {"x": x_col, "y": y_col, "extra_desc": "LOWESS smooth"}
 
     # ---------- Frame API ----------
     def validate_frame(

@@ -27,7 +27,7 @@ from ....core.utils.base_plot import PlotContext, BasePlot
 
 @dataclass
 class MagnitudeAssociationScatterOLSContext(PlotContext):
-    title_template: str = "Scatter + OLS: {y} vs {x}{modifiers}"
+    title_template: str = "Scatter + OLS: {ylabel} vs {xlabel}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
     figsize: Tuple[int, int] = (8, 6)
@@ -56,18 +56,6 @@ class MagnitudeAssociationScatterOLSPlot(BasePlot):
     - Inferential: two-sided p-value for H₀: ρ=0; CI for R² (derived from Fisher z CI on r).
     - Output: payload with descriptive_stats, inferential_stats, and chart_metadata.
     """
-
-    # supply placeholders for {x} and {y} in title_template
-    def title_kwargs(
-        self,
-        *,
-        series=None,
-        cols: Sequence[str] | None = None,
-        role_map: Mapping[str, str] | None = None,
-    ) -> Dict[str, str]:
-        x_col = (role_map or {}).get("x") or (cols[0] if cols else "")
-        y_col = (role_map or {}).get("y") or (cols[1] if cols and len(cols) >= 2 else "")
-        return {"x": x_col, "y": y_col}
 
     # ---------- Frame API ----------
     def validate_frame(

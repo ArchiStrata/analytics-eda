@@ -27,7 +27,7 @@ from ....core.utils.base_plot import PlotContext, BasePlot
 
 @dataclass
 class MagnitudeAssociationResidualContext(PlotContext):
-    title_template: str = "Residuals vs Fitted: {y} on {x}{modifiers}"
+    title_template: str = "Residuals vs Fitted: {ylabel} on {xlabel}{modifiers}"
     xlabel: str = "Fitted values"
     ylabel: str = "Residuals"
     figsize: Tuple[int, int] = (8, 6)
@@ -58,18 +58,6 @@ class MagnitudeAssociationResidualPlot(BasePlot):
         • Breusch–Pagan and White tests for homoscedasticity.
     - Output: payload with descriptive_stats, inferential_stats, and chart_metadata.
     """
-
-    # Provide {x} and {y} to the title template
-    def title_kwargs(
-        self,
-        *,
-        series=None,
-        cols: Sequence[str] | None = None,
-        role_map: Mapping[str, str] | None = None,
-    ) -> Dict[str, str]:
-        x_col = (role_map or {}).get("x") or (cols[0] if cols else "")
-        y_col = (role_map or {}).get("y") or (cols[1] if cols and len(cols) >= 2 else "")
-        return {"x": x_col, "y": y_col, "extra_desc": "EDA diagnostics"}
 
     # ---------- Frame API ----------
     def validate_frame(
