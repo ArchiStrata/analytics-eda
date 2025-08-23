@@ -15,7 +15,6 @@ from dataclasses import dataclass
 from typing import Dict, Any
 import numpy as np
 import pandas as pd
-from matplotlib.ticker import PercentFormatter
 
 from ..utils.base_plot import BasePlot, PlotContext
 from ..utils.named_series_mixin import NamedSeriesMixin
@@ -26,6 +25,7 @@ class MissingDataBarContext(PlotContext):
     title_template: str = "Missing Data for {name}{modifiers}"
     xlabel: str = "Status"
     ylabel: str = "Percentage of Total"
+    format_value_axis_as_percent: bool = True
 
 
 class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
@@ -77,7 +77,7 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
         status = s.isna().map({False: "Present", True: "Missing"})
         counts = (
             status.value_counts()
-            .reindex(["Missing", "Present"]) 
+            .reindex(["Missing", "Present"])
             .fillna(0)
             .astype(int)
         )
@@ -128,23 +128,12 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
         bars = ax.bar(labels, pcts, color=colors)
 
         # Annotate bars: % on first line, count in parentheses
-        for bar, pct, cnt in zip(bars, pcts, counts):
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + 0.02,
-                f"{pct*100:.1f}%\n({cnt:,})",
-                ha="center", va="bottom", fontsize=10,
-            )
-
-        self.ensure_y_headroom_for_annotations(
-            ax,
-            [b.get_height() for b in bars],
-            label_offset=0.02,
-            extra_pad=0.04,
-            max_extra=0.20,
-            keep_ticks_to_100=True,
+        ax.bar_label(
+            bars,
+            labels=[f"{pct*100:.1f}%\n({cnt:,})" for pct, cnt in zip(pcts, counts)],
+            label_type="edge",
+            padding=3,
+            fontsize="small",
         )
-
-        ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
 
         return fig, ax
