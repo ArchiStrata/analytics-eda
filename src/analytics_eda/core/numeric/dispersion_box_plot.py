@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from ..utils.base_plot import BasePlot, PlotContext
 from .validate_numeric_named_series import NumericSeriesMixin
@@ -24,7 +22,6 @@ from .validate_numeric_named_series import NumericSeriesMixin
 class DispersionBoxplotContext(PlotContext):
     title_template: str = "Dispersion of {name}{modifiers} (IQR & Outliers)"
     ylabel: str = "Value"
-    figsize: Tuple[int, int] = (8, 6)
 
     # plot-specific knobs
     std_outlier_multiplier: float = 4.0
@@ -59,7 +56,6 @@ class DispersionBoxPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # (1) default when empty
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "params": {"std_outlier_multiplier": float(self.ctx.std_outlier_multiplier)},
@@ -83,7 +79,6 @@ class DispersionBoxPlot(NumericSeriesMixin, BasePlot):
             "extreme_upper_bound": 0,
         }
 
-    # (2) descriptive stats
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         n = int(s.size)
         mean = float(s.mean())
@@ -128,15 +123,17 @@ class DispersionBoxPlot(NumericSeriesMixin, BasePlot):
             "extreme_upper_bound": extreme_upper_bound,
         }
 
-    # (3) draw
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        sns.set_palette("colorblind")
-        palette = sns.color_palette("colorblind")
-
-        title = chart_metadata["title"]
-        ylabel = chart_metadata["ylabel"] or "Value"
-
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+    def draw(
+        self,
+        s: pd.Series,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+        *,
+        fig,
+        ax,
+        palette,
+    ):
 
         # 1) Thin violin silhouette behind box
         parts = ax.violinplot(
@@ -161,9 +158,6 @@ class DispersionBoxPlot(NumericSeriesMixin, BasePlot):
             flierprops=dict(marker="o", markersize=0),  # hide default fliers
             zorder=2,
         )
-
-        ax.set_title(title)
-        ax.set_ylabel(ylabel)
 
         # Mean dot
         mean = desc["mean"]

@@ -15,8 +15,6 @@ from dataclasses import dataclass
 from typing import Dict, Any, Optional, Tuple, Literal
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 from scipy import stats
 
 from ..utils.base_plot import BasePlot, PlotContext
@@ -29,7 +27,6 @@ class DistributionECDFvsCDFContext(PlotContext):
     title_template: str = "ECDF vs. Theoretical CDF of {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "CDF"
-    figsize: Tuple[int, int] = (10, 6)
 
     # plot-specific
     distribution_name: DistName = 'norm'
@@ -83,7 +80,6 @@ class DistributionECDFvsCDFPlot(NumericSeriesMixin, BasePlot):
             "alpha": float(self.ctx.alpha),
         }
 
-    # (1) default when empty
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "n": 0,
@@ -93,11 +89,9 @@ class DistributionECDFvsCDFPlot(NumericSeriesMixin, BasePlot):
             },
         }
 
-    # (2) default when empty
     def default_inferential(self) -> Dict[str, Any]:
         return {"params": {"alpha": float(self.ctx.alpha)}}
 
-    # (3) descriptive stats (+ payload for drawing)
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         if self.ctx.distribution_name not in self.ALLOWED:
             raise ValueError(f"distribution_name must be one of {self.ALLOWED}")
@@ -150,7 +144,6 @@ class DistributionECDFvsCDFPlot(NumericSeriesMixin, BasePlot):
         desc.update({"x": x, "ecdf": ecdf, "cdf_theo": cdf_theo, "ks_D": ks_D})
         return desc
 
-    # (4) inferential stats
     def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
         out: Dict[str, Any] = {"params": {"alpha": float(self.ctx.alpha)}}
 
@@ -200,27 +193,20 @@ class DistributionECDFvsCDFPlot(NumericSeriesMixin, BasePlot):
 
         return out
 
-    # (5) draw
     def draw(
         self,
         s: pd.Series,
         desc: Dict[str, Any],
         inf: Dict[str, Any],
         chart_metadata: Dict[str, Any],
+        *,
+        fig,
+        ax,
+        palette,
     ):
-        sns.set_style("whitegrid")
-
-        title = chart_metadata["title"]
-        xlabel = chart_metadata["xlabel"] or "Value"
-        ylabel = chart_metadata["ylabel"] or "CDF"
-
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
 
         # In error case: draw a minimal frame with error note (no lines)
         if "error" in desc:
-            ax.set_title(title)
-            ax.set_xlabel(xlabel)
-            ax.set_ylabel(ylabel)
             ax.text(
                 0.5, 0.5, f"Input error: {desc['error']}",
                 ha="center", va="center", transform=ax.transAxes, color="red"
@@ -242,9 +228,6 @@ class DistributionECDFvsCDFPlot(NumericSeriesMixin, BasePlot):
                 color='red', linewidth=1.5, label=f"KS D = {desc['ks_D']:.3f}"
             )
 
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
         ax.legend()
 
         # stats textbox (summary)

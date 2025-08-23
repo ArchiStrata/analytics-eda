@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Tuple, Literal
+from typing import Dict, Any, Optional, Literal
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
 from scipy import stats
 
 from ..utils.base_plot import BasePlot, PlotContext
@@ -30,7 +29,6 @@ class CentralTendencyViolinContext(PlotContext):
     title_template: str = "Distribution of {name}{modifiers}: Central Tendency (Violin)"
     xlabel: str = "Value"
     ylabel: str = "Density"
-    figsize: Tuple[int, int] = (10, 6)
 
     # plot-specific
     mean_ci_method: MeanCIMethod = "t"
@@ -62,7 +60,6 @@ class CentralTendencyViolinPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # (2) defaults for empty input
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "params": {
@@ -76,7 +73,6 @@ class CentralTendencyViolinPlot(NumericSeriesMixin, BasePlot):
             "median_ci": (float("nan"), float("nan")),
         }
 
-    # (3) descriptive stats (+ we assemble inferential inputs here)
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         n = int(s.size)
         mean = float(s.mean()) if n else float("nan")
@@ -136,7 +132,6 @@ class CentralTendencyViolinPlot(NumericSeriesMixin, BasePlot):
             }
         }
 
-    # (5) inferential stats (optional tests vs population params)
     def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
         out: Dict[str, Any] = {
             "params": {
@@ -205,17 +200,18 @@ class CentralTendencyViolinPlot(NumericSeriesMixin, BasePlot):
 
         return out
 
-    # (6) draw
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        sns.set_palette("colorblind")
-        palette = sns.color_palette("colorblind")
+    def draw(
+        self,
+        s: pd.Series,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+        *,
+        fig,
+        ax,
+        palette,
+    ):
         mean_col, med_col = palette[0], palette[1]
-
-        title = chart_metadata["title"]
-        xlabel = chart_metadata["xlabel"] or "Value"
-        ylabel = chart_metadata["ylabel"] or "Density"
-
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
 
         # Horizontal violin
         sns.violinplot(x=s, orient="h", inner=None, color="lightgray", ax=ax)
@@ -246,11 +242,7 @@ class CentralTendencyViolinPlot(NumericSeriesMixin, BasePlot):
                 ax.axvline(med, color=med_col, linestyle="-.", label=f"Median = {med:.2f}")
 
         # Labels/title
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
         ax.set_yticks([])
-        if ylabel:
-            ax.set_ylabel(ylabel)
 
         # Compact stats summary textbox (when tests were run)
         stats_lines = []

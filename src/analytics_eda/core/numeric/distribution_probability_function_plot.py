@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Tuple, Union
+from typing import Dict, Any, Optional, Union
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 
 from ..utils.base_plot import BasePlot, PlotContext
@@ -27,7 +25,6 @@ class DistributionProbabilityFunctionContext(PlotContext):
     title_template: str = "{pf_kind} of {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: Optional[str] = None  # dynamic default if None
-    figsize: Tuple[int, int] = (10, 6)
 
     # plot-specific
     is_discrete: bool = True
@@ -52,7 +49,6 @@ class DistributionProbabilityFunctionPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # (1) Build title + ylabel dynamically from context
     def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
         is_disc = bool(self.ctx.is_discrete)
         pf_kind = "PMF" if is_disc else "PDF estimate"
@@ -84,7 +80,6 @@ class DistributionProbabilityFunctionPlot(NumericSeriesMixin, BasePlot):
             meta["bw_method"] = self.ctx.bw_method
         return meta
 
-    # (2) default when empty
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "n": 0,
@@ -105,7 +100,6 @@ class DistributionProbabilityFunctionPlot(NumericSeriesMixin, BasePlot):
             "y_pdf": np.array([], dtype=float),
         }
 
-    # (3) descriptive stats (+ payload for drawing)
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         # s is validated & NA-dropped by NumericSeriesMixin.validate
         n = int(s.size)
@@ -166,22 +160,20 @@ class DistributionProbabilityFunctionPlot(NumericSeriesMixin, BasePlot):
 
         return desc
 
-    # (4) draw
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        sns.set_palette("colorblind")
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
-
-        title = chart_metadata["title"]
-        xlabel = chart_metadata["xlabel"] or "Value"
-        ylabel = chart_metadata["ylabel"] or ("Probability P(X = x)" if self.ctx.is_discrete else "Density f(x)")
-
+    def draw(
+        self,
+        s: pd.Series,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+        *,
+        fig,
+        ax,
+        palette,
+    ):
         if self.ctx.is_discrete:
             ax.bar(desc["x_pmf"], desc["y_pmf"], edgecolor="black")
         else:
             ax.plot(desc["x_pdf"], desc["y_pdf"], linewidth=1.5)
-
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
 
         return fig, ax

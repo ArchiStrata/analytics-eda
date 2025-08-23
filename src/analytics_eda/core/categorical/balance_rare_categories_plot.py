@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Any, Tuple, Optional, List
+from typing import Dict, Any, Optional, List
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -34,7 +34,6 @@ class BalanceRareCategoriesContext(PlotContext):
     title_template: str = "Rare Categories of {name}{modifiers}"
     xlabel: str = "Category"
     ylabel: str = "Count"
-    figsize: Tuple[int, int] = (10, 6)
 
     # plot-specific knobs
     extreme_lower_bound: float = 0.01  # default: 1% of total if <1, else absolute count

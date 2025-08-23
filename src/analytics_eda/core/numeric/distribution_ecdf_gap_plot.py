@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from ..utils.base_plot import BasePlot, PlotContext
 from .validate_numeric_named_series import NumericSeriesMixin
@@ -26,7 +24,6 @@ class DistributionECDFGapContext(PlotContext):
     title_template: str = "ECDF Gap Analysis of {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "ECDF"
-    figsize: Tuple[int, int] = (10, 6)
 
     # plot-specific knobs
     threshold: Optional[float] = None
@@ -65,7 +62,6 @@ class DistributionECDFGapPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # (1) default when empty
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "params": {"threshold": self.ctx.threshold},
@@ -82,7 +78,6 @@ class DistributionECDFGapPlot(NumericSeriesMixin, BasePlot):
             "max_gap_loc": float("nan")
         }
 
-    # (2) descriptive stats (+ payload for drawing)
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         clean = s.sort_values()
         n = int(clean.size)
@@ -132,13 +127,17 @@ class DistributionECDFGapPlot(NumericSeriesMixin, BasePlot):
             "max_gap_idx": max_idx,
         }
 
-    # (3) draw
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        sns.set_palette("colorblind")
-
-        title = chart_metadata["title"]
-        xlabel = chart_metadata["xlabel"] or "Value"
-        ylabel = chart_metadata["ylabel"] or "ECDF"
+    def draw(
+        self,
+        s: pd.Series,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+        *,
+        fig,
+        ax,
+        palette,
+    ):
 
         # ECDF from full cleaned series (not just uniques)
         clean = s.dropna().sort_values()
@@ -146,13 +145,8 @@ class DistributionECDFGapPlot(NumericSeriesMixin, BasePlot):
         ecdf_x = clean.values
         ecdf_y = (np.arange(1, n + 1) / n) if n > 0 else np.array([])
 
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
         if n > 0:
             ax.step(ecdf_x, ecdf_y, where="post", label="ECDF")
-
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
 
         # Annotate largest gap
         unique_vals = desc["unique_vals"]

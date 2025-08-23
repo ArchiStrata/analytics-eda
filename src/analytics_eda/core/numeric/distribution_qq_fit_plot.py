@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Tuple, Literal
+from typing import Dict, Any, Literal
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
 from scipy import stats
 
 from ..utils.base_plot import BasePlot, PlotContext
@@ -29,7 +28,6 @@ class DistributionQqFitContext(PlotContext):
     title_template: str = "Q–Q Plot Fit Assessment of {name}{modifiers}"
     xlabel: str = "Theoretical Quantiles"
     ylabel: str = "Sample Quantiles"
-    figsize: Tuple[int, int] = (10, 6)
 
     # plot-specific
     distribution_name: DistributionName = 'norm'
@@ -68,7 +66,6 @@ class DistributionQqFitPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # Put the distribution into the title modifiers
     def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
         dist = self.ctx.distribution_name
         return {
@@ -78,14 +75,12 @@ class DistributionQqFitPlot(NumericSeriesMixin, BasePlot):
             "dist": dist,
         }
 
-    # Add plot-specific fields to chart metadata payload
     def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
         return {
             "distribution_name": self.ctx.distribution_name,
             "alpha": float(self.ctx.alpha),
         }
 
-    # Empty defaults
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "intercept": float("nan"),
@@ -99,7 +94,6 @@ class DistributionQqFitPlot(NumericSeriesMixin, BasePlot):
             "min": float("nan")
         }
 
-    # Descriptive stats + payload
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         data = s.dropna().astype(float)
         n = int(data.size)
@@ -178,7 +172,6 @@ class DistributionQqFitPlot(NumericSeriesMixin, BasePlot):
             }
         }
 
-    # Inferential stats (normality tests only for 'norm')
     def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
         data = s.dropna().astype(float)
         n = int(data.size)
@@ -213,10 +206,17 @@ class DistributionQqFitPlot(NumericSeriesMixin, BasePlot):
 
         return res
 
-    # Draw Q–Q
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        sns.set_palette("colorblind")
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+    def draw(
+        self,
+        s: pd.Series,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+        *,
+        fig,
+        ax,
+        palette,
+    ):
 
         # If domain error (e.g., lognorm with nonpositive), just render title/labels and note error
         if "error" in desc:
@@ -235,10 +235,6 @@ class DistributionQqFitPlot(NumericSeriesMixin, BasePlot):
         # points + fit line
         sns.scatterplot(x=osm, y=osr, ax=ax, s=20, edgecolor="k", alpha=0.6, label="Quantiles")
         ax.plot(osm, fitted, color="red", lw=1, label="Fit line")
-
-        ax.set_title(chart_metadata["title"])
-        ax.set_xlabel(chart_metadata["xlabel"] or "Theoretical Quantiles")
-        ax.set_ylabel(chart_metadata["ylabel"] or "Sample Quantiles")
 
         # Stats textbox (left-top)
         lines = [

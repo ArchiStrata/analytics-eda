@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from ..utils.base_plot import BasePlot, PlotContext
 from .validate_numeric_named_series import NumericSeriesMixin
@@ -26,7 +24,6 @@ class CardinalityBarContext(PlotContext):
     title_template: str = "Cardinality — Top {top_k} Value Counts for {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "Count"
-    figsize: Tuple[int, int] = (8, 6)
 
     # plot-specific
     top_k: int = 10
@@ -60,7 +57,6 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # (1) Title must include {top_k}; override metadata builder to format it.
     def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
         # Make {top_k} available to the title_template AND optionally add a modifier
         return {
@@ -75,7 +71,6 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
             "top_k": int(self.ctx.top_k),
         }
 
-    # (2) default when empty
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "params": {
@@ -93,7 +88,6 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
             "values": np.array([], dtype=float),
         }
 
-    # (3) descriptive stats (+ payload for drawing)
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         total = int(s.size)
         nunique = int(s.nunique())
@@ -129,18 +123,17 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
             "values": values,
         }
 
-    # (4) no inferential stats
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
-        return {}
-
-    # (5) draw
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        title = chart_metadata["title"]
-        xlabel = chart_metadata["xlabel"] or "Value"
-        ylabel = chart_metadata["ylabel"] or "Count"
-
-        sns.set_palette("colorblind")
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+    def draw(
+        self,
+        s: pd.Series,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+        *,
+        fig,
+        ax,
+        palette,
+    ):
 
         # horizontal bars
         ax.barh(desc["labels"], desc["values"])
@@ -155,11 +148,7 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
         if coverage > 0:
             subtitle += f" | Top-{self.ctx.top_k} coverage: {coverage:.1%}"
 
-        ax.set_title(f"{title}\n{subtitle}")
-
-        # flip axis labels to match barh orientation
-        ax.set_xlabel(ylabel)   # Count
-        ax.set_ylabel(xlabel)   # Value
+        self.queue_subtitle_below_title(ax, subtitle)
 
         return fig, ax
 

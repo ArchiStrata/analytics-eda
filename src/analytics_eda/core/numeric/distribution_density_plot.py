@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Tuple, Literal, Sequence, Callable
+from typing import Dict, Any, Optional, Literal, Sequence, Callable
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.signal import find_peaks
 
@@ -31,7 +29,6 @@ class DistributionDensityContext(PlotContext):
     title_template: str = "Distribution Density of {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "Density"
-    figsize: Tuple[int, int] = (10, 6)
 
     # plot-specific knobs
     bin_method: Optional[BinMethod] = None
@@ -70,7 +67,6 @@ class DistributionDensityPlot(NumericSeriesMixin, BasePlot):
       }
     """
 
-    # (1) default when empty
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "params": {"bins": self.ctx.bins, "bin_method": self.ctx.bin_method},
@@ -87,7 +83,6 @@ class DistributionDensityPlot(NumericSeriesMixin, BasePlot):
             "pct_90": float("nan")
         }
 
-    # (2) descriptive stats (+ payload for drawing)
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         n = int(s.size)
 
@@ -154,15 +149,17 @@ class DistributionDensityPlot(NumericSeriesMixin, BasePlot):
             "mode_y": mode_y.tolist(),
         }
 
-    # (3) draw
-    def draw(self, s: pd.Series, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]):
-        sns.set_palette("colorblind")
-
-        title = chart_metadata["title"]
-        xlabel = chart_metadata["xlabel"] or "Value"
-        ylabel = chart_metadata["ylabel"] or "Density"
-
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
+    def draw(
+        self,
+        s: pd.Series,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+        *,
+        fig,
+        ax,
+        palette,
+    ):
 
         # Histogram (density)
         ax.hist(
@@ -200,11 +197,6 @@ class DistributionDensityPlot(NumericSeriesMixin, BasePlot):
             for x_loc, y_loc in zip(desc["mode_x"], desc["mode_y"]):
                 ax.text(x_loc, y_loc, f"{x_loc:.2f}",
                         ha="left", va="bottom", fontsize="x-small", color="green")
-
-        # Axes & labels
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
 
         # Stats textbox
         stats_text = (
