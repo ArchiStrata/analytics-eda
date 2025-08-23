@@ -23,7 +23,7 @@ from .validate_numeric_named_series import NumericSeriesMixin
 
 @dataclass
 class CardinalityBarContext(PlotContext):
-    title_template: str = "Value Counts (Top {top_k}) of {name} for Cardinality {modifiers}"
+    title_template: str = "Cardinality — Top {top_k} Value Counts for {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "Count"
     figsize: Tuple[int, int] = (8, 6)
@@ -86,6 +86,7 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
             "total": 0,
             "nunique": 0,
             "uniqueness_ratio": 0.0,
+            "coverage_top_k": 0.0,
             "is_discrete": None,
             # payload for draw():
             "labels": [],
@@ -109,6 +110,9 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
         labels = counts.index.astype(str).tolist()
         values = counts.values.astype(float)
 
+        # compute coverage
+        coverage = float(values.sum()) / total if total else 0.0
+
         return {
             "params": {
                 "max_unique_fraction": float(self.ctx.max_unique_fraction),
@@ -118,6 +122,7 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
             "total": total,
             "nunique": nunique,
             "uniqueness_ratio": float(uniqueness_ratio),
+            "coverage_top_k": coverage,
             "is_discrete": bool(is_discrete),
             # payload:
             "labels": labels,
@@ -136,16 +141,25 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
 
         sns.set_palette("colorblind")
         fig, ax = plt.subplots(figsize=self.ctx.figsize)
-        ax.bar(desc["labels"], desc["values"])
 
+        # horizontal bars
+        ax.barh(desc["labels"], desc["values"])
+        ax.invert_yaxis()  # highest count at top
+
+        # build subtitle from descriptive stats
+        coverage = desc.get("coverage_top_k", 0.0)
         subtitle = (
             f"{'Discrete' if desc['is_discrete'] else 'Continuous'} "
             f"| Unique: {desc['nunique']:,} ({desc['uniqueness_ratio']:.1%})"
         )
+        if coverage > 0:
+            subtitle += f" | Top-{self.ctx.top_k} coverage: {coverage:.1%}"
+
         ax.set_title(f"{title}\n{subtitle}")
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+
+        # flip axis labels to match barh orientation
+        ax.set_xlabel(ylabel)   # Count
+        ax.set_ylabel(xlabel)   # Value
 
         return fig, ax
 

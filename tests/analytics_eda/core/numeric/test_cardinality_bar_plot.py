@@ -36,7 +36,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             {},
             {
                 "chart_metadata": {
-                    "title": "Value Counts (Top 10) of nums for Cardinality",
+                    "title": "Cardinality — Top 10 Value Counts for nums",
                     "xlabel": "Value",
                     "ylabel": "Count",
                     "top_k": 10,
@@ -46,6 +46,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "total": 0,
                     "nunique": 0,
                     "uniqueness_ratio": 0.0,
+                    "coverage_top_k": 0.0,  # NEW
                     "is_discrete": None,
                     "params": {
                         "max_unique_fraction": 0.05,
@@ -70,6 +71,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "total": 6,
                     "nunique": 3,
                     "is_discrete": True,
+                    "coverage_top_k": 1.0,  # NEW (6/6)
                 },
             },
         ),
@@ -82,6 +84,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "total": 4,
                     "nunique": 3,
                     "is_discrete": True,
+                    "coverage_top_k": 1.0,  # NEW (4/4)
                 },
             },
         ),
@@ -94,18 +97,20 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "total": 100,
                     "nunique": 100,
                     "is_discrete": False,
+                    "coverage_top_k": 1/10,  # NEW (top-10 of 100 uniques)
                 },
             },
         ),
-        # 4) NaNs present; uniqueness_ratio uses len(series) (not len(clean))
+        # 4) NaNs present; uniqueness_ratio uses len(clean); total is non-null count
         (
             lambda: pd.Series([1, 1, 2, np.nan, np.nan], name="with_nans"),
             {},
             {
                 "descriptive_stats": {
-                    "total": 3,  # clean size
+                    "total": 3,               # clean size
                     "nunique": 2,
-                    "uniqueness_ratio": 2 / 3,  # nunique / original length
+                    "uniqueness_ratio": 2 / 3, # nunique / non-null total
+                    "coverage_top_k": 1.0,     # NEW (3/3)
                 },
             },
         ),
@@ -115,8 +120,11 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             {"name": "Age", "top_k": 5},
             {
                 "chart_metadata": {
-                    "title": "Value Counts (Top 5) of Age for Cardinality",
+                    "title": "Cardinality — Top 5 Value Counts for Age",
                     "top_k": 5,
+                },
+                "descriptive_stats": {
+                    "coverage_top_k": 1.0,  # NEW (6/6)
                 },
             },
         ),
@@ -126,7 +134,10 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             {"file_name": "cardinality.png"},
             {
                 "chart_metadata": {"file_name": "cardinality.png"},
-                "descriptive_stats": {"total": 6},
+                "descriptive_stats": {
+                    "total": 6,
+                    "coverage_top_k": 1.0,  # NEW
+                },
             },
         ),
         # A) Non-empty, no kwargs, assert all defaults
@@ -135,7 +146,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             {},
             {
                 "chart_metadata": {
-                    "title": "Value Counts (Top 10) of nums for Cardinality",
+                    "title": "Cardinality — Top 10 Value Counts for nums",
                     "xlabel": "Value",
                     "ylabel": "Count",
                     "data_source": None,
@@ -143,7 +154,8 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "file_name": None,
                 },
                 "descriptive_stats": {
-                    "nunique": 5
+                    "nunique": 5,
+                    "coverage_top_k": 1.0,  # NEW (top-10 covers all 7)
                 },
             },
         ),
@@ -169,7 +181,8 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "file_name": "card.png",
                 },
                 "descriptive_stats": {
-                    "nunique": 3
+                    "nunique": 3,
+                    "coverage_top_k": 1.0,  # NEW
                 },
             },
         ),
@@ -183,7 +196,8 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             },
             {
                 "descriptive_stats": {
-                    "is_discrete": True
+                    "is_discrete": True,
+                    "coverage_top_k": 1/10,  # NEW (top-10 coverage among 100 uniques)
                 },
                 "chart_metadata": {
                     "file_name": "frac.png"
@@ -199,7 +213,8 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             },
             {
                 "descriptive_stats": {
-                    "is_discrete": True
+                    "is_discrete": True,
+                    "coverage_top_k": 1.0,  # NEW (10/10)
                 },
                 "chart_metadata": {
                     "file_name": "low_card.png"
@@ -208,7 +223,6 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
         ),
 
         # E) High-cardinality floats, not integer-like, tolerance flips discrete from False → True
-        #    We'll check only the 'True' case here; the 'False' case is already covered in many_unique_floats_continuous.
         (
             lambda: pd.Series([i + 1e-6 for i in range(30)], name="floats"),
             {
@@ -217,7 +231,8 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             },
             {
                 "descriptive_stats": {
-                    "is_discrete": True
+                    "is_discrete": True,
+                    "coverage_top_k": 1/3,  # NEW (top-10 of 30 uniques)
                 },
                 "chart_metadata": {
                     "file_name": "flt_tol.png"
