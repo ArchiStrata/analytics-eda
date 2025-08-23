@@ -47,6 +47,7 @@ class PlotContext:
 class BasePlot(ABC):
     def __init__(self, ctx: PlotContext):
         self.ctx = ctx
+        self._subtitle_queue: list[tuple] = []
 
     def default_descriptive(self) -> Dict[str, Any]:
         return {}
@@ -306,16 +307,94 @@ class BasePlot(ABC):
         # apply palette to this axis' property cycle so lines/bars use it by default
         ax.set_prop_cycle(color=palette)
         return fig, ax, palette
+    
+    def neutral_grey(self, variant: str = "medium", alpha: float | None = None):
+        """
+        Return a colorblind-friendly neutral grey for de-emphasis ("move to background").
+
+        Variants:
+          - "light"  (~82% gray):  good for gridlines / subtle guides
+          - "medium" (~69% gray):  good for secondary bars/lines/labels (default)
+          - "dark"   (~43% gray):  good for text on light backgrounds
+
+        Returns a Matplotlib-compatible color:
+          - hex string if alpha is None
+          - RGBA tuple if alpha is provided (0..1)
+        """
+        presets = {
+            "light":  "#D0D0D0",  # ~82% gray
+            "medium": "#B0B0B0",  # ~69% gray (default)
+            "dark":   "#6E6E6E",  # ~43% gray
+        }
+        hex_color = presets.get(variant, presets["medium"])
+        if alpha is None:
+            return hex_color
+        # Convert hex to normalized RGBA with requested alpha
+        h = hex_color.lstrip("#")
+        r, g, b = tuple(int(h[i:i+2], 16)/255.0 for i in (0, 2, 4))
+        return (r, g, b, float(alpha))
+    
+    def queue_subtitle_below_title(
+        self,
+        ax,
+        subtitle: str,
+        *,
+        fontsize: int = 10,
+        color: str = "gray",
+        gap_from_axes_pts: float = 1.5,
+    ):
+        """
+        Queue a subtitle to be drawn after layout, directly above the axes (outside plot area)
+        and below the main title. Call this in draw(); it will be positioned in _finalize_figure().
+        """
+        if not subtitle:
+            return
+        self._subtitle_queue.append((ax, subtitle, fontsize, color, gap_from_axes_pts))
+
+    def _apply_metadata_to_axes(self, ax, chart_metadata: Dict[str, Any]):
+        if chart_metadata.get("title"):
+            ax.title_ref = ax.set_title(chart_metadata["title"], pad=14, fontsize=12, fontweight="bold")
+        if chart_metadata.get("xlabel"):
+            ax.set_xlabel(chart_metadata["xlabel"])
+        if chart_metadata.get("ylabel"):
+            ax.set_ylabel(chart_metadata["ylabel"])
 
     def _finalize_figure(self, fig, chart_md: Dict[str, Any]) -> Optional[str]:
         """Add source, layout, save/show; return saved file name (or None)."""
+        # 1) Run layout first so axes land where they'll stay.
+        fig.tight_layout(rect=[0, 0, 1, 0.88])
+        # ensure renderer is ready so we can measure text extents accurately
+        fig.canvas.draw()
+
+        # 2) Now place queued subtitles relative to the actual title bounding box
+        if getattr(self, "_subtitle_queue", None):
+            renderer = fig.canvas.get_renderer()
+            fig_w_px, fig_h_px = fig.bbox.width, fig.bbox.height
+
+            for ax, subtitle, fontsize, color, gap_pts in self._subtitle_queue:
+                t = getattr(ax, "title_ref", None)
+                if t is not None:
+                    tb = t.get_window_extent(renderer=renderer)  # in display (px)
+                    # convert a gap in points to pixels
+                    gap_px = gap_pts * fig.dpi / 72.0
+                    # position centered on the title horizontally, just below title
+                    x_px = (tb.x0 + tb.x1) / 2.0
+                    y_px = tb.y0 + gap_px
+
+                    # convert to figure coordinates (0..1)
+                    xf, yf = x_px / fig_w_px, y_px / fig_h_px
+                    fig.text(xf, yf, subtitle, ha="center", va="top", fontsize=fontsize, color=color)
+
+            self._subtitle_queue.clear()
+
+        # Optional: add data source footer
         if self.ctx.data_source:
             fig.text(
                 0.01, 0.01, f"Source: {self.ctx.data_source}",
                 ha="left", va="bottom", fontsize="small", color="gray"
             )
-        fig.tight_layout()
 
+        # 3) Save/show
         saved_name = None
         if self.ctx.save_path:
             saved_name = self.ctx.file_name or f'{chart_md["title"]}.png'
@@ -363,7 +442,8 @@ class BasePlot(ABC):
             }
         
         fig, ax, palette = self._new_figure_and_palette()
-        fig, _ = draw_fn(desc, inf, chart_md, fig, ax, palette)
+        self._apply_metadata_to_axes(ax, chart_md)
+        fig, ax = draw_fn(desc, inf, chart_md, fig, ax, palette)
         chart_md["file_name"] = self._finalize_figure(fig, chart_md)
 
         return {

@@ -112,12 +112,18 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
     # Draw chart
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
 
+        # Subtitle
+        subtitle = f"{desc['pct_missing']*100:.1f}% of {desc['total']:,} values missing"
+        self.queue_subtitle_below_title(ax, subtitle)
+
         labels = desc["labels"]
         pcts = desc["pcts"]
         counts = desc["counts"]
 
         # Color scheme: Missing = palette[0], Present = grey
-        colors = [palette[0] if lbl == "Missing" else "#B0B0B0" for lbl in labels]
+        missing_color = palette[0]
+        present_color = self.neutral_grey()
+        colors = [missing_color if lbl == "Missing" else present_color for lbl in labels]
 
         bars = ax.bar(labels, pcts, color=colors)
 
@@ -130,20 +136,6 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
                 ha="center", va="bottom", fontsize=10,
             )
 
-        # Title & axis labels
-        title = chart_metadata["title"]
-        subtitle = f"{desc['pct_missing']*100:.1f}% of {desc['total']:,} values missing"
-
-        ax.set_title(title, pad=6, fontsize=12, fontweight="bold")
-        ax.text(
-            0.5, 1.02, subtitle,
-            ha="center", va="bottom",
-            transform=ax.transAxes,
-            fontsize=10, color="gray"
-        )
-
-        ax.set_xlabel(chart_metadata["xlabel"])     # "Status"
-        ax.set_ylabel(chart_metadata["ylabel"])     # "Percentage of Total"
         ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
 
         return fig, ax
