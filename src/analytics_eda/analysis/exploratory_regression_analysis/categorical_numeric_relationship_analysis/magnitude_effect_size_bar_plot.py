@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from scipy.stats import kruskal
 
 from ..utils.utils import resolve_cat_col, resolve_num_col, grouped_arrays, truncate_labels
@@ -32,7 +31,6 @@ class MagnitudeEffectSizeBarContext(PlotContext):
     title_template: str = "Effect Sizes for {name}{modifiers}"
     xlabel: str = "Effect Size"
     ylabel: str = "Magnitude (0–1)"
-    figsize: Tuple[int, int] = (8, 5)
 
     # display
     annotate: bool = True
@@ -152,17 +150,6 @@ class MagnitudeEffectSizeBarPlot(BasePlot):
             },
         }
 
-    def compute_inferential_frame(
-        self,
-        df: pd.DataFrame,
-        desc: Dict[str, Any],
-        *,
-        cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
-    ) -> Dict[str, Any]:
-        """No additional tests here; effect sizes are descriptive magnitudes."""
-        return {}
-
     def draw_frame(
         self,
         df: pd.DataFrame,
@@ -171,7 +158,10 @@ class MagnitudeEffectSizeBarPlot(BasePlot):
         chart_metadata: Dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
     ):
         """Render bar chart with η², ω², ε² and dashed reference lines."""
         ctx = self.ctx  # type: MagnitudeEffectSizeBarContext
@@ -179,7 +169,6 @@ class MagnitudeEffectSizeBarPlot(BasePlot):
         labels = ["η²", "ω²", "ε²"]
         values = [es["eta_squared"], es["omega_squared"], es["epsilon_squared"]]
 
-        fig, ax = plt.subplots(figsize=ctx.figsize)
         x = np.arange(len(labels))
 
         ax.bar(x, values, alpha=ctx.bar_alpha)
@@ -205,9 +194,5 @@ class MagnitudeEffectSizeBarPlot(BasePlot):
             for xi, yi in zip(x, values):
                 if np.isfinite(yi):
                     ax.text(xi, yi, f"{yi:.2f}", ha="center", va="bottom", fontsize="small")
-
-        ax.set_title(chart_metadata["title"])
-        ax.set_xlabel(ctx.xlabel)
-        ax.set_ylabel(ctx.ylabel)
 
         return fig, ax

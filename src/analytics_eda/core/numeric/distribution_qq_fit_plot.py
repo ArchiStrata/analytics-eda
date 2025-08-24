@@ -220,9 +220,6 @@ class DistributionQqFitPlot(NumericSeriesMixin, BasePlot):
 
         # If domain error (e.g., lognorm with nonpositive), just render title/labels and note error
         if "error" in desc:
-            ax.set_title(chart_metadata["title"])
-            ax.set_xlabel(chart_metadata["xlabel"])
-            ax.set_ylabel(chart_metadata["ylabel"])
             ax.text(
                 0.5, 0.5, f"Data domain error: {desc['error']}",
                 transform=ax.transAxes, ha="center", va="center",

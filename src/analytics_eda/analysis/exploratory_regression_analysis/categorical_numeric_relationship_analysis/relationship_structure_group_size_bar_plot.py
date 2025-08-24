@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 
 from ..utils.utils import resolve_cat_col, resolve_num_col, dropna_on, truncate_labels, postprocess_series, agg_sum
 
@@ -28,7 +27,6 @@ class RelationshipStructureGroupSizeBarContext(PlotContext):
     title_template: str = "Group Sizes for {name}{modifiers}"
     xlabel: str = "Group"
     ylabel: str = "Total"
-    figsize: Tuple[int, int] = (10, 6)
 
     # plot-specific knobs
     top_k: Optional[int] = None          # show top-k groups by count (None = all)
@@ -136,17 +134,6 @@ class RelationshipStructureGroupSizeBarPlot(BasePlot):
             "col": cat_col,
         }
 
-    def compute_inferential_frame(
-        self,
-        df: pd.DataFrame,
-        desc: Dict[str, Any],
-        *,
-        cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, Any]:
-        """No inferential stats for plot."""
-        return {}
-
     def draw_frame(
         self,
         df: pd.DataFrame,
@@ -155,16 +142,15 @@ class RelationshipStructureGroupSizeBarPlot(BasePlot):
         chart_metadata: Dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
     ):
         """Render the bar chart using the frame-derived payload."""
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
         x = np.arange(len(desc["labels"]))
         ax.bar(x, desc["counts"])
 
-        ax.set_title(chart_metadata["title"], pad=20)
-        ax.set_xlabel(self.ctx.xlabel or "Group")
-        ax.set_ylabel(self.ctx.ylabel or "Total")
         ax.set_xticks(x)
         ax.set_xticklabels(
             desc["labels"],

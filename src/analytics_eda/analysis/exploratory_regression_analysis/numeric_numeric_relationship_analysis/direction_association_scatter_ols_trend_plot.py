@@ -13,10 +13,9 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from scipy import stats as sps
 
 from ..utils.utils import resolve_num_col, dropna_on
@@ -30,7 +29,6 @@ class DirectionAssociationScatterOLSTrendContext(PlotContext):
     title_template: str = "Direction of Association (OLS Trend): {ylabel} vs {xlabel}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
-    figsize: Tuple[int, int] = (8, 6)
     alpha: float = 0.05  # for slope CI
 
 
@@ -223,19 +221,21 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
     def draw_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, float],
-        inf: Dict[str, float],
-        chart_metadata: Dict[str, str],
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
     ):
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         x = df[x_col].to_numpy()
         y = df[y_col].to_numpy()
 
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
         ax.scatter(x, y, alpha=0.6)
 
         if len(x) >= 2 and np.isfinite(desc.get("slope", np.nan)):
@@ -244,7 +244,4 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
             ys = m * xs + b
             ax.plot(xs, ys, linewidth=2)
 
-        ax.set_title(chart_metadata["title"], pad=20)
-        ax.set_xlabel(self.ctx.xlabel or x_col)
-        ax.set_ylabel(self.ctx.ylabel or y_col)
         return fig, ax

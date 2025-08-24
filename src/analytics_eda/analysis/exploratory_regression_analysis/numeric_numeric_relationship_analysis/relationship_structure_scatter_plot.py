@@ -13,10 +13,9 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 
 from ..utils.utils import resolve_num_col, dropna_on
 from ....core.utils.base_plot import PlotContext, BasePlot
@@ -28,7 +27,6 @@ class RelationshipStructureScatterContext(PlotContext):
     title_template: str = "Scatter Plot of {xlabel} vs {ylabel}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
-    figsize: Tuple[int, int] = (8, 6)
 
 # -------------- Plot ---------------------
 
@@ -118,17 +116,6 @@ class RelationshipStructureScatterPlot(BasePlot):
             "y_min": float(np.min(y)), "y_max": float(np.max(y)),
         }
 
-    def compute_inferential_frame(
-        self,
-        df: pd.DataFrame,
-        desc: Dict[str, Any],
-        *,
-        cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, Any]:
-        """No inferential stats for relationship structure scatter plot."""
-        return {}
-
     def draw_frame(
         self,
         df: pd.DataFrame,
@@ -137,17 +124,15 @@ class RelationshipStructureScatterPlot(BasePlot):
         chart_metadata: Dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
     ):
         """Render the plain scatter plot."""
         x_col = role_map["x"]
         y_col = role_map["y"]
 
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
         ax.scatter(df[x_col], df[y_col], alpha=0.6)
-
-        ax.set_title(chart_metadata["title"], pad=20)
-        ax.set_xlabel(self.ctx.xlabel or x_col)
-        ax.set_ylabel(self.ctx.ylabel or y_col)
 
         return fig, ax

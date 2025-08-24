@@ -13,10 +13,9 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from statsmodels.nonparametric.smoothers_lowess import lowess
 
 from ..utils.utils import resolve_num_col, dropna_on
@@ -30,7 +29,6 @@ class RelationshipStructureScatterLowessContext(PlotContext):
     title_template: str = "LOWESS smooth Scatter Plot of {xlabel} vs {ylabel}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
-    figsize: Tuple[int, int] = (8, 6)
 
     # LOWESS controls (mirrors statsmodels.lowess)
     frac: float = 0.3
@@ -105,17 +103,6 @@ class RelationshipStructureScatterLowessPlot(BasePlot):
             "y_max": float(np.max(y)) if len(y) else np.nan,
         }
 
-    def compute_inferential_frame(
-        self,
-        df: pd.DataFrame,
-        desc: Dict[str, Any],
-        *,
-        cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, Any]:
-        """No inferential stats for structure-stage LOWESS overlay."""
-        return {}
-
     def draw_frame(
         self,
         df: pd.DataFrame,
@@ -124,7 +111,10 @@ class RelationshipStructureScatterLowessPlot(BasePlot):
         chart_metadata: Dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
     ):
         """Render scatter + LOWESS smooth via statsmodels."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
@@ -132,8 +122,6 @@ class RelationshipStructureScatterLowessPlot(BasePlot):
 
         x = df[x_col].to_numpy()
         y = df[y_col].to_numpy()
-
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
 
         # scatter
         ax.scatter(x, y, alpha=0.6)
@@ -143,10 +131,5 @@ class RelationshipStructureScatterLowessPlot(BasePlot):
             smoothed = lowess(endog=y, exog=x, frac=self.ctx.frac, it=self.ctx.iters, return_sorted=True)
             if smoothed.size:
                 ax.plot(smoothed[:, 0], smoothed[:, 1], linewidth=2)
-
-        # labels & title
-        ax.set_title(chart_metadata["title"], pad=20)
-        ax.set_xlabel(self.ctx.xlabel or x_col)
-        ax.set_ylabel(self.ctx.ylabel or y_col)
 
         return fig, ax

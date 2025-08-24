@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from scipy.stats import bartlett, levene
 
 from ..utils.utils import (
@@ -31,7 +30,6 @@ class RelationshipStructureVarianceHomogeneityContext(PlotContext):
     title_template: str = "Variance Homogeneity for {name}{modifiers}"
     xlabel: str = "Group"
     ylabel: str = "Value"
-    figsize: Tuple[int, int] = (10, 6)
 
     # drawing knobs
     rotate_xticks: int = 45
@@ -172,7 +170,10 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
         chart_metadata: Dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
     ):
         """Violin + box for all; add mean±SD error bars if groups ≤ threshold."""
         ctx = self.ctx  # type: RelationshipStructureVarianceHomogeneityContext
@@ -182,12 +183,7 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
         means, stds = desc["means"], desc["stds"]
         n_groups = desc["n_groups"]
 
-        fig, ax = plt.subplots(figsize=ctx.figsize)
-
         if n_groups == 0:
-            ax.set_title(chart_metadata["title"])
-            ax.set_xlabel(ctx.xlabel)
-            ax.set_ylabel(ctx.ylabel)
             return fig, ax
 
         x = np.arange(n_groups)
@@ -225,9 +221,6 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
             )
 
         # Axes cosmetics
-        ax.set_title(chart_metadata["title"], pad=16)
-        ax.set_xlabel(ctx.xlabel or "Group")
-        ax.set_ylabel(ctx.ylabel or "Value")
         ax.set_xticks(x)
         ax.set_xticklabels(
             labels,

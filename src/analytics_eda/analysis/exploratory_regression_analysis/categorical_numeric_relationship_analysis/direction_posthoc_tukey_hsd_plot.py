@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 from ..utils.utils import resolve_cat_col, resolve_num_col, truncate_labels
@@ -29,7 +28,6 @@ class DirectionPosthocTukeyHsdContext(PlotContext):
     title_template: str = "Post-hoc Mean Differences (Tukey HSD) for {name}{modifiers}"
     xlabel: str = "Mean difference"
     ylabel: str = "Comparison"
-    figsize: Tuple[int, int] = (10, 6)
 
     alpha: float = 0.05
     max_label_len: Optional[int] = 30
@@ -176,18 +174,17 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
         chart_metadata: Dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
     ):
         """Horizontal mean-difference ± CI per pair; reference line at 0; de-emphasize non-significant."""
         ctx = self.ctx  # type: DirectionPosthocTukeyHsdContext
 
         pairs: List[Dict[str, Any]] = desc["pairs"]
-        fig, ax = plt.subplots(figsize=ctx.figsize)
 
         if not pairs:
-            ax.set_title(chart_metadata["title"])
-            ax.set_xlabel(ctx.xlabel)
-            ax.set_ylabel(ctx.ylabel)
             ax.axvline(0.0, linewidth=1, linestyle="--", alpha=0.5)
             return fig, ax
 
@@ -211,12 +208,7 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
         ax.axvline(0.0, linewidth=1, linestyle="--", alpha=0.6)
 
         # Axes cosmetics
-        ax.set_title(chart_metadata["title"], pad=14)
-        ax.set_xlabel(ctx.xlabel)
         ax.set_yticks(y_pos)
         ax.set_yticklabels(y_labels)
-        ax.set_ylabel(ctx.ylabel)
 
-        # Tight layout for labels
-        fig.tight_layout()
         return fig, ax

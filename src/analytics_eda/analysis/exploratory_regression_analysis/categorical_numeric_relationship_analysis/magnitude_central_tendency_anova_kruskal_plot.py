@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 import math
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from scipy.stats import f_oneway, kruskal
 
 from ..utils.utils import (
@@ -35,7 +34,6 @@ class MagnitudeCentralTendencyAnovaKruskalContext(PlotContext):
     title_template: str = "Magnitude of Differences for {name}{modifiers}"
     xlabel: str = "Group"
     ylabel: str = "Value"
-    figsize: Tuple[int, int] = (10, 6)
 
     # visual emphasis
     bg_alpha: float = 0.18          # background violins/boxes alpha (de-emphasize)
@@ -224,7 +222,10 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
         chart_metadata: Dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
     ):
         """Background violins/boxes; emphasize selected center + CI; subtitle with global tests."""
         ctx = self.ctx  # type: MagnitudeCentralTendencyAnovaKruskalContext
@@ -233,12 +234,7 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
         arrays: List[np.ndarray] = desc["_arrays"]
         n_groups = desc["n_groups"]
 
-        fig, ax = plt.subplots(figsize=ctx.figsize)
-
         if n_groups == 0:
-            ax.set_title(chart_metadata["title"])
-            ax.set_xlabel(ctx.xlabel)
-            ax.set_ylabel(ctx.ylabel)
             return fig, ax
 
         x = np.arange(n_groups)
@@ -285,9 +281,6 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
         ax.errorbar(x, centers, yerr=yerr, **marker_kwargs)
 
         # --- Titles / labels ---
-        ax.set_title(chart_metadata["title"], pad=16)
-        ax.set_xlabel(ctx.xlabel or "Group")
-        ax.set_ylabel(ctx.ylabel or "Value")
         ax.set_xticks(x)
         ax.set_xticklabels(
             labels,

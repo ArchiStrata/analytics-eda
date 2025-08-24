@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from scipy import stats as sps
 
 from ..utils.utils import resolve_num_col, dropna_on
@@ -30,7 +29,6 @@ class MagnitudeAssociationResidualContext(PlotContext):
     title_template: str = "Residuals vs Fitted: {ylabel} on {xlabel}{modifiers}"
     xlabel: str = "Fitted values"
     ylabel: str = "Residuals"
-    figsize: Tuple[int, int] = (8, 6)
     alpha: float = 0.05  # for tests using significance thresholds
 
 
@@ -245,18 +243,19 @@ class MagnitudeAssociationResidualPlot(BasePlot):
     def draw_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, float],
-        inf: Dict[str, float],
-        chart_metadata: Dict[str, str],
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
     ):
         # Pull fitted/residuals from cache (computed in descriptive step)
         fitted = (getattr(self, "_cache", {}) or {}).get("fitted", None)
         resid = (getattr(self, "_cache", {}) or {}).get("residuals", None)
-
-        fig, ax = plt.subplots(figsize=self.ctx.figsize)
 
         if fitted is None or resid is None:
             # Fallback: draw empty axes with zero line
@@ -265,7 +264,4 @@ class MagnitudeAssociationResidualPlot(BasePlot):
             ax.scatter(fitted, resid, alpha=0.6)
             ax.axhline(0.0, linestyle="--", linewidth=1)
 
-        ax.set_title(chart_metadata["title"], pad=20)
-        ax.set_xlabel(self.ctx.xlabel or "Fitted values")
-        ax.set_ylabel(self.ctx.ylabel or "Residuals")
         return fig, ax

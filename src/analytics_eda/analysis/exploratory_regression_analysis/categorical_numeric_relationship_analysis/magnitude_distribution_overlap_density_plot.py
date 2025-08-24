@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, List
+from typing import Any, Dict, Mapping, Optional, Sequence, List
 import math
 import numpy as np
 import pandas as pd
@@ -29,7 +29,6 @@ class MagnitudeDistributionOverlapDensityContext(PlotContext):
     title_template: str = "Distribution Shape & Overlap for {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "Density"
-    figsize: Tuple[int, int] = (10, 6)
 
     # plot-specific knobs
     bw: Optional[float | str] = "scott"   # "scott", "silverman", or a float bandwidth
@@ -191,17 +190,6 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
             "facet_order": facet_order,
         }
 
-    def compute_inferential_frame(
-        self,
-        df: pd.DataFrame,
-        desc: Dict[str, Any],
-        *,
-        cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, Any]:
-        """No formal hypothesis tests here; metrics are reported in descriptive_stats."""
-        return {}
-
     def draw_frame(
         self,
         df: pd.DataFrame,
@@ -210,7 +198,10 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
         chart_metadata: Dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
     ):
         """Overlay ≤4 groups; facet 5+ groups. All share common x/y limits."""
         ctx = self.ctx  # type: MagnitudeDistributionOverlapDensityContext
@@ -222,10 +213,6 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
 
         if n_groups == 0:
             # empty figure
-            fig, ax = plt.subplots(figsize=ctx.figsize)
-            ax.set_title(chart_metadata["title"])
-            ax.set_xlabel(ctx.xlabel)
-            ax.set_ylabel(ctx.ylabel)
             return fig, ax
 
         # Common limits
@@ -234,13 +221,9 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
 
         if n_groups <= 4:
             # Overlay: use raw for lookup, display for legend
-            fig, ax = plt.subplots(figsize=ctx.figsize)
             for lab_raw, lab_disp in zip(labels_raw, labels):
                 ax.plot(grid, kde[str(lab_raw)], label=lab_disp,
                         alpha=ctx.alpha, linewidth=ctx.linewidth)
-            ax.set_title(chart_metadata["title"])
-            ax.set_xlabel(ctx.xlabel)
-            ax.set_ylabel(ctx.ylabel)
             ax.set_xlim(grid[0], grid[-1])
             ax.set_ylim(ymin, ymax)
             ax.legend(title="Group", loc="best", frameon=False)
@@ -279,7 +262,6 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
             ax.axis("off")
 
         fig.suptitle(chart_metadata["title"], y=0.98)
-        fig.tight_layout(rect=[0, 0, 1, 0.96])
         return fig, axes[0]
 
     # ---------- Helpers ----------
