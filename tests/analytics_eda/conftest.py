@@ -35,6 +35,7 @@ def assert_plot_metadata():
         assert "chart_metadata" in payload and "descriptive_stats" in payload, \
             "payload must contain 'chart_metadata' and 'descriptive_stats'"
 
+        # TODO: support saving payload as actual JSON to support diagnosing issues.
         cm = payload["chart_metadata"]
         ds = payload["descriptive_stats"]
 
@@ -87,6 +88,12 @@ def assert_plot_metadata():
         _assert_mapping(cm, expect.get("chart_metadata", {}), "chart_metadata")
         _assert_mapping(ds, expect.get("descriptive_stats", {}), "descriptive_stats")
 
+        # TODO: update to support _assert_mapping on BasePlot _pipeline_execute return
+        # * descriptive_stats
+        # * inferential_stats
+        # * draft_descriptive_findings
+        # * draft_inferential_findings
+        #* chart_metadata
         if "inferential_stats" in expect:
             assert "inferential_stats" in payload, "payload must contain 'inferential_stats'"
             inferential_stats = payload["inferential_stats"]
