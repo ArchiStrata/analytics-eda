@@ -23,13 +23,23 @@ from .validate_categorical_named_series import CategoricalSeriesMixin
 @dataclass
 class BalanceChiSquareUniformContext(PlotContext):
     title_template: str = "Chi-Square Goodness-of-Fit: {name}{modifiers}"
-    xlabel: str = "Value"
-    ylabel: str = "Frequency"
+    xlabel: str = "Category"
+    ylabel: str = "Count (Observed vs Expected)"
     alpha: float = 0.05
 
 class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
     """
-    Chi-square goodness-of-fit vs. uniform for a categorical series.
+    Tests whether categorical frequencies deviate from a uniform distribution.
+
+    Why this matters:
+    - Uniform balance is often an assumption or target (e.g., stratified samples, equitable allocations).
+      Large deviations can signal sampling bias, pipeline errors, or drift.
+
+    What this plot does:
+    - Computes observed counts by category and the uniform expected counts.
+    - Runs a chi-square goodness-of-fit test (H₀: observed ~ Uniform).
+    - Visualizes observed vs. expected counts side-by-side and summarizes the test result.
+
     Returns BasePlot.run() schema:
       {
         "descriptive_stats": {"total", "k", "categories", "observed", "expected"},
@@ -40,6 +50,11 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
         "chart_metadata": {...}
       }
     """
+    def plot_semantic_version(self) -> str:
+        """
+        Return the semantic version of this plot implementation.
+        """
+        return "1.0.0"
 
     def default_descriptive(self) -> Dict[str, Any]:
         return {"total": 0, "k": 0, "categories": [], "observed": [], "expected": []}
@@ -59,22 +74,41 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
             "observed": observed,
             "expected": expected,
         }
+    
+    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+        if not desc or desc.get("k", 0) == 0 or desc.get("total", 0) == 0:
+            return {}
+        cats = desc["categories"]
+        obs = desc["observed"]
+        exp = desc["expected"]
+        diffs = [o - e for o, e in zip(obs, exp)]
+        top_idx = int(max(range(len(diffs)), key=lambda i: abs(diffs[i])))
+        return {
+            "summary": f"Largest deviation: {cats[top_idx]} (obs={obs[top_idx]:,}, exp={exp[top_idx]:.1f}).",
+            "coverage": f"Categories={desc['k']}, Total={desc['total']:,}."
+        }
 
     def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
-        inf: Dict[str, Any] = {}
-        k = desc["k"]
-        if k == 0:
-            return inf
+        k = desc.get("k", 0)
+        total = desc.get("total", 0)
+        if k == 0 or total == 0:
+            return {}
 
         warning = None
         expected = desc["expected"]
+        if any(e <= 0 for e in expected):
+            return {"chi2_gof_null_uniform": {"warning": "Expected counts are zero; test not computed."}}
+
         if any(e < 5 for e in expected):
             warning = "Some expected counts are below 5; chi-square test results may not be reliable."
 
         chi2_stat, p_val = chisquare(f_obs=desc["observed"], f_exp=expected)
 
+        df = max(desc.get("k", 0) - 1, 0)
+
         res = {
             "chi2_gof_null_uniform": {
+                "df": df,
                 "statistic": float(chi2_stat),
                 "p_value": float(p_val),
                 "alpha": float(getattr(self.ctx, "alpha", 0.05)),
@@ -84,32 +118,35 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
         if warning:
             res["chi2_gof_null_uniform"]["warning"] = warning
         return res
+    
+    def draft_inferential_findings(self, inf: Dict[str, Any], desc: Dict[str, Any]) -> Dict[str, Any]:
+        res = (inf or {}).get("chi2_gof_null_uniform")
+        if not res:
+            return {}
+        decision = "Reject H₀" if res["reject"] else "Fail to reject H₀"
+        return {
+            "hypothesis_tests": f"Uniform GOF: {decision} at α={res['alpha']:.2f} (p={res['p_value']:.3f}, χ²={res['statistic']:.2f}, df={res['df']})."
+        }
 
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
         cats = desc["categories"]
-        x = range(len(cats))
-        width = 0.35
+        y = range(len(cats))
+        height = 0.38
 
-        ax.bar([i - width / 2 for i in x], desc["observed"], width, label="Observed")
-        ax.bar([i + width / 2 for i in x], desc["expected"], width, label="Expected")
+        ax.barh([i + height/2 for i in y], desc["observed"], height, label="Observed", color=palette[0])
+        ax.barh([i - height/2 for i in y], desc["expected"], height, label="Expected", color=self.neutral_grey())
 
-        ax.set_xticks(list(x))
-        ax.set_xticklabels(cats, rotation=45, ha="right")
+        ax.set_yticks(list(y))
+        ax.set_yticklabels(cats)
+        ax.invert_yaxis()  # top-most first
         ax.legend()
 
         # annotation
         res = inf.get("chi2_gof_null_uniform")
         if res:
-            ann = "\n".join((
-                rf"$\chi^2$ = {res['statistic']:.2f}",
-                rf"$p$ = {res['p_value']:.3f}",
-                rf"$\alpha$ = {res['alpha']:.2f}",
-                "Decision: " + ("Reject H₀" if res["reject"] else "Fail to Reject H₀"),
-            ))
-            ax.text(
-                0.95, 0.95, ann, transform=ax.transAxes,
-                va="top", ha="right",
-                bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+            self.queue_subtitle_below_title(
+                ax,
+                f"Uniform GOF: {'Reject' if res['reject'] else 'Fail to reject'} at α={res['alpha']:.2f} (p={res['p_value']:.3f})"
             )
 
         return fig, ax

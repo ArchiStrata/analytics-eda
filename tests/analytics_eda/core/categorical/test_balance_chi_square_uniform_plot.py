@@ -47,8 +47,8 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
                 "inferential_stats": {},
                 "chart_metadata": {
                     "file_name": None,
-                    "xlabel": "Value",
-                    "ylabel": "Frequency"
+                    "xlabel": "Category",
+                    "ylabel": "Count (Observed vs Expected)"
                 }
             }
         ),
@@ -118,7 +118,7 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
         "custom_labels"
     ]
 )
-def test_plot_chi2_gof_uniform_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_balance_chi_square_uniform_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
     if "file_name" in kwargs:
         kwargs = {**kwargs, "save_path": tmp_path}
