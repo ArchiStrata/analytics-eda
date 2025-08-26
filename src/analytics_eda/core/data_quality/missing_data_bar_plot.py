@@ -13,23 +13,24 @@
 # limitations under the License.
 from dataclasses import dataclass
 from typing import Dict, Any
-import numpy as np
 import pandas as pd
 
-from ..utils.base_plot import BasePlot, PlotContext
+from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartMixin, SeriesBarChartContext
+
+from ..utils.base_plot import BasePlot
 from ..utils.named_series_mixin import NamedSeriesMixin
 
 
 @dataclass
-class MissingDataBarContext(PlotContext):
+class MissingDataBarContext(SeriesBarChartContext):
     title_template: str = "Missing Data for {name}{modifiers}"
     xlabel: str = "Status"
     ylabel: str = "Percentage of Total"
-    format_value_axis_as_percent: bool = True
-    show_count_in_label: bool = False
+    show_subtitle: bool = True
+    bar_sort_descending: bool = True
 
 
-class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
+class MissingDataBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
     """
     Shows the share of missing values to quickly assess data quality risk.
 
@@ -45,11 +46,7 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
         "descriptive_stats": {
           "total": int,
           "missing": int,
-          "pct_missing": float,
-          # payload for draw:
-          "labels": ["Present","Missing"],
-          "counts": np.ndarray[int],
-          "pcts": np.ndarray[float]
+          "pct_missing": float
         },
         "inferential_stats": {},
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name","version"}
@@ -61,83 +58,25 @@ class MissingDataBarPlot(NamedSeriesMixin, BasePlot):
         """
         return "1.0.0"
 
-    # Defaults when empty
-    def default_descriptive(self) -> Dict[str, Any]:
-        return {
-            "total": 0,
-            "missing": 0,
-            "pct_missing": 0.0,
-            "labels": ["Present", "Missing"],
-            "counts": np.array([0, 0], dtype=int),
-            "pcts": np.array([0.0, 0.0], dtype=float),
-        }
-
-    # Compute descriptive stats (+ payload for drawing)
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
-        # counts Present/Missing
-        status = s.isna().map({False: "Present", True: "Missing"})
-        counts = (
-            status.value_counts()
-            .reindex(["Missing", "Present"])
-            .fillna(0)
-            .astype(int)
+        counts = s.isna().map({False: "Present", True: "Missing"}).value_counts().to_dict()
+        # Ensure stable order presence
+        counts = {"Present": counts.get("Present", 0), "Missing": counts.get("Missing", 0)}
+
+        # Build reporting bars + cache draw arrays
+        desc = self.build_series_bar_desc(
+            s,
+            counts,
+            denominator_key="pct_of_total"
         )
 
-        total = int(counts.sum())
-        missing = int(counts.loc["Missing"])
-        pct_missing = float(missing / total) if total else 0.0
-
-        pcts = (counts / total).to_numpy(dtype=float) if total else np.array([0.0, 0.0], dtype=float)
-
-        return {
-            "total": total,
-            "missing": missing,
-            "pct_missing": pct_missing,
-            "labels": counts.index.tolist(),
-            "counts": counts.to_numpy(dtype=int),
-            "pcts": pcts,
-        }
+        return desc
     
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
-        if not desc or desc.get("total", 0) == 0:
-            return {}
-        pct = desc.get("pct_missing", 0.0) * 100
-        return {
-            "summary": f"{pct:.1f}% missing ({desc['missing']:,} of {desc['total']:,}); assess impact and plan handling."
-        }
-
-    # No inferential stats
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        # TODO: refine descriptive findings
         return {}
-
-    # Draw chart
-    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
-
-        # Subtitle
-        subtitle = f"{desc['pct_missing']*100:.1f}% of {desc['total']:,} values missing"
-        self.queue_subtitle_below_title(ax, subtitle)
-
-        labels = desc["labels"]
-        pcts = desc["pcts"]
-        counts = desc["counts"]
-
-        # Color scheme: Missing = palette[0], Present = grey
-        missing_color = palette[0]
-        present_color = self.neutral_grey()
-        colors = [missing_color if lbl == "Missing" else present_color for lbl in labels]
-
-        bars = ax.bar(labels, pcts, color=colors)
-
-        # Always show percent; optionally append count
-        bar_labels = [f"{pct*100:.1f}%{f' (n={c:,})' if self.ctx.show_count_in_label else ''}"
-            for pct, c in zip(pcts, counts)]
-
-        ax.bar_label(
-            bars,
-            labels=bar_labels,
-            label_type="edge",
-            padding=3,
-            fontsize="small"
-        )
-
-        return fig, ax
+    
+    def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        if not desc or desc.get("total", 0) == 0:
+            return ""
+        return f"{desc['bars']['Missing']['pct_of_total']*100:.1f}% of {desc['total']:,} values missing"

@@ -34,12 +34,15 @@ class PlotContext:
     fit_desc: Desc = None
     extra_desc: Desc = None
     title_fmt: Optional[Dict[str, Any]] = None
-
     title_template: str = "{name}{modifiers}"
+    show_subtitle: bool = False   # auto-draw a subtitle if provided by the plot
+
     is_orientation_vertical: bool = True   # True = vertical bars/values on Y; False = horizontal
     xlabel: str = ""
     ylabel: str = ""
     data_source: Optional[str] = None
+
+    show_footer_summary: bool = False
 
     figsize: Tuple[int, int] = (14, 9)
     dpi: int = 200
@@ -59,6 +62,7 @@ class BasePlot(ABC):
     def __init__(self, ctx: PlotContext):
         self.ctx = ctx
         self._subtitle_queue: list[tuple] = []
+        self._draw_cache: dict[str, dict[str, Any]] = {}   # per-run cache (cleared each run)
 
     def default_descriptive(self) -> Dict[str, Any]:
         return {}
@@ -225,6 +229,30 @@ class BasePlot(ABC):
         Default: {}
         """
         return {}
+    
+    def subtitle_text(
+        self,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+    ) -> str:
+        """
+        Optional override: return a short subtitle derived from descriptive/inferential
+        stats. Return ''/None to suppress.
+        """
+        return ""
+    
+    def footer_summary_text(
+        self,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+    ) -> str:
+        """
+        Optional override: return a short footer summary derived from descriptive/inferential stats.
+        Return ''/None to suppress.
+        """
+        return ""
 
     def metadata_overrides(
         self,
@@ -505,6 +533,12 @@ class BasePlot(ABC):
         
         fig, ax, palette = self._new_figure_and_palette()
         self._apply_metadata_to_axes(ax, chart_md)
+
+        if getattr(self.ctx, "show_subtitle", True):
+            sub = self.subtitle_text(desc, inf, chart_md) or ""
+            if sub.strip():
+                self.queue_subtitle_below_title(ax, sub)
+
         fig, ax = draw_fn(desc, inf, chart_md, fig, ax, palette)
 
         # Auto headroom for annotations (bars/points), if enabled
@@ -522,8 +556,23 @@ class BasePlot(ABC):
             else:
                 ax.xaxis.set_major_formatter(PercentFormatter(xmax=1.0))
 
+        if getattr(self.ctx, "show_footer_summary", False):
+            ft = self.footer_summary_text(desc, inf, chart_md) or ""
+            if ft.strip():
+                fig.text(
+                    0.99,
+                    0.01,
+                    ft,
+                    ha="right",
+                    va="bottom",
+                    fontsize="small",
+                    color="gray"
+                )
+
         chart_md["file_name"] = self._finalize_figure(fig, chart_md)
 
+        # reset per-run cache
+        self._draw_clear()
         return {
             "descriptive_stats": desc,
             "inferential_stats": inf,
@@ -531,3 +580,16 @@ class BasePlot(ABC):
             "draft_inferential_findings": self.draft_inferential_findings(inf, desc) or {},
             "chart_metadata": chart_md,
         }
+
+    # --- draw cache API ---
+    def _draw_set(self, namespace: str, key: str, value: Any) -> None:
+        self._draw_cache.setdefault(namespace, {})[key] = value
+
+    def _draw_get(self, namespace: str, key: str, default: Any = None) -> Any:
+        return self._draw_cache.get(namespace, {}).get(key, default)
+
+    def _draw_clear(self, namespace: Optional[str] = None) -> None:
+        if namespace is None:
+            self._draw_cache.clear()
+        else:
+            self._draw_cache.pop(namespace, None)

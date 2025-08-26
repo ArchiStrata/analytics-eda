@@ -13,22 +13,23 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
             lambda: pd.Series([], dtype="float64", name="empty_col"),
             {},
             {
-            "chart_metadata": {
-                "title": "Missing Data for empty_col",
-                "xlabel": "Status",
-                "ylabel": "Percentage of Total",
-                "data_source": None,
-                "version": "1.0.0",
-                "file_name": None,
-            },
-            "descriptive_stats": {
-                "total": 0,
-                "missing": 0,
-                "pct_missing": 0.0,
-            },
-            "inferential_stats": {},
-            "draft_inferential_findings": {},
-            "draft_descriptive_findings": {},  # empty base ⇒ no finding
+                "chart_metadata": {
+                    "title": "Missing Data for empty_col",
+                    "xlabel": "Status",
+                    "ylabel": "Percentage of Total",
+                    "data_source": None,
+                    "version": "1.0.0",
+                    "file_name": None,
+                },
+                "descriptive_stats": {
+                    "total": 0,
+                    "total_nonnull": 0,
+                    "total_count": 0,
+                    "bars": {},
+                },
+                "inferential_stats": {},
+                "draft_inferential_findings": {},
+                "draft_descriptive_findings": {},  # empty base ⇒ no finding
             },
         ),
 
@@ -37,11 +38,20 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
             lambda: pd.Series([1, 2, 3], dtype="float64", name="no_nans"),
             {"file_name": "missing.png"},
             {
-            "descriptive_stats": {"total": 3, "missing": 0, "pct_missing": 0.0},
-            "inferential_stats": {},
-            "draft_inferential_findings": {},
-            "draft_descriptive_findings": lambda d: "summary" in d and "0.0% missing" in d["summary"],
-            "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
+                "descriptive_stats": {
+                    "total": 3,
+                    "total_nonnull": 3,
+                    "total_count": 3,
+                    "denominator_key": "pct_of_total",
+                    "bars": {
+                        "Present": {"count": 3, "pct_of_total": 1.0},
+                        "Missing": {"count": 0, "pct_of_total": 0.0},
+                    },
+                },
+                "inferential_stats": {},
+                "draft_inferential_findings": {},
+                "draft_descriptive_findings": lambda d: "summary" in d and "0.0% missing" in d["summary"],
+                "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
             },
         ),
 
@@ -50,24 +60,42 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
             lambda: pd.Series([1, np.nan, 2, np.nan], name="some_nans"),
             {"file_name": "missing.png"},
             {
-            "descriptive_stats": {"total": 4, "missing": 2, "pct_missing": 0.5},
-            "inferential_stats": {},
-            "draft_inferential_findings": {},
-            "draft_descriptive_findings": lambda d: "summary" in d and "50.0% missing" in d["summary"],
-            "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
+                "descriptive_stats": {
+                    "total": 4,
+                    "total_nonnull": 2,
+                    "total_count": 4,
+                    "denominator_key": "pct_of_total",
+                    "bars": {
+                        "Present": {"count": 2, "pct_of_total": 0.5},
+                        "Missing": {"count": 2, "pct_of_total": 0.5},
+                    },
+                },
+                "inferential_stats": {},
+                "draft_inferential_findings": {},
+                "draft_descriptive_findings": lambda d: "summary" in d and "50.0% missing" in d["summary"],
+                "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
             },
         ),
 
         # 3) All missing values
         (
             lambda: pd.Series([np.nan, np.nan, np.nan], name="all_nans"),
-            {"file_name": "missing.png", "show_count_in_label": True},
+            {"file_name": "missing.png", "show_count_in_bar_label": True},
             {
-            "descriptive_stats": {"total": 3, "missing": 3, "pct_missing": 1.0},
-            "inferential_stats": {},
-            "draft_inferential_findings": {},
-            "draft_descriptive_findings": lambda d: "summary" in d and "100.0% missing" in d["summary"],
-            "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
+                "descriptive_stats": {
+                    "total": 3,
+                    "total_nonnull": 0,
+                    "total_count": 3,
+                    "denominator_key": "pct_of_total",
+                    "bars": {
+                        "Present": {"count": 0, "pct_of_total": 0.0},
+                        "Missing": {"count": 3, "pct_of_total": 1.0},
+                    },
+                },
+                "inferential_stats": {},
+                "draft_inferential_findings": {},
+                "draft_descriptive_findings": lambda d: "summary" in d and "100.0% missing" in d["summary"],
+                "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
             },
         ),
 

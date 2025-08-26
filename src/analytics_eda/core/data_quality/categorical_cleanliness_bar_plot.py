@@ -13,18 +13,19 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, List, Iterable
+from typing import Dict, Any, Optional, Iterable
 import re
 
-import numpy as np
 import pandas as pd
 
-from ..utils.base_plot import BasePlot, PlotContext
+from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+
+from ..utils.base_plot import BasePlot
 from ..utils.named_series_mixin import NamedSeriesMixin
 
 
 @dataclass
-class CategoricalCleanlinessBarContext(PlotContext):
+class CategoricalCleanlinessBarContext(SeriesBarChartContext):
     """
     Categorical cleanliness summary: counts (with percentages) of rows exhibiting:
       - Leading/trailing whitespace
@@ -44,10 +45,8 @@ class CategoricalCleanlinessBarContext(PlotContext):
     xlabel: str = "Percent of non‑null"
     ylabel: str = "Issue Type"
     is_orientation_vertical: bool = False
-    format_value_axis_as_percent: bool = True
 
-    # labeling knobs
-    show_count_in_label: bool = False
+    show_footer_summary: bool = True
 
     # Cleanliness rules
     # Regex of allowed characters. Default allows letters, digits, whitespace, common punctuation: -_/.,&()'
@@ -62,7 +61,7 @@ class CategoricalCleanlinessBarContext(PlotContext):
     treat_empty_as_invalid: bool = True
 
 
-class CategoricalCleanlinessBarPlot(NamedSeriesMixin, BasePlot):
+class CategoricalCleanlinessBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
     """
     Visual audit of categorical label cleanliness.
 
@@ -88,16 +87,8 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, BasePlot):
         "descriptive_stats": {
           "total": int,                 # total observations (incl. NA)
           "total_nonnull": int,         # non-null observations used as the % base
-          "issue_labels": List[str],    # issue names in plotted order
-          "issue_counts": List[int],    # counts per issue (over non-null)
-          "issue_pcts": List[float],    # percentages per issue (of total_nonnull)
-          "n_whitespace": int,
-          "n_mixed_case": int,
-          "n_nonstandard_chars": int,
-          "n_invalid_category": int
-        },
-        "inferential_stats": {},
-        "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
+          "bars": {}
+        }
       }
 
     Notes
@@ -109,20 +100,6 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, BasePlot):
         Return the semantic version of this plot implementation.
         """
         return "1.0.0"
-
-    # ---- defaults when empty ----
-    def default_descriptive(self) -> Dict[str, Any]:
-        return {
-            "total": 0,
-            "total_nonnull": 0,
-            "issue_labels": ["Leading/Trailing Whitespace", "Mixed Casing", "Non-Standard Characters", "Invalid Category"],
-            "issue_counts": [0, 0, 0, 0],
-            "issue_pcts": [0.0, 0.0, 0.0, 0.0],
-            "n_whitespace": 0,
-            "n_mixed_case": 0,
-            "n_nonstandard_chars": 0,
-            "n_invalid_category": 0,
-        }
 
     # ---- compute ----
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
@@ -196,121 +173,40 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, BasePlot):
         n_ns = int(nonstandard_char_mask.sum())
         n_iv = int(invalid_category_mask.sum())
 
-        counts = [n_ws, n_mc, n_ns, n_iv]
-        order = np.argsort(counts)[::-1]
-
-        labels_ordered = np.array(
-            ["Leading/Trailing Whitespace", "Mixed Casing", "Non-Standard Characters", "Invalid Category"],
-            dtype=object
-        )[order]
-        counts_ordered = np.array(counts, dtype=int)[order]
-        pcts_ordered = (counts_ordered / max(1, total_nonnull)).astype(float)
-
-        desc = {
-            "params": {
-                "show_count_in_label": bool(self.ctx.show_count_in_label),
-                "allowed_char_pattern": self.ctx.allowed_char_pattern,
-                "allowed_categories_count": (len(self.ctx.allowed_categories) 
-                                            if self.ctx.allowed_categories is not None else 0),
-                "case_sensitive_allowed": bool(self.ctx.case_sensitive_allowed),
-                "treat_empty_as_invalid": bool(self.ctx.treat_empty_as_invalid),
-            },
-            "total": total,
-            "total_nonnull": total_nonnull,
-            "issue_labels": labels_ordered.tolist(),
-            "issue_counts": counts_ordered.tolist(),
-            "issue_pcts": pcts_ordered.tolist(),
-            "n_whitespace": n_ws,
-            "n_mixed_case": n_mc,
-            "n_nonstandard_chars": n_ns,
-            "n_invalid_category": n_iv,
+        counts_dict = {
+            "Leading/Trailing Whitespace": n_ws,
+            "Mixed Casing": n_mc,
+            "Non-Standard Characters": n_ns,
+            "Invalid Category": n_iv,
         }
 
-        # Skip plotting if nothing to show
-        if counts_ordered.sum() == 0:
-            desc["skip_plot"] = True
-            desc["error"] = "no cleanliness issues detected"
+        # Build bar payload (percent-of-nonnull), then cache for draw
+        extra_params = {
+            "allowed_char_pattern": self.ctx.allowed_char_pattern,
+            "allowed_categories_count": (len(self.ctx.allowed_categories)
+                                            if self.ctx.allowed_categories is not None else 0),
+            "case_sensitive_allowed": bool(self.ctx.case_sensitive_allowed),
+            "treat_empty_as_invalid": bool(self.ctx.treat_empty_as_invalid)
+        }
+        desc = self.build_series_bar_desc(s, counts_dict, denominator_key="pct_of_nonnull", extra_params=extra_params)
 
         return desc
-    
+
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
-        # Guardrails
-        if not desc or desc.get("total_nonnull", 0) == 0:
-            return {}
-
-        labels = desc.get("issue_labels", [])
-        pcts   = desc.get("issue_pcts", [])
-        counts = desc.get("issue_counts", [])
-        if not labels or not pcts or not counts:
-            return {}
-
-        # Build ordered tuples and keep only non-zero issues
-        ordered = [(lab, float(pct), int(cnt)) for lab, pct, cnt in zip(labels, pcts, counts)]
-        nonzero = [(lab, pct, cnt) for (lab, pct, cnt) in ordered if cnt > 0]
-
-        coverage = f"Base = {desc['total_nonnull']:,} non‑null rows."
-
-        # Case 1: no issues at all
-        if not nonzero:
-            return {
-                "summary": "No cleanliness issues detected.",
-                "coverage": coverage,
-                "data_quality": "Issues can co‑occur; percents use the non‑null base."
-            }
-
-        # Case 2: exactly one issue
-        if len(nonzero) == 1:
-            lab, pct, cnt = nonzero[0]
-            return {
-                "summary": f"Only issue: {lab} ({pct*100:.1f}% of non‑null; n={cnt:,}).",
-                "coverage": coverage,
-                "data_quality": "Issues can co‑occur; percents use the non‑null base."
-            }
-
-        # Case 3: two or more issues → report top two (already sorted desc)
-        (lab1, pct1, cnt1), (lab2, pct2, cnt2) = nonzero[0], nonzero[1]
-        return {
-            "summary": f"Top issue: {lab1} ({pct1*100:.1f}% of non‑null; n={cnt1:,}).",
-            "secondary": f"Second: {lab2} ({pct2*100:.1f}% of non‑null; n={cnt2:,}).",
-            "coverage": coverage,
-            "data_quality": "Issues can co‑occur; percents use the non‑null base."
-        }
-
-    # ---- inferential (none) ----
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        # TODO: refine descriptive findings
         return {}
-
-    # ---- draw ----
-    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
-        labels: List[str] = desc["issue_labels"]
-        counts: List[int] = desc["issue_counts"]
-        pcts: List[float] = desc["issue_pcts"]
-
-        # Horizontal bar chart
-        bars = ax.barh(labels, pcts, color=self.neutral_grey())  # start all gray
-
-        # highlight the top issue (first bar in sorted order)
-        if len(bars) > 0:
-            bars[0].set_color(palette[0])
-
-        # Always show percent; optionally append count
-        bar_labels = [f"{pct*100:.1f}%{f' (n={c:,})' if self.ctx.show_count_in_label else ''}"
-            for pct, c in zip(pcts, counts)]
-
-        ax.bar_label(
-            bars,
-            labels=bar_labels,
-            label_type="edge",
-            padding=3,
-            fontsize="small"
-        )
-
-        # Footer
-        footer = f"N (non‑null) = {desc['total_nonnull']:,}"
-        fig.text(0.99, 0.01, footer, ha="right", va="bottom", fontsize="small", color="gray")
-
-        return fig, ax
-
+    
+    def footer_summary_text(
+        self,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+    ) -> str:
+        """
+        Optional override: return a short footer summary derived from descriptive/inferential stats.
+        Return ''/None to suppress.
+        """
+        return f"N (non‑null) = {desc['total_nonnull']:,}"
 
     def clean_series(self, s: pd.Series) -> tuple[pd.Series, dict]:
         """

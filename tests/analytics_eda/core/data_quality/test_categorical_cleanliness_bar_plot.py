@@ -25,8 +25,7 @@ from analytics_eda.core.data_quality import (
                 "descriptive_stats": {
                     "total": 0,
                     "total_nonnull": 0,
-                    "issue_counts": [0, 0, 0, 0],
-                    "issue_pcts": [0.0, 0.0, 0.0, 0.0],
+                    "bars": {},
                 },
                 "inferential_stats": {},
                 "draft_inferential_findings": {},
@@ -44,8 +43,7 @@ from analytics_eda.core.data_quality import (
                 "descriptive_stats": {
                     "total": 4,
                     "total_nonnull": 3,
-                    "issue_counts": lambda xs: sum(xs) == 0,
-                    "issue_pcts":   lambda xs: all(abs(v) < 1e-12 for v in xs),
+                    "bars": {},
                 },
                 "inferential_stats": {},
                 "draft_inferential_findings": {},
@@ -67,7 +65,7 @@ from analytics_eda.core.data_quality import (
                 "file_name": "cleanliness.png",
                 "allowed_categories": ["Apple", "Banana", "Pear"],  # case-insensitive by default
                 # keep default allowed_char_pattern
-                "show_count_in_label": True,
+                "show_count_in_bar_label": True,
             },
             {
                 "chart_metadata": {
@@ -77,15 +75,24 @@ from analytics_eda.core.data_quality import (
                 "descriptive_stats": {
                     "total": 11,
                     "total_nonnull": 10,
-                    # We assert via a dict of label -> count so ordering doesn't matter
-                    "issue_labels": lambda labels: set(labels) == {
-                        "Leading/Trailing Whitespace", "Mixed Casing",
-                        "Non-Standard Characters", "Invalid Category"
-                    },
-                    # Expect multiset [2,2,1,1] (order agnostic)
-                    "issue_counts": lambda cs: sorted(cs) == [1,1,2,2],
-                    # Percents must match counts / 10 (order agnostic)
-                    "issue_pcts":   lambda ps: sorted(round(p, 6) for p in ps) == sorted(round(x/10.0,6) for x in [1,1,2,2]),
+                    "bars": {
+                        "Leading/Trailing Whitespace": {
+                            "count": 1,
+                            "pct_of_nonnull": 0.1
+                        },
+                        "Mixed Casing": {
+                            "count": 2,
+                            "pct_of_nonnull": 0.2
+                        },
+                        "Non-Standard Characters": {
+                            "count": 1,
+                            "pct_of_nonnull": 0.1
+                        },
+                        "Invalid Category": {
+                            "count": 2,
+                            "pct_of_nonnull": 0.2
+                        }
+                    }
                 },
                 "inferential_stats": {},
                 "draft_inferential_findings": {},
