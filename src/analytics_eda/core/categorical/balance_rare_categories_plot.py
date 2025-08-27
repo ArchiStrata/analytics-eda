@@ -13,17 +13,18 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 import numpy as np
 import pandas as pd
-import seaborn as sns
 
-from ..utils.base_plot import BasePlot, PlotContext
+from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+
+from ..utils.base_plot import BasePlot
 from .validate_categorical_named_series import CategoricalSeriesMixin
 
 
 @dataclass
-class BalanceRareCategoriesContext(PlotContext):
+class BalanceRareCategoriesContext(SeriesBarChartContext):
     """
     Identify and visualize rare categories (very low frequency).
 
@@ -32,16 +33,17 @@ class BalanceRareCategoriesContext(PlotContext):
         - If >=1: interpreted as an absolute count threshold (e.g., 5 observations)
     """
     title_template: str = "Rare Categories of {name}{modifiers}"
-    xlabel: str = "Category"
-    ylabel: str = "Count"
+    xlabel: str = "Percent of total"
+    ylabel: str = "Category"
+    is_orientation_vertical: bool = False
+    format_value_axis_as_percent: bool = True
+    show_footer_summary: bool = True
 
     # plot-specific knobs
     extreme_lower_bound: float = 0.01  # default: 1% of total if <1, else absolute count
-    max_bars: Optional[int] = None     # optionally cap number of bars (smallest first)
-    show_percent_labels: bool = True   # annotate bars with % of total
 
 
-class BalanceRareCategoriesPlot(CategoricalSeriesMixin, BasePlot):
+class BalanceRareCategoriesPlot(CategoricalSeriesMixin, SeriesBarChartMixin, BasePlot):
     """
     Highlights and visualizes low-frequency categories in a categorical distribution.
 
@@ -59,114 +61,103 @@ class BalanceRareCategoriesPlot(CategoricalSeriesMixin, BasePlot):
     Returns (BasePlot.run schema):
       {
         "descriptive_stats": {
-            "total",                    # total non-null observations
             "k",                        # number of unique categories
+            "n_rare",                   # number of rare categories found
             "threshold_type",           # "proportion" or "count"
             "threshold_value_count",    # cutoff in counts
-            "threshold_value_prop",     # cutoff in proportion
-            "n_rare",                   # number of rare categories found
-            "rare_categories",          # list of category names
-            "rare_counts"               # list of category counts
+            "threshold_value_prop"      # cutoff in proportion
         },
-        "inferential_stats": {},
-        "chart_metadata": {...}
       }
     """
+    def plot_semantic_version(self) -> str:
+        """
+        Return the semantic version of this plot implementation.
+        """
+        return "1.0.0"
 
     # ---- defaults when empty/degenerate ----
     def default_descriptive(self) -> Dict[str, Any]:
-        return {
-            "total": 0,
-            "k": 0,
+        desc = super().default_descriptive()
+        desc["k"] = 0
+        desc["n_rare"] = 0
+
+        desc["params"] = {
             "threshold_type": "proportion",
             "threshold_value_count": 0,
             "threshold_value_prop": 0.0,
-            "n_rare": 0,
-            "rare_categories": [],
-            "rare_counts": [],
         }
+
+        return desc
 
     # ---- computations ----
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
-        # frequency table (drop NAs by default for category count plots)
-        counts = s.dropna().value_counts()
-        total = int(counts.sum())
-        k = int(counts.size)
+        # frequency table (drop NAs for category analysis)
+        counts_all = s.dropna().value_counts()
+        total = int(counts_all.sum())
+        k = int(counts_all.size)
 
         # Resolve threshold
         bound = float(self.ctx.extreme_lower_bound)
         if bound < 1.0:
-            # proportion → convert to count cutoff (inclusive)
+            thr_type = "proportion"
             thr_count = int(np.floor(bound * total))
-            # Ensure at least 1 if bound > 0 but floor is 0, so “rare” makes sense
             if 0 < bound < 1.0 and thr_count == 0:
                 thr_count = 1
             thr_prop = bound
-            thr_type = "proportion"
         else:
+            thr_type = "count"
             thr_count = int(bound)
             thr_prop = (thr_count / total) if total > 0 else 0.0
-            thr_type = "count"
 
-        # Identify rare subset
-        rare_mask = counts <= thr_count if total > 0 else pd.Series([], dtype=bool)
-        rare_counts = counts[rare_mask].sort_values(ascending=True)
+        # Identify rare categories (<= cutoff), sort ascending (smallest first)
+        if total > 0:
+            rare_counts = counts_all[counts_all <= thr_count].sort_values(ascending=True)
+        else:
+            rare_counts = counts_all.iloc[0:0]
 
-        # Optional cap (smallest first)
-        if self.ctx.max_bars is not None and self.ctx.max_bars > 0:
-            rare_counts = rare_counts.iloc[: int(self.ctx.max_bars)]
-    
-        desc = {
-            "total": total,
-            "k": k,
-            "threshold_type": thr_type,
-            "threshold_value_count": thr_count,
-            "threshold_value_prop": float(thr_prop),
+        # Build the bars payload using the mixin
+        # Pass only the *rare* subset as counts; denominator is the series' non-null total.
+        bars_desc = self.build_series_bar_desc(
+            s,
+            counts=rare_counts.to_dict(),
+            denominator_key="pct_of_nonnull",
+            extra_params={
+                "extreme_lower_bound": self.ctx.extreme_lower_bound,
+                "threshold_type": thr_type,
+                "threshold_value_count": thr_count,
+                "threshold_value_prop": float(thr_prop),
+            },
+        )
+
+        # Add rare-specific summary fields
+        bars_desc.update({
+            "k": k,  # total unique categories in the series (not just rare)
             "n_rare": int(rare_counts.size),
-            "rare_categories": rare_counts.index.tolist(),
-            "rare_counts": rare_counts.astype(int).tolist(),
+        })
+
+        # Skip plotting if nothing to show
+        if bars_desc["n_rare"] == 0 or bars_desc["total"] == 0:
+            bars_desc["skip_plot"] = True
+            bars_desc["error"] = "no rare categories under threshold"
+
+        return bars_desc
+    
+    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+        if not desc or desc.get("total", 0) == 0:
+            return {}
+        # Short & factual: how many rare; threshold; base
+        ttype = desc.get("params", {}).get("threshold_type", desc.get("threshold_type"))
+        thr_c = desc.get("params", {}).get("threshold_value_count", desc.get("threshold_value_count"))
+        thr_p = desc.get("params", {}).get("threshold_value_prop", desc.get("threshold_value_prop"))
+        return {
+            "context": f"Base = {desc.get('total_nonnull', 0):,} non-null; K = {desc.get('k', 0)} total categories.",
+            "primary_finding": f"Rare categories determined by {ttype} threshold: {desc.get('n_rare', 0)} (≤ {thr_p:.1%} or ≤ {thr_c} count(s)).",
+            "secondary_finding": None
         }
 
-        # Decide early whether to skip plotting
-        if desc["n_rare"] == 0 or desc["total"] == 0:
-            desc["skip_plot"] = True
-            desc["error"] = "no rare categories under threshold"
-
-        return desc
-
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
-        # No inferential stats for a simple balance display
-        return {}
-
     # ---- drawing ----
-    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
-
-        cats: List[str] = desc["rare_categories"]
-        vals: List[int] = desc["rare_counts"]
-        total = max(1, int(desc["total"]))  # avoid division by zero
-
-        # Horizontal bar chart (rare → small → easier to read with long labels)
-        order_idx = np.argsort(vals)  # ensure ascending (just in case)
-        vals_sorted = np.array(vals)[order_idx]
-        cats_sorted = np.array(cats, dtype=object)[order_idx]
-
-        sns.barplot(x=vals_sorted, y=cats_sorted, ax=ax)
-
-        # Annotate with percentages if requested
-        if self.ctx.show_percent_labels:
-            for i, v in enumerate(vals_sorted):
-                pct = 100.0 * (v / total)
-                ax.text(
-                    v, i, f" {v} ({pct:.1f}%)",
-                    va="center", ha="left", fontsize="small"
-                )
-
-        # Threshold footer
-        if desc["threshold_type"] == "proportion":
-            thr_text = f"Threshold ≤ {desc['threshold_value_prop']:.2%} of total"
-        else:
-            thr_text = f"Threshold ≤ {desc['threshold_value_count']} count(s)"
-        footer = f"Rare categories = {desc['n_rare']} | Total n = {desc['total']} | {thr_text}"
-        fig.text(0.99, 0.01, footer, ha="right", va="bottom", fontsize="small", color="gray")
-
-        return fig, ax
+    def footer_summary_text(self, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]) -> str:
+        ttype = desc.get("params", {}).get("threshold_type", desc.get("threshold_type"))
+        thr_c = desc.get("params", {}).get("threshold_value_count", desc.get("threshold_value_count"))
+        thr_p = desc.get("params", {}).get("threshold_value_prop", desc.get("threshold_value_prop"))
+        return f"Rare={desc.get('n_rare',0)} • Total non-null={desc.get('total_nonnull',0):,} • Threshold ({ttype}): ≤ {thr_p:.2%} (≤ {thr_c} count)"

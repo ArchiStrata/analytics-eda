@@ -1,4 +1,3 @@
-import math
 import pytest
 import pandas as pd
 
@@ -44,18 +43,18 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
             {
                 "chart_metadata": {
                     "file_name": None,
-                    "xlabel": "Category",
-                    "ylabel": "Count",
+                    "xlabel": "Percent of total",
+                    "ylabel": "Category",
                 },
                 "descriptive_stats": {
+                    "params": {
+                        "threshold_type": "proportion",
+                        "threshold_value_count": 0,
+                        "threshold_value_prop": 0.0,
+                    },
                     "total": 0,
                     "k": 0,
-                    "threshold_type": "proportion",
-                    "threshold_value_count": 0,
-                    "threshold_value_prop": 0.0,
-                    "n_rare": 0,
-                    "rare_categories": [],
-                    "rare_counts": [],
+                    "n_rare": 0
                 },
             },
         ),
@@ -67,35 +66,33 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
             {
                 "chart_metadata": {"file_name": "rare_prop.png"},
                 "descriptive_stats": {
+                    "params": {
+                        "threshold_type": "proportion",
+                        "threshold_value_count": 1,
+                        "threshold_value_prop": lambda p: abs(p - 0.10) < 1e-12,
+                    },
                     "total": 10,
                     "k": 4,
-                    "threshold_type": "proportion",
-                    "threshold_value_count": 1,
-                    "threshold_value_prop": lambda p: abs(p - 0.10) < 1e-12,
                     "n_rare": 2,
-                    "rare_categories": lambda xs: set(xs) == {"C", "D"},
-                    "rare_counts":      lambda xs: sorted(xs) == [1, 1],
                 },
             },
         ),
-        # 2) Count threshold (<=2) with max_bars=3 → cap smallest three
+        # 2) Count threshold (<=2) with max_display_bars=3 → cap smallest three
         #   series: A×4, B×2, C×2, D×1, E×1 (total=10) → rare={B:2,C:2,D:1,E:1} → after cap: three smallest counts
         (
             lambda: pd.Series(["A"] * 4 + ["B"] * 2 + ["C"] * 2 + ["D"] * 1 + ["E"] * 1, name="mix"),
-            {"extreme_lower_bound": 2, "max_bars": 3, "file_name": "rare_count_cap.png"},
+            {"extreme_lower_bound": 2, "max_display_bars": 3, "file_name": "rare_count_cap.png"},
             {
                 "chart_metadata": {"file_name": "rare_count_cap.png"},
                 "descriptive_stats": {
+                    "params": {
+                        "threshold_type": "count",
+                        "threshold_value_count": 2,
+                        "threshold_value_prop": lambda p: abs(p - 0.2) < 1e-12,
+                    },
                     "total": 10,
                     "k": 5,
-                    "threshold_type": "count",
-                    "threshold_value_count": 2,
-                    "threshold_value_prop": lambda p: abs(p - 0.2) < 1e-12,
-                    "n_rare": 3,  # capped from 4 → 3
-                    # There are two with count=1 (D,E) and two with count=2 (B,C); after capping to 3 smallest,
-                    # we must include both 1s and only one of the 2s. Order may vary → check counts multiset & subset.
-                    "rare_counts": lambda xs: sorted(xs) == [1, 1, 2],
-                    "rare_categories": lambda xs: set(xs).issubset({"B", "C", "D", "E"}) and len(xs) == 3,
+                    "n_rare": 4,
                 },
             },
         ),
@@ -107,14 +104,14 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
             {
                 "chart_metadata": {"file_name": None},
                 "descriptive_stats": {
+                    "params": {
+                        "threshold_type": "proportion",
+                        "threshold_value_count": 0,
+                        "threshold_value_prop": lambda p: p == 0.0,
+                    },
                     "total": 6,
                     "k": 2,
-                    "threshold_type": "proportion",
-                    "threshold_value_count": 0,
-                    "threshold_value_prop": lambda p: p == 0.0,
                     "n_rare": 0,
-                    "rare_categories": lambda xs: xs == [],
-                    "rare_counts": lambda xs: xs == [],
                 },
             },
         ),
@@ -129,22 +126,22 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
                     "data_source": "UnitTest",
                 },
                 "descriptive_stats": {
+                    "params": {
+                        "threshold_type": "count",
+                        "threshold_value_count": 2,
+                        "threshold_value_prop": lambda p: abs(p - (2 / 6)) < 1e-12,
+                    },
                     "total": 6,
                     "k": 3,
-                    "threshold_type": "count",
-                    "threshold_value_count": 2,
-                    "threshold_value_prop": lambda p: abs(p - (2 / 6)) < 1e-12,
                     # counts: bird=3, dog=2, cat=1 → rare: cat(1), dog(2)
                     "n_rare": 2,
-                    "rare_categories": lambda xs: set(xs) == {"cat", "dog"},
-                    "rare_counts":      lambda xs: sorted(xs) == [1, 2],
                 },
             },
         ),
     ],
     ids=["empty_skips", "prop_threshold_saves", "count_threshold_capped_saves", "no_rare_skips", "custom_labels"],
 )
-def test_plot_balance_rare_categories_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_balance_rare_categories_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
 
     # If saving, route to tmp_path

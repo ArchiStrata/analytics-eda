@@ -18,6 +18,8 @@ _(default_descriptive, compute_descriptive, compute_descriptive_frame)_
 - Override `default_descriptive` only when descriptive stats must be returned for an empty **Series** or **DataFrame**.
 - Use `compute_descriptive` for **Series**; use `compute_descriptive_frame` for **DataFrames**.
 - Any descriptive stat parameters in context must be included in `descriptive_stats`.
+- Include units and consistent rounding with the plot configuration.
+
 - **Draft Findings (recommended):** Override `draft_descriptive_findings` to return short, human-readable statements derived strictly from `desc`.
   - Keep findings factual, concise, and **non-interpretive**.
   - Limit to ~1–3 bullet-sized statements per plot to respect cognitive load.
@@ -28,6 +30,44 @@ _(default_descriptive, compute_descriptive, compute_descriptive_frame)_
   - If `desc` is empty or insufficient, return `{}`.
   - Example keys: `summary`, `distribution`, `cardinality`, `coverage`, `outliers`, `data_quality`.
 
+### Draft Descriptive Findings (recommended)
+
+Implement `draft_descriptive_findings(desc) -> Dict[str, Any]` to emit short, human-readable statements derived strictly from `desc`.  
+Findings are **plot-scoped** — each plot tells one piece of the story.
+
+#### Standard schema (required keys)
+
+```json
+{
+  "context": "str", // what slice this plot is based on (sample size, group, timeframe)
+  "primary_finding": "str", // one big idea this plot is designed to communicate
+  "secondary_finding": "str | None" // optional nuance; omit or set None if not applicable
+}
+```
+
+#### Authoring rules
+
+- Keep findings factual, concise, non-interpretive (no recommendations or causes)
+- Limit to ~1 bullet for `primary_finding` and 0–1 for `secondary_finding` to respect cognitive load.
+- Use phrasing consistent with the plot’s theme (e.g., central tendency, dispersion, shape, extremes, comparison).
+- Do not repeat raw numbers already in `descriptive_stats`; summarize them.
+- If `desc` is empty or insufficient, return `{}`.
+
+#### Secondary finding – when to include
+
+Good candidates:
+
+- Contrast or Caveat – subtle exception to the main story.
+- Supporting Detail – a secondary stat that reinforces the primary.
+- Complementary Angle – another perspective that deepens interpretation without shifting focus.
+- Outliers or Anomalies – notable but non-defining extremes.
+
+Do not include if it:
+
+- Repeats the primary in different words.
+- Distracts from the main message.
+- Is pure detail without interpretive value (belongs in `descriptive_stats`).
+
 ## Inferential Statistics
 
 _(default_inferential, compute_inferential, compute_inferential_frame)_
@@ -37,17 +77,47 @@ _(default_inferential, compute_inferential, compute_inferential_frame)_
 - Any inferential stat parameters in context must be included in `inferential_stats`.
 - `inferential_stats` must be organized by name.
 - Hypothesis tests must include: **Statistic, P-Value, Alpha, Reject**.
-- **Draft Findings (recommended):** Override `draft_inferential_findings` to return short, human-readable statements that summarize _only what is supported_ by `inf` (optionally using `desc` for context).
-  - Keep findings concise, factual, and focused strictly on statistical evidence.
-  - Limit to ~1–3 bullet-sized statements per plot to respect cognitive load.
-  - Use consistent, machine-readable keys so reports can aggregate across plots.
-  - Report decision and direction with threshold (e.g., `"t_test": "Difference is statistically significant at α=0.05 (p=0.012)"`).
-  - Include **effect size** and **confidence intervals** when available.
-  - Do not duplicate raw numbers already present in `inferential_stats`; instead, summarize them.
-  - When assumptions fail (normality, equal variance, independence), include a finding that flags it.
-  - Avoid practical/causal claims—focus on statistical evidence only.
-  - If `inf` is empty or tests are invalid, return `{}`.
-  - Example keys: `hypothesis_tests`, `model_fit`, `assumptions`, `effect_size`.
+
+### Draft Inferential Findings (recommended)
+
+Implement `draft_inferential_findings(inf) -> Dict[str, Any]` to emit short, human-readable statements derived strictly from `inf` (optionally using `desc` for added context).  
+Findings are **plot-scoped** — each plot communicates only the inference it was designed to test.
+
+#### Standard schema (required keys)
+
+```json
+{
+  "context": "str", // what test/sample this inference is based on (sample size, groups, model type)
+  "primary_finding": "str", // one key result supported by statistical evidence
+  "secondary_finding": "str | None" // optional nuance; omit or set None if not applicable
+}
+```
+
+#### Authoring rules
+
+- Keep findings factual, concise, evidence-based.
+- Limit to ~1 bullet for `primary_finding` and 0–1 for `secondary_finding` to respect cognitive load.
+- Report results in plain language, but tie them directly to the evidence (statistic, p-value, confidence interval, effect size).
+- Use phrasing consistent with the test or model (e.g., significance test, correlation, regression fit).
+- Do not duplicate raw numbers already in `inferential_stats`; summarize them.
+- If `inf` is empty, invalid, or inconclusive, return `{}`.
+- Always flag when assumptions fail (e.g., non-normality, unequal variance).
+- Avoid practical or causal claims — stay strictly within what the statistical evidence supports.
+
+#### Secondary finding – when to include
+
+Good candidates:
+
+- Effect Size – magnitude of difference/association beyond significance.
+- Confidence Interval – adds nuance about estimate precision.
+- Assumptions Check – e.g., “Equal variance assumption not met.”
+- Model Fit Detail – e.g., “R² = 0.42 explains moderate variance.”
+
+Do not include if it:
+
+- Repeats the primary in different words.
+- Distracts from the main inference.
+- Provides raw stats without interpretive value (those belong in `inferential_stats`).
 
 ## Chart Metadata
 
@@ -144,27 +214,79 @@ _(Plot Context & title_kwargs)_
 
 ## Unit Testing
 
-All plots must have a data driven pytest called test\_{{plot snake case}}\_data_driven
+All plots must have a data driven pytest called test\_{{plot snake case}}\_data_driven.
 
-The data driven test covers:
+### What changes between plots
 
-1. Empty Series/DataFrame and assert on expected chart_metadata and descriptive_stats
-2. for each plot specific scenario save the plot so that it can be inspected and assert on expected chart_metadata, descriptive_stats, draft_descriptive_findings, inferential_stats, and draft_inferential_findings based on the Plot implementation.
-3. Plot specific scenarios should cover the Plot's Context.
+- The parametrized cases (input factories + kwargs + expected),
+- The test function name (e.g., test_balance_rare_categories_plot_data_driven),
+- The Plot and Context classes under test.
 
-chart_metadata
+#### Standard Test Shape
 
-- title
-- xlabel
-- ylabel
-- data_source
-- version
-- file_name - only if save_path was included in plot context.
+```python
+@pytest.mark.parametrize(
+    "make_series_or_df, kwargs, expect",
+    [
+        # cases...
+    ],
+    ids=[ ... ],
+)
+def test_<plot_snake_case>_data_driven(make_series_or_df, kwargs, expect, tmp_path, assert_plot_metadata):
+    data = make_series_or_df()
 
-descriptive_stats
+    # Route artifacts to tmp_path if saving
+    if "file_name" in kwargs:
+        kwargs = {**kwargs, "save_path": tmp_path}
 
-draft_descriptive_findings
+    ctx = <PlotContext>(**kwargs)
+    plot = <PlotClass>(ctx)
 
-inferential_stats
+    payload = plot.run(data)
 
-draft_inferential_findings
+    # Single assertion point that validates metadata, stats, findings, and artifacts
+    assert_plot_metadata(payload, expect, tmp_path)
+```
+
+### Expected Payload Contract (from plot.run)
+
+payload must be a dict with these keys (omit blocks not implemented by the plot):
+
+- chart_metadata
+  Required fields: title, xlabel, ylabel, data_source, version
+  Conditional: file_name (present only when save_path in context)
+
+- descriptive_stats
+  Dict of descriptive outputs computed by the plot
+
+- draft_descriptive_findings
+  Dict with keys: context (str), primary_finding (str), secondary_finding (str|None)
+  (omit or return {} for empty/insufficient data)
+
+- inferential_stats (if implemented)
+  Organized by test/model name; each hypothesis test includes statistic, p_value, alpha, reject; effect sizes / CIs when available
+
+- draft_inferential_findings (if implemented)
+  Same keys as descriptive findings; evidence-focused
+
+### Required Scenarios
+
+- Empty Input (Series/DataFrame):
+  Asserts default/empty descriptive_stats, {} findings, no file saved.
+
+- Happy-Path / Plot-Specific Cases:
+  Save artifact when requested; assert metadata, stats, and findings according to expect.
+
+Edge Conditions (plot-specific):
+
+- Boundary thresholds (e.g., α, rarity cutoffs)
+- Minimal categories / small N
+- Missing values / zero-count categories
+- Capping/aggregation (“Other”), sorting flags, percent vs. count formatting
+
+### Stability & Precision
+
+- Determinism: Set seeds (np.random.seed) and use fixed inputs.
+- Numeric Tolerances: Prefer callables or pytest.approx for derived metrics.
+- Text Resilience: Use \*\_contains substring checks for findings to avoid brittle tests.
+- Artifacts Isolation: Always redirect save_path to tmp_path.

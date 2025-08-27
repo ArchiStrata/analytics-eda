@@ -222,7 +222,7 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
         "title_custom_template_no_mods",
     ],
 )
-def test_plot_frequency_pareto_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_frequency_pareto_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
 
     # If a file_name is provided, also set save_path to tmp_path
