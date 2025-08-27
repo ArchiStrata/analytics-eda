@@ -14,6 +14,7 @@
 
 from dataclasses import dataclass
 from typing import Dict, Any
+from matplotlib.ticker import MultipleLocator, PercentFormatter
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -23,15 +24,20 @@ from .validate_categorical_named_series import CategoricalSeriesMixin
 
 @dataclass
 class BalanceLorenzCurveContext(PlotContext):
-    # Override defaults to match the original function behavior
     title_template: str = "Lorenz Curve of {name}{modifiers}"
     xlabel: str = "Cumulative share of categories"
     ylabel: str = "Cumulative share of counts"
+    show_footer_summary: bool = True
 
 class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
     """
-    Visualizes category imbalance with a Lorenz curve and reports the Gini index.
+    Visualizes category imbalance using a Lorenz curve and summarizes it with the Gini index.
 
+    Why this matters:
+    - Large imbalance can signal sampling bias, operational drift, or fairness risks.
+
+    What this plot does:
+    - Computes the Lorenz curve over category counts and reports the Gini index (0=perfect balance, 1=max imbalance).
     Returns (in BasePlot.run schema):
         {
           "descriptive_stats": {"total", "k", "gini_index"},
@@ -39,6 +45,11 @@ class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
           "chart_metadata": {...}
         }
     """
+    def plot_semantic_version(self) -> str:
+        """
+        Return the semantic version of this plot implementation.
+        """
+        return "1.0.0"
 
     # ---- internal helpers (moved here) ----
     @staticmethod
@@ -85,40 +96,60 @@ class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
         x_lorenz, y_lorenz = self._lorenz_curve_from_counts(freq_values)
         gini = self._gini_from_lorenz(x_lorenz, y_lorenz)
 
+        self._draw_set("lorenz_curve", "x_lorenz", x_lorenz)
+        self._draw_set("lorenz_curve", "y_lorenz", y_lorenz)
+
         return {
             "total": total,
             "k": k,
-            "gini_index": float(gini),
-            # payload for drawing:
-            "x_lorenz": x_lorenz,
-            "y_lorenz": y_lorenz,
+            "gini_index": float(gini)
         }
 
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
-        return {}
+    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+        if not desc or desc.get("total", 0) == 0 or np.isnan(desc.get("gini_index", float("nan"))):
+            return {"summary": "No imbalance signal (no data)."}
+        g = float(desc["gini_index"])
+        k = int(desc["k"])
+        return {
+            "summary": f"Gini = {g:.3f} (0=balanced, 1=imbalanced).",
+            "coverage": f"Categories = {k}, Total = {desc['total']:,}.",
+        }
 
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
 
         # Lorenz curve
-        x_lorenz = desc["x_lorenz"]
-        y_lorenz = desc["y_lorenz"]
-        sns.lineplot(x=x_lorenz, y=y_lorenz, ax=ax, label="Lorenz curve")
+        x_lorenz = self._draw_get("lorenz_curve", "x_lorenz")
+        y_lorenz = self._draw_get("lorenz_curve", "y_lorenz")
 
         # Equality line
-        sns.lineplot(x=[0.0, 1.0], y=[0.0, 1.0], ax=ax, linestyle="--", label="Equality line")
+        sns.lineplot(x=[0.0, 1.0], y=[0.0, 1.0], ax=ax, linestyle="--", label="Equality line", color=self.neutral_grey())
+
+        # Lorenz curve highlighted with palette[0]
+        sns.lineplot(x=x_lorenz, y=y_lorenz, ax=ax, label="Lorenz curve", color=palette[0])
 
         # Shade gap between equality and Lorenz
-        ax.fill_between(x_lorenz, y_lorenz, x_lorenz, alpha=0.25)
+        ax.fill_between(x_lorenz, y_lorenz, x_lorenz, alpha=0.25, color=palette[0])
 
-        # Labels & title
+        # Axes: both as % with fixed domain and helpful ticks
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.xaxis.set_major_locator(MultipleLocator(0.2))
+        ax.yaxis.set_major_locator(MultipleLocator(0.2))
+        ax.xaxis.set_major_formatter(PercentFormatter(xmax=1.0))
+        ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
+        
         ax.legend()
 
-        # Annotation
-        ann = f"Gini index = {desc['gini_index']:.3f}\nCategories = {desc['k']}\nTotal = {desc['total']}"
-        ax.text(
-            0.98, 0.02, ann, transform=ax.transAxes,
-            ha="right", va="bottom", fontsize="small",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8)
-        )
-
         return fig, ax
+
+    def footer_summary_text(
+        self,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+    ) -> str:
+        """
+        Optional override: return a short footer summary derived from descriptive/inferential stats.
+        Return ''/None to suppress.
+        """
+        return f"Gini={desc['gini_index']:.3f} • Categories={desc['k']} • Total={desc['total']:,}"
