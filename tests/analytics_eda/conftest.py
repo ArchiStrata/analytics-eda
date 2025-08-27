@@ -37,7 +37,6 @@ def assert_plot_metadata():
 
         # TODO: support saving payload as actual JSON to support diagnosing issues.
         cm = payload["chart_metadata"]
-        ds = payload["descriptive_stats"]
 
         def _handle_callable(actual_value, func, path_label: str):
             res = func(actual_value)
@@ -84,20 +83,11 @@ def assert_plot_metadata():
                 else:
                     assert av == v, f"{key_label} expected {v!r}, got {av!r}"
 
-        # Field-by-field checks
-        _assert_mapping(cm, expect.get("chart_metadata", {}), "chart_metadata")
-        _assert_mapping(ds, expect.get("descriptive_stats", {}), "descriptive_stats")
-
-        # TODO: update to support _assert_mapping on BasePlot _pipeline_execute return
-        # * descriptive_stats
-        # * inferential_stats
-        # * draft_descriptive_findings
-        # * draft_inferential_findings
-        #* chart_metadata
-        if "inferential_stats" in expect:
-            assert "inferential_stats" in payload, "payload must contain 'inferential_stats'"
-            inferential_stats = payload["inferential_stats"]
-            _assert_mapping(inferential_stats, expect.get("inferential_stats", {}), "inferential_stats")
+        for key in ("chart_metadata", "descriptive_stats", "inferential_stats", "draft_descriptive_findings", "draft_inferential_findings"):
+            if key in expect:
+                assert key in payload, f"payload must contain '{key}'"
+                actual = payload[key]
+                _assert_mapping(actual, expect.get(key, {}), key)
 
         # File check logic
         exp_file_in_expect = "file_name" in (expect.get("chart_metadata") or {})
