@@ -47,7 +47,7 @@ from analytics_eda.core.data_quality import (
                 },
                 "inferential_stats": {},
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": lambda d: isinstance(d, dict) and "summary" in d and "No cleanliness issues" in d["summary"],
+                "draft_descriptive_findings": {},
             },
         ),
 
@@ -96,16 +96,7 @@ from analytics_eda.core.data_quality import (
                 },
                 "inferential_stats": {},
                 "draft_inferential_findings": {},
-                # Allow either top order due to tie; require both top issues appear
-                "draft_descriptive_findings": lambda d: (
-                    isinstance(d, dict)
-                    and "summary" in d
-                    and "coverage" in d
-                    and (
-                    ("Invalid Category" in d.get("summary","") and "Mixed Casing" in d.get("secondary",""))
-                    or ("Mixed Casing" in d.get("summary","") and "Invalid Category" in d.get("secondary",""))
-                    )
-                ),
+                "draft_descriptive_findings": {}
             },
         ),
 

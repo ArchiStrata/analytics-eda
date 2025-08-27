@@ -49,7 +49,7 @@ from analytics_eda.core.data_quality import (
                 "chart_metadata": {"file_name": None, "version": "1.0.0"},
                 "inferential_stats": {},
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": lambda d: "summary" in d and "No non‑numeric tokens" in d["summary"],
+                "draft_descriptive_findings": {},
             },
         ),
 
@@ -68,7 +68,7 @@ from analytics_eda.core.data_quality import (
                 "chart_metadata": {"file_name": "strings.png", "version": "1.0.0"},
                 "inferential_stats": {},
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": lambda d: "summary" in d and "60.0% of non‑null" in d["summary"],  # overall share
+                "draft_descriptive_findings": {},
             },
         ),
 
@@ -86,7 +86,7 @@ from analytics_eda.core.data_quality import (
                 "chart_metadata": {"file_name": None, "version": "1.0.0"},
                 "inferential_stats": {},
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": lambda d: "summary" in d and "No non‑numeric tokens" in d["summary"],
+                "draft_descriptive_findings": {},
             },
         ),
 

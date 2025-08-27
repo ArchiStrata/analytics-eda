@@ -88,7 +88,7 @@ from analytics_eda.core.categorical.categorical_distribution_analysis import cat
                         "chart_metadata":  {
                             "title": "Chi-Square Goodness-of-Fit: pets",
                             "xlabel": "Frequency",
-                            "ylabel": "Frequency",
+                            "ylabel": "Count (Observed vs Expected)",
                             "data_source": "UnitTest",
                             "file_name": "Chi-Square Goodness-of-Fit: pets.png"
                         },

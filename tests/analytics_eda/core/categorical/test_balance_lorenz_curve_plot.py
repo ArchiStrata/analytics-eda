@@ -100,7 +100,7 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
     ],
     ids=["empty", "balanced_saves", "skewed_saves", "custom_labels"],
 )
-def test_plot_balance_lorenz_curve_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_balance_lorenz_curve_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
 
     # If saving, route to tmp_path
