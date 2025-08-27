@@ -504,82 +504,87 @@ class BasePlot(ABC):
         draw_fn: Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any], Any, Any, Any], Tuple[Any, Any]],
     ) -> Dict[str, Any]:
         """Shared execution flow for both Series and Frame paths."""
-        chart_md = build_md()
+        fig = None
+        try:
+            chart_md = build_md()
 
-        if is_empty:
-            desc = self.default_descriptive()
-            inf = self.default_inferential()
-            return {
-                "descriptive_stats": desc,
-                "inferential_stats": inf,
-                "draft_descriptive_findings": self.draft_descriptive_findings(desc) or {},
-                "draft_inferential_findings": self.draft_inferential_findings(inf, desc) or {},
-                "chart_metadata": chart_md,
-            }
+            if is_empty:
+                desc = self.default_descriptive()
+                inf = self.default_inferential()
+                return {
+                    "descriptive_stats": desc,
+                    "inferential_stats": inf,
+                    "draft_descriptive_findings": self.draft_descriptive_findings(desc) or {},
+                    "draft_inferential_findings": self.draft_inferential_findings(inf, desc) or {},
+                    "chart_metadata": chart_md,
+                }
 
-        desc = desc_fn()
-        inf = inf_fn(desc) or {}
+            desc = desc_fn()
+            inf = inf_fn(desc) or {}
 
-        # If plot is skipped or errored, still return draft findings
-        if desc.get("error") or desc.get("skip_plot"):
-            chart_md["file_name"] = None
-            return {
-                "descriptive_stats": desc,
-                "inferential_stats": inf,
-                "draft_descriptive_findings": self.draft_descriptive_findings(desc) or {},
-                "draft_inferential_findings": self.draft_inferential_findings(inf, desc) or {},
-                "chart_metadata": chart_md,
-            }
-        
-        fig, ax, palette = self._new_figure_and_palette()
-        self._apply_metadata_to_axes(ax, chart_md)
+            # If plot is skipped or errored, still return draft findings
+            if desc.get("error") or desc.get("skip_plot"):
+                chart_md["file_name"] = None
+                return {
+                    "descriptive_stats": desc,
+                    "inferential_stats": inf,
+                    "draft_descriptive_findings": self.draft_descriptive_findings(desc) or {},
+                    "draft_inferential_findings": self.draft_inferential_findings(inf, desc) or {},
+                    "chart_metadata": chart_md,
+                }
+            
+            fig, ax, palette = self._new_figure_and_palette()
+            self._apply_metadata_to_axes(ax, chart_md)
 
-        if getattr(self.ctx, "show_subtitle", True):
-            sub = self.subtitle_text(desc, inf, chart_md) or ""
-            if sub.strip():
-                self.queue_subtitle_below_title(ax, sub)
+            if getattr(self.ctx, "show_subtitle", True):
+                sub = self.subtitle_text(desc, inf, chart_md) or ""
+                if sub.strip():
+                    self.queue_subtitle_below_title(ax, sub)
 
-        fig, ax = draw_fn(desc, inf, chart_md, fig, ax, palette)
+            fig, ax = draw_fn(desc, inf, chart_md, fig, ax, palette)
 
-        # Auto headroom for annotations (bars/points), if enabled
-        if getattr(self.ctx, "auto_headroom", True):
-            self.ensure_headroom_for_annotations(
-                ax,
-                label_offset=getattr(self.ctx, "headroom_label_offset", 0.02),
-                extra_pad=getattr(self.ctx, "headroom_extra_pad", 0.04),
-                max_extra=getattr(self.ctx, "headroom_max_extra", 0.20),
-            )
-
-        if getattr(self.ctx, "format_value_axis_as_percent", False):
-            if self.ctx.is_orientation_vertical:
-                ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
-            else:
-                ax.xaxis.set_major_formatter(PercentFormatter(xmax=1.0))
-
-        if getattr(self.ctx, "show_footer_summary", False):
-            ft = self.footer_summary_text(desc, inf, chart_md) or ""
-            if ft.strip():
-                fig.text(
-                    0.99,
-                    0.01,
-                    ft,
-                    ha="right",
-                    va="bottom",
-                    fontsize="small",
-                    color="gray"
+            # Auto headroom for annotations (bars/points), if enabled
+            if getattr(self.ctx, "auto_headroom", True):
+                self.ensure_headroom_for_annotations(
+                    ax,
+                    label_offset=getattr(self.ctx, "headroom_label_offset", 0.02),
+                    extra_pad=getattr(self.ctx, "headroom_extra_pad", 0.04),
+                    max_extra=getattr(self.ctx, "headroom_max_extra", 0.20),
                 )
 
-        chart_md["file_name"] = self._finalize_figure(fig, chart_md)
+            if getattr(self.ctx, "format_value_axis_as_percent", False):
+                if self.ctx.is_orientation_vertical:
+                    ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
+                else:
+                    ax.xaxis.set_major_formatter(PercentFormatter(xmax=1.0))
 
-        # reset per-run cache
-        self._draw_clear()
-        return {
-            "descriptive_stats": desc,
-            "inferential_stats": inf,
-            "draft_descriptive_findings": self.draft_descriptive_findings(desc) or {},
-            "draft_inferential_findings": self.draft_inferential_findings(inf, desc) or {},
-            "chart_metadata": chart_md,
-        }
+            if getattr(self.ctx, "show_footer_summary", False):
+                ft = self.footer_summary_text(desc, inf, chart_md) or ""
+                if ft.strip():
+                    fig.text(
+                        0.99,
+                        0.01,
+                        ft,
+                        ha="right",
+                        va="bottom",
+                        fontsize="small",
+                        color="gray"
+                    )
+
+            chart_md["file_name"] = self._finalize_figure(fig, chart_md)
+
+            # reset per-run cache
+            self._draw_clear()
+            return {
+                "descriptive_stats": desc,
+                "inferential_stats": inf,
+                "draft_descriptive_findings": self.draft_descriptive_findings(desc) or {},
+                "draft_inferential_findings": self.draft_inferential_findings(inf, desc) or {},
+                "chart_metadata": chart_md,
+            }
+        finally:
+            if fig:
+                plt.close(fig)
 
     # --- draw cache API ---
     def _draw_set(self, namespace: str, key: str, value: Any) -> None:
