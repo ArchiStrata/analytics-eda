@@ -14,6 +14,7 @@
 
 from dataclasses import dataclass
 from typing import Dict, Any
+import numpy as np
 import pandas as pd
 from scipy.stats import chisquare
 
@@ -42,7 +43,7 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
 
     Returns BasePlot.run() schema:
       {
-        "descriptive_stats": {"total", "k", "categories", "observed", "expected"},
+        "descriptive_stats": {"total", "k"},
         "inferential_stats": {
             "chi2_gof_null_uniform": {
                 "statistic", "p_value", "alpha", "reject", "warning?"}
@@ -57,7 +58,7 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
         return "1.0.0"
 
     def default_descriptive(self) -> Dict[str, Any]:
-        return {"total": 0, "k": 0, "categories": [], "observed": [], "expected": []}
+        return {"total": 0, "k": 0}
 
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         freq = s.value_counts()
@@ -67,24 +68,30 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
         k = int(len(categories))
         expected = [total / k] * k if k > 0 else []
 
+        self._draw_set("chi2_uniform", "labels", categories)
+        self._draw_set("chi2_uniform", "observed", np.asarray(observed, dtype=float))
+        self._draw_set("chi2_uniform", "expected", np.asarray(expected, dtype=float))
+
+        abs_diffs = np.abs(np.asarray(observed, float) - np.asarray(expected, float))
+        top_idx = int(max(range(len(abs_diffs)), key=lambda i: abs(abs_diffs[i])))
+        self._draw_set("chi2_uniform", "top_idx", top_idx)
+
         return {
             "total": total,
-            "k": k,
-            "categories": categories,
-            "observed": observed,
-            "expected": expected,
+            "k": k
         }
     
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
         if not desc or desc.get("k", 0) == 0 or desc.get("total", 0) == 0:
             return {}
-        cats = desc["categories"]
-        obs = desc["observed"]
-        exp = desc["expected"]
-        diffs = [o - e for o, e in zip(obs, exp)]
-        top_idx = int(max(range(len(diffs)), key=lambda i: abs(diffs[i])))
+        
+        labels   = self._draw_get("chi2_uniform", "labels", [])
+        observed = self._draw_get("chi2_uniform", "observed")
+        expected = self._draw_get("chi2_uniform", "expected")
+
+        top_idx = self._draw_get("chi2_uniform", "top_idx")
         return {
-            "summary": f"Largest deviation: {cats[top_idx]} (obs={obs[top_idx]:,}, exp={exp[top_idx]:.1f}).",
+            "summary": f"Largest deviation: {labels[top_idx]} (obs={observed[top_idx]:,}, exp={expected[top_idx]:.1f}).",
             "coverage": f"Categories={desc['k']}, Total={desc['total']:,}."
         }
 
@@ -95,14 +102,16 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
             return {}
 
         warning = None
-        expected = desc["expected"]
+        expected = self._draw_get("chi2_uniform", "expected")
+        observed = self._draw_get("chi2_uniform", "observed")
+
         if any(e <= 0 for e in expected):
             return {"chi2_gof_null_uniform": {"warning": "Expected counts are zero; test not computed."}}
 
         if any(e < 5 for e in expected):
             warning = "Some expected counts are below 5; chi-square test results may not be reliable."
 
-        chi2_stat, p_val = chisquare(f_obs=desc["observed"], f_exp=expected)
+        chi2_stat, p_val = chisquare(f_obs=observed, f_exp=expected)
 
         df = max(desc.get("k", 0) - 1, 0)
 
@@ -129,15 +138,18 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
         }
 
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
-        cats = desc["categories"]
-        y = range(len(cats))
+        labels   = self._draw_get("chi2_uniform", "labels", [])
+        observed = self._draw_get("chi2_uniform", "observed")
+        expected = self._draw_get("chi2_uniform", "expected")
+
+        y = range(len(labels))
         height = 0.38
 
-        ax.barh([i + height/2 for i in y], desc["observed"], height, label="Observed", color=palette[0])
-        ax.barh([i - height/2 for i in y], desc["expected"], height, label="Expected", color=self.neutral_grey())
+        ax.barh([i + height/2 for i in y], observed, height, label="Observed", color=palette[0])
+        ax.barh([i - height/2 for i in y], expected, height, label="Expected", color=self.neutral_grey())
 
         ax.set_yticks(list(y))
-        ax.set_yticklabels(cats)
+        ax.set_yticklabels(labels)
         ax.invert_yaxis()  # top-most first
         ax.legend()
 

@@ -573,8 +573,6 @@ class BasePlot(ABC):
 
             chart_md["file_name"] = self._finalize_figure(fig, chart_md)
 
-            # reset per-run cache
-            self._draw_clear()
             return {
                 "descriptive_stats": desc,
                 "inferential_stats": inf,
@@ -583,6 +581,8 @@ class BasePlot(ABC):
                 "chart_metadata": chart_md,
             }
         finally:
+            # reset per-run cache
+            self._draw_clear()
             if fig:
                 plt.close(fig)
 
