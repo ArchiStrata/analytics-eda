@@ -1,6 +1,12 @@
+import json
+from typing import Mapping, Sequence
 from pathlib import Path
+import numpy as np
+import pandas as pd
+
 import pytest
 from tests.analytics_eda.utils_internal.load_and_validate_report import load_and_validate_report as _load_and_validate_report
+
 
 @pytest.fixture
 def load_and_validate_report():
@@ -30,88 +36,159 @@ def assert_plot_metadata():
       • If 'file_name' is NOT specified in expectations, we still verify the file
         if the payload provides a non-empty file_name.
     """
-    def _assert(payload: dict, expect: dict, tmp_path: Path):
+    def _to_jsonable(obj):
+        # Make payload serializable (NumPy/Pandas aware).
+        if isinstance(obj, (str, int, float, bool)) or obj is None:
+            return obj
+        if isinstance(obj, (np.integer,)):
+            return int(obj)
+        if isinstance(obj, (np.floating,)):
+            return float(obj)
+        if isinstance(obj, (np.bool_,)):
+            return bool(obj)
+        if isinstance(obj, (np.ndarray,)):
+            return obj.tolist()
+        if isinstance(obj, (pd.Series,)):
+            # Prefer values; include index only when helpful
+            return obj.astype(object).tolist()
+        if isinstance(obj, (pd.DataFrame,)):
+            return obj.to_dict(orient="list")
+        if isinstance(obj, Mapping):
+            return {str(k): _to_jsonable(v) for k, v in obj.items()}
+        if isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
+            return [_to_jsonable(v) for v in obj]
+        # Fallback to string
+        return str(obj)
+
+    def _dump_json(base_dir: Path, name: str, data) -> Path:
+        base_dir.mkdir(parents=True, exist_ok=True)
+        p = base_dir / f"{name}.json"
+        with p.open("w", encoding="utf-8") as f:
+            json.dump(_to_jsonable(data), f, ensure_ascii=False, indent=2, sort_keys=True)
+        return p
+
+    def _dump_text(base_dir: Path, name: str, text: str) -> Path:
+        base_dir.mkdir(parents=True, exist_ok=True)
+        p = base_dir / f"{name}.txt"
+        p.write_text(text, encoding="utf-8")
+        return p
+
+    def _subset_for_expect(payload: dict, expect: dict) -> dict:
+        """Return only the parts of payload that were asserted."""
+        out = {}
+        for k, v in (expect or {}).items():
+            if k not in payload:
+                continue
+            av = payload[k]
+            if isinstance(v, Mapping) and isinstance(av, Mapping):
+                out[k] = _subset_for_expect(av, v)
+            else:
+                out[k] = av
+        return out
+
+    # -------- assertion helpers -----------------------------
+    def _handle_callable(actual_value, func, path_label: str):
+        res = func(actual_value)
+        if isinstance(res, (bool, np.bool_)) or res is None:
+            assert bool(res), f"{path_label} predicate failed; got {actual_value!r}"
+        elif isinstance(res, dict):
+            # Allow returning a nested expected dict
+            _assert_mapping(actual_value, res, path_label)
+        elif isinstance(res, (list, tuple)):
+            # Allow returning a sequence to compare to
+            assert actual_value == res, f"{path_label} expected {res!r}, got {actual_value!r}"
+        else:
+            # e.g. pytest.approx(...) or any other comparator-like object
+            assert actual_value == res, f"{path_label} expected {res!r}, got {actual_value!r}"
+
+    def _assert_sequence(actual_seq, expected_seq, path_label: str):
+        assert isinstance(actual_seq, (list, tuple)), f"{path_label} should be a sequence"
+        assert len(actual_seq) == len(expected_seq), f"{path_label} length mismatch"
+        for i, (ai, ei) in enumerate(zip(actual_seq, expected_seq)):
+            item_label = f"{path_label}[{i}]"
+            if isinstance(ei, dict):
+                assert isinstance(ai, dict), f"{item_label} should be a dict"
+                _assert_mapping(ai, ei, item_label)
+            elif callable(ei):
+                _handle_callable(ai, ei, item_label)
+            elif isinstance(ei, (list, tuple)):
+                _assert_sequence(ai, ei, item_label)
+            else:
+                assert ai == ei, f"{item_label} expected {ei!r}, got {ai!r}"
+
+    def _assert_mapping(actual: dict, expected: dict, label: str):
+        for k, v in (expected or {}).items():
+            assert k in actual, f"{label} missing key: {k!r}"
+            av = actual[k]
+            key_label = f"{label}[{k!r}]"
+            if isinstance(v, dict):
+                assert isinstance(av, dict), f"{key_label} should be a dict"
+                _assert_mapping(av, v, key_label)
+            elif callable(v):
+                _handle_callable(av, v, key_label)
+            elif isinstance(v, (list, tuple)):
+                _assert_sequence(av, v, key_label)
+            else:
+                assert av == v, f"{key_label} expected {v!r}, got {av!r}"
+
+
+    def _assert(payload: dict, expect: dict, tmp_path: Path, *, stem: str = "plot", dump: bool = True):
         assert isinstance(payload, dict), "payload must be a dict"
         assert "chart_metadata" in payload and "descriptive_stats" in payload, \
             "payload must contain 'chart_metadata' and 'descriptive_stats'"
 
-        # TODO: support saving payload as actual JSON to support diagnosing issues.
-        cm = payload["chart_metadata"]
+        debug_dir = tmp_path / "assert_plot_metadata" / stem
+        # Always dump full payload & expect first (helps even when the assertion later fails)
+        if dump:
+            _dump_json(debug_dir, "payload", payload)
+            _dump_json(debug_dir, "expect", expect)
 
-        def _handle_callable(actual_value, func, path_label: str):
-            res = func(actual_value)
-            import numpy as _np
-            if isinstance(res, (bool, _np.bool_)) or res is None:
-                assert bool(res), f"{path_label} predicate failed; got {actual_value!r}"
-            elif isinstance(res, dict):
-                # Allow returning a nested expected dict
-                _assert_mapping(actual_value, res, path_label)
-            elif isinstance(res, (list, tuple)):
-                # Allow returning a sequence to compare to
-                assert actual_value == res, f"{path_label} expected {res!r}, got {actual_value!r}"
+        try:
+
+            for key in ("chart_metadata", "descriptive_stats", "inferential_stats", "draft_descriptive_findings", "draft_inferential_findings"):
+                if key in expect:
+                    assert key in payload, f"payload must contain '{key}'"
+                    actual = payload[key]
+                    _assert_mapping(actual, expect.get(key, {}), key)
+
+            # File check logic
+            cm = payload["chart_metadata"]
+            exp_file_in_expect = "file_name" in (expect.get("chart_metadata") or {})
+            file_name = cm.get("file_name")
+
+            if exp_file_in_expect:
+                exp_file = expect["chart_metadata"]["file_name"]
+                if exp_file is None:
+                    assert file_name is None, "Expected no file to be saved"
+                    return
+                # explicit file name required
+                assert file_name == exp_file, "file_name mismatch"
+                saved = tmp_path / exp_file
             else:
-                # e.g. pytest.approx(...) or any other comparator-like object
-                assert actual_value == res, f"{path_label} expected {res!r}, got {actual_value!r}"
+                # not specified → if present, verify it; if absent, do nothing
+                if not file_name:
+                    return
+                saved = tmp_path / file_name
 
-        def _assert_sequence(actual_seq, expected_seq, path_label: str):
-            assert isinstance(actual_seq, (list, tuple)), f"{path_label} should be a sequence"
-            assert len(actual_seq) == len(expected_seq), f"{path_label} length mismatch"
-            for i, (ai, ei) in enumerate(zip(actual_seq, expected_seq)):
-                item_label = f"{path_label}[{i}]"
-                if isinstance(ei, dict):
-                    assert isinstance(ai, dict), f"{item_label} should be a dict"
-                    _assert_mapping(ai, ei, item_label)
-                elif callable(ei):
-                    _handle_callable(ai, ei, item_label)
-                elif isinstance(ei, (list, tuple)):
-                    _assert_sequence(ai, ei, item_label)
-                else:
-                    assert ai == ei, f"{item_label} expected {ei!r}, got {ai!r}"
+            # Verify PNG exists and signature
+            assert saved.exists() and saved.is_file(), f"Missing saved file: {saved}"
+            assert saved.stat().st_size > 0, "Saved file is empty"
+            with open(saved, "rb") as f:
+                assert f.read(8) == b"\x89PNG\r\n\x1a\n", "Saved file is not a PNG"
+        
+        except AssertionError as e:
+            # On failure, dump subset actually compared and the error message
+            if dump:
+                subset = _subset_for_expect(payload, expect)
+                _dump_json(debug_dir, "payload_subset", subset)
+                _dump_text(debug_dir, "assert_fail", str(e))
+            raise
 
-        def _assert_mapping(actual: dict, expected: dict, label: str):
-            for k, v in (expected or {}).items():
-                assert k in actual, f"{label} missing key: {k!r}"
-                av = actual[k]
-                key_label = f"{label}[{k!r}]"
-                if isinstance(v, dict):
-                    assert isinstance(av, dict), f"{key_label} should be a dict"
-                    _assert_mapping(av, v, key_label)
-                elif callable(v):
-                    _handle_callable(av, v, key_label)
-                elif isinstance(v, (list, tuple)):
-                    _assert_sequence(av, v, key_label)
-                else:
-                    assert av == v, f"{key_label} expected {v!r}, got {av!r}"
-
-        for key in ("chart_metadata", "descriptive_stats", "inferential_stats", "draft_descriptive_findings", "draft_inferential_findings"):
-            if key in expect:
-                assert key in payload, f"payload must contain '{key}'"
-                actual = payload[key]
-                _assert_mapping(actual, expect.get(key, {}), key)
-
-        # File check logic
-        exp_file_in_expect = "file_name" in (expect.get("chart_metadata") or {})
-        file_name = cm.get("file_name")
-
-        if exp_file_in_expect:
-            exp_file = expect["chart_metadata"]["file_name"]
-            if exp_file is None:
-                assert file_name is None, "Expected no file to be saved"
-                return
-            # explicit file name required
-            assert file_name == exp_file, "file_name mismatch"
-            saved = tmp_path / exp_file
         else:
-            # not specified → if present, verify it; if absent, do nothing
-            if not file_name:
-                return
-            saved = tmp_path / file_name
-
-        # Verify PNG exists and signature
-        assert saved.exists() and saved.is_file(), f"Missing saved file: {saved}"
-        assert saved.stat().st_size > 0, "Saved file is empty"
-        with open(saved, "rb") as f:
-            assert f.read(8) == b"\x89PNG\r\n\x1a\n", "Saved file is not a PNG"
+            # On success, still dump the subset compared (nice breadcrumb)
+            if dump:
+                subset = _subset_for_expect(payload, expect)
+                _dump_json(debug_dir, "payload_subset", subset)
 
     return _assert
 
@@ -161,8 +238,7 @@ def assert_report_data(load_and_validate_report, assert_plot_metadata):
 
     def _handle_callable(actual_value, func, tmp_path: Path, path_label: str):
         res = func(actual_value)
-        import numpy as _np
-        if isinstance(res, (bool, _np.bool_)) or res is None:
+        if isinstance(res, (bool, np.bool_)) or res is None:
             assert bool(res), f"{path_label} predicate failed; got {actual_value!r}"
         elif isinstance(res, dict):
             _assert_mapping(actual_value, res, tmp_path, path_label)
