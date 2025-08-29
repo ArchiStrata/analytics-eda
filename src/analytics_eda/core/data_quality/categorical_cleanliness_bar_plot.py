@@ -46,7 +46,7 @@ class CategoricalCleanlinessBarContext(SeriesBarChartContext):
     ylabel: str = "Issue Type"
     is_orientation_vertical: bool = False
 
-    show_footer_summary: bool = True
+    show_subtitle: bool = True
 
     # Cleanliness rules
     # Regex of allowed characters. Default allows letters, digits, whitespace, common punctuation: -_/.,&()'
@@ -193,20 +193,61 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BaseP
         return desc
 
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
-        # TODO: refine descriptive findings
-        return {}
+        total_nonnull = desc["total_nonnull"]
+
+        descriptive_findings = {
+            # how many nonnull values were included in the plot analysis?
+            "context": f"N (non‑null) = {total_nonnull:,}",
+            "primary_finding": "",
+            "secondary_finding": None
+        }
+
+        if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
+            descriptive_findings["primary_finding"] = "The series is empty."
+            return descriptive_findings
+        
+        pct_any_issue = desc["pct_total_count"] * 100
+        total_issues = desc["total_count"]
+        
+        # Nothing to report → all values are clean
+        if total_issues == 0:
+            descriptive_findings["primary_finding"] = "No cleanliness issues detected."
+            return descriptive_findings
+
+        # find most frequent issue
+        bars = desc.get("bars", {})
+        bars = desc.get("bars", {})
+        if bars:
+            top_issue, top_vals = max(bars.items(), key=lambda kv: kv[1]["count"])
+            top_pct = top_vals["pct_of_nonnull"] * 100
+            top_count = top_vals["count"]
+        else:
+            top_issue, top_pct, top_count = None, 0, 0
+        
+        # how many issues are there and how common are they?
+        descriptive_findings["primary_finding"] = f"{pct_any_issue:.1f}% of values show at least one cleanliness issue ({total_issues:,} rows)."
+
+        # which issue had the most, how common, and how many?
+        descriptive_findings["secondary_finding"] = (
+            f"Most frequent issue: {top_issue} at {top_pct:.1f}% ({top_count} rows)."
+            if top_issue else None
+        )
+        return descriptive_findings
     
-    def footer_summary_text(
-        self,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
-    ) -> str:
-        """
-        Optional override: return a short footer summary derived from descriptive/inferential stats.
-        Return ''/None to suppress.
-        """
-        return f"N (non‑null) = {desc['total_nonnull']:,}"
+    def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
+            return ""
+
+        total_nonnull = desc["total_nonnull"]
+        total_issues = desc.get("total_count", 0)
+        pct_any_issue = float(desc.get("pct_total_count", 0.0)) * 100.0
+
+        # Case 1: all clean
+        if total_issues == 0:
+            return "No cleanliness issues detected"
+
+        # Case 2: some issues found
+        return f"{pct_any_issue:.1f}% of {total_nonnull:,} non-null values have cleanliness issues"
 
     def clean_series(self, s: pd.Series) -> tuple[pd.Series, dict]:
         """

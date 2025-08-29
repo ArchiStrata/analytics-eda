@@ -33,7 +33,7 @@ class StringCoercionBarContext(SeriesBarChartContext):
     ylabel: str = "Category"
     is_orientation_vertical: bool = False
 
-    show_footer_summary: bool = True
+    show_subtitle: bool = True
 
     # plot-specific knobs
     include_na_literal: bool = False      # if True, include literal strings like "NaN", "None" if they fail coercion
@@ -103,22 +103,55 @@ class StringCoercionBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
         return desc
 
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
-        # TODO: refine descriptive findings
-        return {}
+        total_nonnull = desc["total_nonnull"]
 
-    def footer_summary_text(
-        self,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
-    ) -> str:
-        """
-        Optional override: return a short footer summary derived from descriptive/inferential stats.
-        Return ''/None to suppress.
-        """
-        return (
-            f"Non-numeric values = {desc['total_count']:,} "
-            f"({desc['pct_total_count']*100:.1f}% of non-null); "
-            f"Distinct = {desc['k']:,}; "
-            f"N (non-null) = {desc['total_nonnull']:,}; N (total) = {desc['total']:,}"
+        descriptive_findings = {
+            # how many nonnull values were included in the plot analysis?
+            "context": f"N (non‑null) = {total_nonnull:,}",
+            "primary_finding": "",
+            "secondary_finding": None
+        }
+
+        if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
+            descriptive_findings["primary_finding"] = "The series is empty."
+            return descriptive_findings
+        
+        total_nonnum = desc.get("total_count", 0)  # rows that failed numeric coercion (sum of bars)
+        pct_nonnum = float(desc.get("pct_total_count", 0.0)) * 100.0
+
+        # Nothing to report (all values numeric after coercion)
+        if total_nonnum == 0:
+            descriptive_findings["primary_finding"] = "No non-numeric values detected."
+            return descriptive_findings
+
+        # how many distinct failed coercion issues are there and how common are they?
+        # Primary: overall rate + count
+        descriptive_findings["primary_finding"] = (
+            f"{pct_nonnum:.1f}% of values failed numeric coercion "
+            f"({total_nonnum:,} rows)."
         )
+
+        # which issue had the most, how common, and how many?
+        # Secondary: most frequent offending token (percent + count)
+        bars: Dict[str, Any] = desc.get("bars", {})
+        if bars:
+            top_label, top_vals = max(bars.items(), key=lambda kv: int(kv[1].get("count", 0)))
+            top_pct = float(top_vals.get("pct_of_nonnull", 0.0)) * 100.0
+            top_cnt = int(top_vals.get("count", 0))
+            descriptive_findings["secondary_finding"] = (
+                f"Most frequent token: {repr(top_label)} at {top_pct:.1f}% ({top_cnt:,} rows)."
+            )
+        return descriptive_findings
+
+    def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        if not desc or desc.get("total_nonnull", 0) == 0:
+            return ""
+
+        total_nonnull = desc["total_nonnull"]
+        total_nonnum = desc.get("total_count", 0)
+        pct_nonnum = float(desc.get("pct_total_count", 0.0)) * 100.0
+
+        if total_nonnum == 0:
+            return "No non-numeric values detected"
+
+        return f"{pct_nonnum:.1f}% of {total_nonnull:,} non-null values are non-numeric ({total_nonnum:,} rows)"

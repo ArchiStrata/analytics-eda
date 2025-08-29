@@ -20,16 +20,6 @@ _(default_descriptive, compute_descriptive, compute_descriptive_frame)_
 - Any descriptive stat parameters in context must be included in `descriptive_stats`.
 - Include units and consistent rounding with the plot configuration.
 
-- **Draft Findings (recommended):** Override `draft_descriptive_findings` to return short, human-readable statements derived strictly from `desc`.
-  - Keep findings factual, concise, and **non-interpretive**.
-  - Limit to ~1–3 bullet-sized statements per plot to respect cognitive load.
-  - Use consistent, machine-readable keys so reports can aggregate across plots.
-  - Prefer key–value phrasing (e.g., `"central_tendency": "Median > Mean (right-skewed hint)"`).
-  - Include units and rounding consistent with the plot.
-  - Do not duplicate raw numbers already present in `descriptive_stats`; instead, summarize them.
-  - If `desc` is empty or insufficient, return `{}`.
-  - Example keys: `summary`, `distribution`, `cardinality`, `coverage`, `outliers`, `data_quality`.
-
 ### Draft Descriptive Findings (recommended)
 
 Implement `draft_descriptive_findings(desc) -> Dict[str, Any]` to emit short, human-readable statements derived strictly from `desc`.  
