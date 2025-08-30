@@ -35,6 +35,10 @@ class SeriesBarChartContext(PlotContext):
     other_label: str = "Other"                 # label used when aggregating capped bars
     other_label_format: str = "{label} (k={k_agg})"
 
+    # optional threshold-based aggregation (pre-cap)
+    other_min_count: Optional[int] = None  # collapse categories with count < other_min_count into "Other"
+    other_respect_existing: bool = True    # if 'Other' already in counts, merge into it instead of creating a second one
+
 
 class SeriesBarChartMixin:
     """
@@ -166,35 +170,73 @@ class SeriesBarChartMixin:
         else:
             raise ValueError(f"Unknown denominator_key: {denominator_key}")
 
-        # Create (label, count, ratio) tuples
+        # ---- pre-aggregate small categories into 'Other' (threshold policy) ----
+        other_label_base = getattr(self.ctx, "other_label", "Other")
+        other_min = getattr(self.ctx, "other_min_count", None)
+        respect_existing = bool(getattr(self.ctx, "other_respect_existing", True))
+        has_existing_other = other_label_base in counts
+
+        # track how many labels folded via the threshold
+        threshold_fold_k = 0
+
+        if isinstance(other_min, int) and other_min > 0:
+            # do not consider the raw 'Other' key itself for thresholding
+            small_keys = [k for k, v in counts.items()
+                        if k != other_label_base and int(v) < other_min]
+            threshold_fold_k = len(small_keys)
+            small_sum = int(sum(int(counts[k]) for k in small_keys))
+            for k in small_keys:
+                counts.pop(k, None)
+            if small_sum > 0:
+                if respect_existing and has_existing_other:
+                    counts[other_label_base] = int(counts.get(other_label_base, 0)) + small_sum
+                else:
+                    counts[other_label_base] = small_sum
+                    has_existing_other = True
+
+        # Create (label, count, ratio) tuples AFTER thresholding
         items = [(k, int(v), float(v)/denom) for k, v in counts.items()]
 
-        # cap & aggregate into "Other"
+        # ---- Cap policy: aggregate overflow into a SINGLE displayed "Other" bar ----
         max_display_bars = getattr(self.ctx, "max_display_bars", None)
-        other_label_base = getattr(self.ctx, "other_label", "Other")
-        top_items = items
+        other_label_fmt = getattr(self.ctx, "other_label_format", "{label} (k={k_agg})")
+
+        # Exclude the raw Other key from ranking/clipping so it never gets dropped;
+        # we’ll merge it into the displayed Other bar later.
+        existing_other_count = int(counts.get(other_label_base, 0)) if has_existing_other else 0
+        items_wo_other = [(k, n, r) for (k, n, r) in items if k != other_label_base]
+
+        top_items = items_wo_other
         clipped: list[tuple[str, int, float]] = []
         if isinstance(max_display_bars, int) and max_display_bars > 0 and len(items) > max_display_bars:
-            keep = max_display_bars - 1  # reserve a slot for Other
-            top_items = items[:max(0, keep)]
-            clipped = items[max(0, keep):]
+            keep = max_display_bars - 1  # reserve 1 slot for displayed Other
+            # Sort for determinism if desired; otherwise preserve incoming order
+            # items_wo_other.sort(key=lambda kv: (-kv[1], kv[0]))
+            top_items = items_wo_other[:max(0, keep)]
+            clipped = items_wo_other[max(0, keep):]
 
+        # Assemble bars dict
         bars: Dict[str, Dict[str, float | int]] = {}
         for k, n, r in top_items:
             bars[k] = {"count": n, denominator_key: float(r)}
 
         other_display = None
-        if clipped:
-            other_count = int(sum(n for _, n, _ in clipped))
-            other_ratio = float(other_count) / denom
-            k_agg = len(clipped)
+        if clipped or existing_other_count > 0:
+            # Merge any clipped tail + any pre-existing/raw Other into the displayed Other
+            other_count = int(sum(n for _, n, _ in clipped)) + int(existing_other_count)
+            other_ratio = float(other_count) / denom if denom > 0 else 0.0
+            # k_agg counts how many labels were folded in: clipped tail + raw Other (if present)
+            k_agg = threshold_fold_k + len(clipped)
+            
+            # Format the display label (e.g., "Other (k=3)") if we actually folded something in
+            other_display = (other_label_fmt.format(label=other_label_base, k_agg=k_agg)
+                            if k_agg > 0 else other_label_base)
 
-            # extended label with k
-            other_display = f"{other_label_base} (k={k_agg})"
             bars[other_display] = {
                 "count": other_count,
                 denominator_key: other_ratio,
                 "_is_other": True,
+                "k_agg": k_agg,
             }
 
         # cache arrays for draw
@@ -205,7 +247,6 @@ class SeriesBarChartMixin:
         self._draw_set("series", "labels", labels)
         self._draw_set("series", "values", values)
         self._draw_set("series", "counts", counts_arr)
-        self._draw_set("series", "value_key", denominator_key)
 
         unique_categories_total = int(s.dropna().astype("object").nunique())
 
@@ -246,6 +287,10 @@ class SeriesBarChartMixin:
                 "bar_sort_descending": bool(getattr(self.ctx, "bar_sort_descending", False)),
                 "max_display_bars": max_display_bars,
                 "other_label": other_label_base,
+                "other_label_format": other_label_fmt,
+                "other_display": other_display,
+                "other_min_count": other_min,
+                "other_respect_existing": respect_existing,
                 "bar_top_n": top_n,
                 "bar_top_include_ties": include_ties,
                 **(extra_params or {}),

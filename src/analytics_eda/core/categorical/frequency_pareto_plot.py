@@ -13,150 +13,251 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Literal
 import numpy as np
 import pandas as pd
 
-from ..utils.base_plot import BasePlot, PlotContext
+from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+
+from ..utils.base_plot import BasePlot
 from .validate_categorical_named_series import CategoricalSeriesMixin
 
 @dataclass
-class FrequencyParetoContext(PlotContext):
+class FrequencyParetoContext(SeriesBarChartContext):
     title_template: str = "Pareto Chart of {name}{modifiers}"
-    xlabel: str = "Value"
-    ylabel: str = "Count"
-    min_value: Optional[int] = None          # threshold to collapse small categories into "Others"
-    horizontal: bool = False                 # draw horizontal bars if True
+    xlabel: str = "Share of total"
+    ylabel: str = "Category"
+    is_orientation_vertical: bool = False
+    show_subtitle: bool = True
 
-class FrequencyParetoPlot(CategoricalSeriesMixin, BasePlot):
-    """
-    Pareto chart for categorical frequency distribution.
-    Returns BasePlot.run() schema:
-      {
-        "descriptive_stats": {
-            "mode", "total_count", "n_categories", "cumulative_count_at_80pct"
-        },
-        "inferential_stats": {},
-        "chart_metadata": {...}
-      }
-    """
+    pareto_mode: Literal["dual", "shared", "none"] = "shared"
+    pareto_threshold_pct: float = 80.0
+    pareto_line_color: str = "black"
+    pareto_line_marker: str = "o"
+    pareto_line_style: str = "-"
+    show_threshold_label: bool = True
 
-    def default_descriptive(self) -> Dict[str, Any]:
-        return {
-            "mode": None,
-            "total_count": 0,
-            "n_categories": 0,
-            "cumulative_count_at_80pct": 0,
-            # payload to keep draw() simple (all empty)
-            "counts_index": [],
-            "counts_values": np.array([], dtype=float),
-            "rel_freq": np.array([], dtype=float),
-            "cumperc": np.array([], dtype=float),
-            "threshold_idx": -1,
-            "threshold_count": 0,
-        }
+
+class FrequencyParetoPlot(CategoricalSeriesMixin, SeriesBarChartMixin, BasePlot):
+    """
+    Shows how a small set of categories accounts for most occurrences (Pareto concentration).
+
+    Why this matters:
+    - Identifies the vital few categories that dominate volume, guiding prioritization and focus.
+
+    What this plot does:
+    - Ranks categories by share of total (optionally collapsing small ones into “Other”).
+    - Draws bars for category shares and a cumulative line.
+    - Highlights how many categories are needed to reach a chosen threshold (e.g., 80%).
+    """
+    def plot_semantic_version(self) -> str:
+        """
+        Return the semantic version of this plot implementation.
+        """
+        return "1.0.0"
 
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         counts = s.value_counts()
 
-        # Group small categories into "Others", if requested
-        min_value = getattr(self.ctx, "min_value", None)
-        if min_value is not None:
-            small = counts[counts < int(min_value)]
-            if not small.empty:
-                counts = counts[counts >= int(min_value)]
-                counts["Others"] = int(small.sum())
-
-        # Relative freq (%) and cumulative %
-        rel_freq = counts / counts.sum() * 100.0
-        cumperc = rel_freq.cumsum()
-
-        # First index where cumulative >= 80%
-        # (Pareto principle—there will always be one since cumperc[-1] == 100)
-        threshold_idx = int(np.argmax(cumperc.values >= 80.0))
-        threshold_count = int(counts.values[: threshold_idx + 1].sum())
-
-        desc = {
-            "mode": counts.index[0] if len(counts) > 0 else None,
-            "total_count": int(counts.sum()),
-            "n_categories": int(len(counts)),
-            "cumulative_count_at_80pct": threshold_count,
-            # payload for draw()
-            "counts_index": counts.index.tolist(),
-            "counts_values": counts.values.astype(float),
-            "rel_freq": rel_freq.values.astype(float),
-            "cumperc": cumperc.values.astype(float),
-            "threshold_idx": threshold_idx,
-            "threshold_count": threshold_count,
+        # Build standard series-bar desc (percent base is pct_of_total for Pareto)
+        extra_params = {
+            "pareto_mode": getattr(self.ctx, "pareto_mode", "shared"),
+            "pareto_threshold_pct": float(getattr(self.ctx, "pareto_threshold_pct", 80.0)),
+            "show_threshold_label": bool(getattr(self.ctx, "show_threshold_label", True)),
+            "pareto_line_color": getattr(self.ctx, "pareto_line_color", "black"),
+            "pareto_line_marker": getattr(self.ctx, "pareto_line_marker", "o"),
+            "pareto_line_style": getattr(self.ctx, "pareto_line_style", "-"),
         }
-        return desc
+        
+        desc = self.build_series_bar_desc(
+            s,
+            counts.to_dict(),
+            denominator_key="pct_of_total",
+            extra_params=extra_params
+        )
 
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
-        return {}
+        if getattr(self.ctx, "pareto_mode", "shared") == "shared" and self.ctx.bar_height_source != "values":
+            desc["error"] = "shared mode requires bar_height_source='values'"
+            desc["skip_plot"] = True
+
+        # Derive Pareto arrays in the plotted order
+        labels  = self._draw_get("series", "labels") or []
+        bars    = desc.get("bars", {})
+        denom_k = desc.get("denominator_key", "pct_of_total")
+
+        rel = np.array([float(bars[lbl].get(denom_k, 0.0)) * 100.0 for lbl in labels], dtype=float)
+        cum = np.cumsum(rel)
+
+        thr_pct = float(getattr(self.ctx, "pareto_threshold_pct", 80.0))
+        thr_idx = int(np.argmax(cum >= thr_pct)) if len(cum) else -1
+        thr_count = int(sum(int(bars[lbl]["count"]) for lbl in labels[: max(thr_idx, -1) + 1])) if thr_idx >= 0 else 0
+
+        # Cache for draw
+        self._draw_set("pareto", "cumperc", cum)
+        self._draw_set("pareto", "relpct", rel)
+        self._draw_set("pareto", "threshold_idx", thr_idx)
+        self._draw_set("pareto", "threshold_pct", thr_pct)
+        self._draw_set("pareto", "threshold_count", thr_count)
+
+        # Extend desc with Pareto-specific summaries
+        desc.update({
+            "cumulative_count_at_threshold": thr_count,
+            "threshold_pct": thr_pct,
+            "threshold_idx": thr_idx,
+        })
+        return desc
+    
+    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+        total = int(desc.get("total", 0))
+        k = int(desc.get("input_categories", 0))
+        if total == 0 or k == 0:
+            return {}
+
+        findings = {
+            "context": f"N = {total:,} values across {k} categories",
+            "secondary_finding": None,
+        }
+
+        # Pareto threshold summary
+        thr_pct = float(desc.get("threshold_pct", 80.0))
+        thr_idx = int(desc.get("threshold_idx", -1))
+        if thr_idx < 0:
+            findings["primary_finding"] = "Distribution is too sparse to summarize with a Pareto threshold."
+            return findings
+
+        labels = self._draw_get("series", "labels") or list((desc.get("bars") or {}).keys())
+        bars   = desc.get("bars", {})
+        denom_k = desc.get("denominator_key", "pct_of_total")
+
+        # Determine whether the displayed 'Other' bar is inside the threshold cut
+        params = desc.get("params") or {}
+        other_label = params.get("other_display")
+        threshold_slice = labels[: (thr_idx + 1)]
+        other_in_cut = bool(other_label and other_label in threshold_slice)
+
+        # Primary: acknowledge Other when it’s part of the cut
+        if other_in_cut:
+            non_other = [lbl for lbl in threshold_slice if lbl != other_label]
+            if len(non_other) == 0:
+                primary = f"≈{thr_pct:.0f}% of occurrences are covered by {other_label}."
+            elif len(non_other) == 1:
+                primary = f"≈{thr_pct:.0f}% of occurrences are covered by {repr(non_other[0])} and {other_label}."
+            elif len(non_other) == 2:
+                primary = f"≈{thr_pct:.0f}% of occurrences are covered by {repr(non_other[0])}, {repr(non_other[1])}, and {other_label}."
+            else:
+                primary = f"≈{thr_pct:.0f}% of occurrences are covered by {len(non_other)} named categories plus {other_label}."
+            findings["primary_finding"] = primary
+        else:
+            findings["primary_finding"] = (
+                f"≈{thr_pct:.0f}% of occurrences are concentrated in the top {thr_idx + 1} categories."
+            )
+
+        # Secondary: top category(ies) + (if applicable) Other’s share inside the cut
+        shares = [(lbl, float(bars.get(lbl, {}).get(denom_k, 0.0))) for lbl in labels if lbl in bars]
+        if not shares:
+            return findings
+
+        max_share = max(v for _, v in shares)
+        eps = max(1e-12, 1e-6 * max_share)
+        tied = [lbl for lbl, v in shares if abs(v - max_share) <= eps]
+        top_pct = max_share * 100.0
+
+        parts = []
+        if len(tied) == 1:
+            parts.append(f"Top category: {repr(tied[0])} at {top_pct:.1f}%.")
+        else:
+            preview = ", ".join(repr(x) for x in tied[:3])
+            more = f" +{len(tied) - 3} more" if len(tied) > 3 else ""
+            parts.append(f"Top categories (tie at {top_pct:.1f}%): {preview}{more}.")
+
+        if other_in_cut and other_label in bars:
+            other_pct = float(bars[other_label].get(denom_k, 0.0)) * 100.0
+            k_agg = bars[other_label].get("k_agg")
+            if isinstance(k_agg, int) and k_agg > 0:
+                parts.append(f"{other_label} contributes {other_pct:.1f}% within the threshold.")
+            else:
+                parts.append(f"{other_label} contributes {other_pct:.1f}% within the threshold.")
+
+        findings["secondary_finding"] = " ".join(parts) if parts else None
+        return findings
 
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
+        # 1) Bars via the common mixin
+        fig, ax = SeriesBarChartMixin.draw(self, s, desc, inf, chart_metadata, fig=fig, ax=ax, palette=palette)
 
-        # Colors
-        muted = "#999999"
-        accent = "#0072B2"
+        # 2) Pareto cumulative line (optional)
+        mode   = getattr(self.ctx, "pareto_mode", "dual")
+        cum    = self._draw_get("pareto", "cumperc", np.array([]))
+        thr_pct = float(self._draw_get("pareto", "threshold_pct", 80.0))
+        show_thr_label = bool(getattr(self.ctx, "show_threshold_label", True))
 
-        idx = desc["counts_index"]
-        vals = desc["counts_values"]
-        rel = desc["rel_freq"]
-        cum = desc["cumperc"]
-        thr_i = desc["threshold_idx"]
-        thr_count = desc["threshold_count"]
+        labels = self._draw_get("series", "labels") or []
+        ticks = np.arange(len(labels))
 
-        n = len(idx)
-        ticks = np.arange(n)
+        if mode == "none" or len(labels) == 0:
+            return fig, ax
 
-        # Choose bar orientation
-        if getattr(self.ctx, "horizontal", False):
-            # Colors: highlight bars up to threshold_idx inclusive
-            bar_colors = [accent if i <= thr_i else muted for i in range(n)]
-            bars = ax.barh(idx, vals, color=bar_colors, edgecolor="black")
+        lc   = getattr(self.ctx, "pareto_line_color", "black")
+        mk   = getattr(self.ctx, "pareto_line_marker", "o")
+        ls   = getattr(self.ctx, "pareto_line_style", "-")
 
-            # Count + % annotations
-            for bar, count, pct in zip(bars, vals, rel):
-                width = bar.get_width()
-                ax.text(width, bar.get_y() + bar.get_height() / 2,
-                        f"{int(count)} ({pct:.1f}%)", ha="left", va="center")
-
-            # Cumulative % on the top axis
-            ax2 = ax.twiny()
-            ax2.plot(cum, ticks, marker="o", linestyle="-", color="black")
-            ax2.set_xlabel("Cumulative %")
-            ax2.set_xlim(0, 110)
-            ax2.axvline(80, color=accent, linestyle="--")
-            if n > 0:
-                ax2.text(80, ticks[-1], "80% threshold", ha="left", va="top", color=accent)
-
+        horiz = not bool(getattr(self.ctx, "is_orientation_vertical", True))
+        if horiz:
+            # Horizontal bars: value axis is X → put cumulative on top axis for "dual"
+            if mode == "shared":
+                cum01 = cum / 100.0
+                thr01 = thr_pct / 100.0
+                ax.plot(cum01, ticks, marker=mk, linestyle=ls, color=lc)
+                ax.set_xlim(0, max(1.0, float(np.nanmax(cum01)) * 1.05))
+                ax.axvline(thr01, color=palette[0], linestyle="--")
+                if show_thr_label and len(ticks) > 0:
+                    ax.text(thr01, ticks[-1], f"{thr_pct:.0f}% threshold", ha="left", va="top", color=palette[0])
+            else:
+                ax2 = ax.twiny()
+                ax2.plot(cum, ticks, marker=mk, linestyle=ls, color=lc)
+                ax2.set_xlabel("Cumulative %")
+                ax2.set_xlim(0, max(100.0, np.nanmax(cum) * 1.05))
+                ax2.axvline(thr_pct, color=palette[0], linestyle="--")
+                if show_thr_label and len(ticks) > 0:
+                    ax2.text(thr_pct, ticks[-1], f"{thr_pct:.0f}%", ha="left", va="top", color=palette[0])
         else:
-            bar_colors = [accent if i <= thr_i else muted for i in range(n)]
-            bars = ax.bar(idx, vals, color=bar_colors, edgecolor="black")
-
-            # Count + % annotations
-            for bar, count, pct in zip(bars, vals, rel):
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width() / 2, height,
-                        f"{int(count)}\n({pct:.1f}%)", ha="center", va="bottom")
-
-            # Axes & labels
-            ax.set_xticks(ticks)
-            ax.set_xticklabels(idx, rotation=45, ha="right")
-
-            # Cumulative % on right axis
-            ax2 = ax.twinx()
-            ax2.plot(ticks, cum, marker="o", linestyle="-", color="black")
-            ax2.set_ylabel("Cumulative %")
-            ax2.set_ylim(0, 110)
-            if n > 0:
-                ax2.axhline(80, color=accent, linestyle="--")
-                ax2.text(ticks[-1], 80, "80% threshold", ha="right", va="bottom", color=accent)
-
-
-        # Footnote
-        fig.text(0.99, 0.01, f"Cumulative count at 80%: {thr_count}",
-                 ha="right", va="bottom", fontsize=8, color="gray")
+            # Vertical bars: value axis is Y → put cumulative on right axis for "dual"
+            if mode == "shared":
+                cum01 = cum / 100.0
+                thr01 = thr_pct / 100.0
+                ax.plot(ticks, cum01, marker=mk, linestyle=ls, color=lc)
+                ax.set_ylim(0, max(1.0, float(np.nanmax(cum01)) * 1.05))
+                ax.axhline(thr01, color=palette[0], linestyle="--")
+                if show_thr_label and len(ticks) > 0:
+                    ax.text(ticks[-1], thr01, f"{thr_pct:.0f}%", ha="right", va="bottom", color=palette[0])
+            else:
+                ax2 = ax.twinx()
+                ax2.plot(ticks, cum, marker=mk, linestyle=ls, color=lc)
+                ax2.set_ylabel("Cumulative %")
+                ax2.set_ylim(0, max(100.0, np.nanmax(cum) * 1.05))
+                ax2.axhline(thr_pct, color=palette[0], linestyle="--")
+                if show_thr_label and len(ticks) > 0:
+                    ax2.text(ticks[-1], thr_pct, f"{thr_pct:.0f}%", ha="right", va="bottom", color=palette[0])
 
         return fig, ax
+
+    def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        """
+        Return a concise, presentation-friendly subtitle based on
+        draft_descriptive_findings. Keeps focus on the core Pareto story.
+        """
+        if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
+            return ""
+
+        findings = self.draft_descriptive_findings(desc) or {}
+        primary = findings.get("primary_finding")
+        context = findings.get("context")
+
+        if not primary:
+            return ""
+
+        # Subtitle balances context + main message in one clear line
+        if context:
+            return f"{context} — {primary}"
+        else:
+            return primary
