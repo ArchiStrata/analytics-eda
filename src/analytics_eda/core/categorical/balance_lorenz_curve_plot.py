@@ -25,9 +25,9 @@ from .validate_categorical_named_series import CategoricalSeriesMixin
 @dataclass
 class BalanceLorenzCurveContext(PlotContext):
     title_template: str = "Lorenz Curve of {name}{modifiers}"
-    xlabel: str = "Cumulative share of categories"
-    ylabel: str = "Cumulative share of counts"
-    show_footer_summary: bool = True
+    xlabel: str = "Cumulative % of categories"
+    ylabel: str = "Cumulative % of values"
+    show_subtitle: bool = True
 
 class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
     """
@@ -37,12 +37,10 @@ class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
     - Large imbalance can signal sampling bias, operational drift, or fairness risks.
 
     What this plot does:
-    - Computes the Lorenz curve over category counts and reports the Gini index (0=perfect balance, 1=max imbalance).
+    - Computes the Lorenz curve over category values and reports the Gini index (0=perfect balance, 1=max imbalance).
     Returns (in BasePlot.run schema):
         {
-          "descriptive_stats": {"total", "k", "gini_index"},
-          "inferential_stats": {},
-          "chart_metadata": {...}
+          "descriptive_stats": {"total", "k", "gini_index"}
         }
     """
     def plot_semantic_version(self) -> str:
@@ -56,7 +54,7 @@ class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
     def _lorenz_curve_from_counts(counts: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Lorenz curve for nonnegative weights (e.g., category frequencies).
-        Returns (x, y): cumulative share of categories (x) vs cumulative share of counts (y).
+        Returns (x, y): cumulative share of categories (x) vs cumulative share of values (y).
         """
         if counts.size == 0 or np.sum(counts) == 0:
             # Degenerate: return the diagonal (no inequality information)
@@ -85,7 +83,7 @@ class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
     # ---- BasePlot hooks ----
 
     def default_descriptive(self) -> Dict[str, Any]:
-        return {"total": 0, "k": 0, "gini_index": float("nan")}
+        return {"total": 0, "k": 0, "gini_index": None}
 
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         counts = s.value_counts()
@@ -107,13 +105,26 @@ class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
 
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
         if not desc or desc.get("total", 0) == 0 or np.isnan(desc.get("gini_index", float("nan"))):
-            return {"summary": "No imbalance signal (no data)."}
-        g = float(desc["gini_index"])
-        k = int(desc["k"])
-        return {
-            "summary": f"Gini = {g:.3f} (0=balanced, 1=imbalanced).",
-            "coverage": f"Categories = {k}, Total = {desc['total']:,}.",
+            return {}
+
+        total = desc["total"]
+        k = desc["k"]
+        gini = float(desc["gini_index"])
+
+        findings = {
+            "context": f"N = {total:,} values across {k} categories",
+            "primary_finding": f"Category imbalance measured by Gini index = {gini:.3f} "
+                            "(0 = perfectly balanced, 1 = highly imbalanced).",
+            "secondary_finding": None
         }
+
+        # Interpret gini index.
+        if gini == 0:
+            findings["secondary_finding"] = "All categories are evenly distributed."
+        elif gini > 0.8:
+            findings["secondary_finding"] = "Severe imbalance: a small number of categories dominate."
+
+        return findings
 
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
 
@@ -142,14 +153,18 @@ class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
 
         return fig, ax
 
-    def footer_summary_text(
-        self,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
-    ) -> str:
-        """
-        Optional override: return a short footer summary derived from descriptive/inferential stats.
-        Return ''/None to suppress.
-        """
-        return f"Gini={desc['gini_index']:.3f} • Categories={desc['k']} • Total={desc['total']:,}"
+    def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        if not desc or desc.get("total", 0) == 0 or np.isnan(desc.get("gini_index", float("nan"))):
+            return ""
+
+        gini = float(desc["gini_index"])
+        k = desc["k"]
+        total = desc["total"]
+
+        # Core story: imbalance measure
+        if gini == 0:
+            return f"Perfect balance across {k} categories (N = {total:,})"
+        elif gini > 0.8:
+            return f"Severe imbalance: Gini = {gini:.3f} across {k} categories (N = {total:,})"
+        else:
+            return f"Gini = {gini:.3f} across {k} categories (N = {total:,})"

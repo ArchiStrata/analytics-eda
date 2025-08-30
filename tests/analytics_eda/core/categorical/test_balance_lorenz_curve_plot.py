@@ -44,13 +44,13 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
             {
                 "chart_metadata": {
                     "file_name": None,
-                    "xlabel": "Cumulative share of categories",
-                    "ylabel": "Cumulative share of counts",
+                    "xlabel": "Cumulative % of categories",
+                    "ylabel": "Cumulative % of values",
                 },
                 "descriptive_stats": {
                     "total": 0,
                     "k": 0,
-                    "gini_index": lambda v: isinstance(v, float) and math.isnan(v),
+                    "gini_index": None,
                 },
             },
         ),
