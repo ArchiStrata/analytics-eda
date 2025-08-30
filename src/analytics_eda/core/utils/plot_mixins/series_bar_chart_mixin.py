@@ -21,7 +21,7 @@ from analytics_eda.core.utils.base_plot import PlotContext
 
 @dataclass
 class SeriesBarChartContext(PlotContext):
-    format_value_axis_as_percent: bool = True
+    format_orientation_axis_as_percent: bool = True
 
     show_count_in_bar_label: bool = False
     show_value_in_bar_label: bool = True
@@ -340,6 +340,17 @@ class SeriesBarChartMixin:
 
         # Draw labels only if something to show
         if any(edge_labels):
-            ax.bar_label(bars, labels=edge_labels, label_type="edge", padding=3, fontsize="small")
+            self.bar_label(ax, bars, labels=edge_labels, label_type="edge", padding=3, fontsize="small")
 
         return fig, ax
+
+    def bar_label(self, ax, container, *args, **kwargs):
+        """
+        Call ax.bar_label and automatically register the Text objects so BasePlot
+        can compute headroom. Use this in bar plots instead of ax.bar_label.
+        """
+        texts = ax.bar_label(container, *args, **kwargs)
+        # BasePlot provides register_annotations
+        if hasattr(self, "register_annotations"):
+            self.register_annotations(ax, texts)
+        return texts

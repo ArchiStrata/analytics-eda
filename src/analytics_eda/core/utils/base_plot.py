@@ -16,12 +16,11 @@ from abc import ABC
 from collections import defaultdict
 from dataclasses import dataclass
 import os
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Literal, Mapping, Optional, Sequence, Tuple, Union
 
 from matplotlib import pyplot as plt
 from matplotlib.ticker import PercentFormatter
 import seaborn as sns
-import numpy as np
 import pandas as pd
 
 Desc = Union[str, Sequence[str], None]
@@ -52,13 +51,17 @@ class PlotContext:
 
     enable_legend: bool = False # draw a legend when True
 
-    format_value_axis_as_percent: bool = False
+    format_orientation_axis_as_percent: bool = False
 
     # Auto headroom for bar labels (on by default)
     auto_headroom: bool = True
     headroom_label_offset: float = 0.02
     headroom_extra_pad: float = 0.04
     headroom_max_extra: float = 0.20
+    headroom_use_text_extents: bool = True        # measure label text bboxes to set limits
+    headroom_preserve_symmetry: bool = False      # keep +/- limits symmetric when expanding
+    headroom_axis: Literal["auto","x","y"] = "auto"  # which axis to expand (auto = by orientation)
+
 
 class BasePlot(ABC):
     def __init__(self, ctx: PlotContext):
@@ -392,56 +395,107 @@ class BasePlot(ABC):
             return
         self._subtitle_queue.append((ax, subtitle, fontsize, color, gap_from_axes_pts))
 
-    def ensure_x_headroom_for_annotations(
-        self, ax, right_values, *, label_offset=0.02, extra_pad=0.04,
-        max_extra=0.20
-    ):
-        """Only extend xlim to the right so text outside bars is visible."""
-        max_bar = float(np.max(right_values)) if len(right_values) else 0.0
-        desired_right = max_bar + label_offset + extra_pad
 
-        if getattr(self.ctx, "format_value_axis_as_percent", False) and not self.ctx.is_orientation_vertical:
-            hi = max(1.0, min(1.0 + max_extra, desired_right))
-            ax.set_xlim(0, hi)
-        else:
-            lo, hi = ax.get_xlim()
-            ax.set_xlim(lo, max(hi, desired_right))
-
-
-    def ensure_y_headroom_for_annotations(
-        self, ax, top_values, *, label_offset=0.02, extra_pad=0.04,
-        max_extra=0.20
-    ):
-        """Only extend ylim upward so text above bars is visible."""
-        max_bar = float(np.max(top_values)) if len(top_values) else 0.0
-        desired_top = max_bar + label_offset + extra_pad
-
-        if getattr(self.ctx, "format_value_axis_as_percent", False) and self.ctx.is_orientation_vertical:
-            hi = max(1.0, min(1.0 + max_extra, desired_top))
-            ax.set_ylim(0, hi)
-        else:
-            lo, hi = ax.get_ylim()
-            ax.set_ylim(lo, max(hi, desired_top))
-
-
-    def ensure_headroom_for_annotations(
-        self, ax, *, label_offset=0.02, extra_pad=0.04, max_extra=0.20
-    ):
-        """Route to x or y based on known orientation; do not touch tick formatting."""
-        rects = [p for p in ax.patches if hasattr(p, "get_width") and hasattr(p, "get_height")]
-        if not rects:
+    def register_annotations(self, ax, texts):
+        """
+        Register one or many matplotlib.text.Text objects for headroom measurement.
+        Safe to call with a single Text, a list/tuple of Texts, or nested lists.
+        """
+        if not hasattr(self, "_headroom_texts"):
+            self._headroom_texts = {}
+        if texts is None:
             return
-        widths  = np.array([abs(r.get_width())  for r in rects], dtype=float)
-        heights = np.array([abs(r.get_height()) for r in rects], dtype=float)
+        flat = []
+        stack = list(texts if isinstance(texts, (list, tuple)) else [texts])
+        while stack:
+            t = stack.pop()
+            if t is None:
+                continue
+            if isinstance(t, (list, tuple)):
+                stack.extend(t)
+            else:
+                flat.append(t)
+        if flat:
+            self._headroom_texts.setdefault(ax, []).extend(flat)
 
-        if getattr(self.ctx, "is_orientation_vertical", True):
-            self.ensure_y_headroom_for_annotations(
-                ax, heights, label_offset=label_offset, extra_pad=extra_pad, max_extra=max_extra
-            )
+    def _gather_headroom_texts(self, ax):
+        # Prefer explicitly registered texts; fall back to visible axis texts.
+        texts = getattr(self, "_headroom_texts", {}).get(ax, [])
+        return texts if texts else [t for t in ax.texts if t.get_visible()]
+
+    def _measure_overhang_in_data(self, ax):
+        """
+        Return (left_oh, right_oh, bottom_oh, top_oh) overhang in DATA units
+        caused by registered text extending beyond current x/y limits.
+        """
+        fig = ax.figure
+        # ensure layout is finalized for accurate text extents
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        inv = ax.transData.inverted()
+
+        lo_x, hi_x = ax.get_xlim()
+        lo_y, hi_y = ax.get_ylim()
+
+        left_oh = right_oh = bottom_oh = top_oh = 0.0
+        for t in self._gather_headroom_texts(ax):
+            bb = t.get_window_extent(renderer=renderer)
+            (x0, y0) = inv.transform((bb.x0, bb.y0))
+            (x1, y1) = inv.transform((bb.x1, bb.y1))
+            left, right   = min(x0, x1), max(x0, x1)
+            bottom, top   = min(y0, y1), max(y0, y1)
+
+            if left   < lo_x: left_oh   = max(left_oh,   lo_x - left)
+            if right  > hi_x: right_oh  = max(right_oh,  right - hi_x)
+            if bottom < lo_y: bottom_oh = max(bottom_oh, lo_y - bottom)
+            if top    > hi_y: top_oh    = max(top_oh,    top - hi_y)
+
+        return left_oh, right_oh, bottom_oh, top_oh
+
+    def ensure_headroom_for_annotations(self, ax, *, label_offset=0.02, extra_pad=0.04, max_extra=0.20):
+        """
+        Text-aware headroom that expands along the 'value' axis by default.
+        Preserves symmetry if requested (either globally or plot-level).
+        """
+        if not getattr(self.ctx, "auto_headroom", True):
+            return
+
+        # orientation -> which axis holds the values
+        val_is_y = bool(getattr(self.ctx, "is_orientation_vertical", True))
+        axis_pref = getattr(self.ctx, "headroom_axis", "auto") if hasattr(self.ctx, "headroom_axis") else "auto"
+        if axis_pref == "x":
+            val_is_y = False
+        elif axis_pref == "y":
+            val_is_y = True
+
+        preserve_sym = getattr(self.ctx, "headroom_preserve_symmetry", False)
+        use_text = bool(getattr(self.ctx, "headroom_use_text_extents", True)) if hasattr(self.ctx, "headroom_use_text_extents") else True
+
+        lo_x, hi_x = ax.get_xlim()
+        lo_y, hi_y = ax.get_ylim()
+
+        left_oh = right_oh = bottom_oh = top_oh = 0.0
+        if use_text:
+            left_oh, right_oh, bottom_oh, top_oh = self._measure_overhang_in_data(ax)
+
+        if val_is_y:
+            new_lo = lo_y - bottom_oh
+            new_hi = hi_y + top_oh + extra_pad
+            if preserve_sym:
+                half = max(abs(new_lo), abs(new_hi))
+                half = min(half, (1.0 + max_extra) * max(abs(lo_y), abs(hi_y)))
+                ax.set_ylim(-half, half)
+            else:
+                ax.set_ylim(min(lo_y, new_lo), max(hi_y, new_hi))
         else:
-            self.ensure_x_headroom_for_annotations(
-                ax, widths, label_offset=label_offset, extra_pad=extra_pad, max_extra=max_extra
-            )
+            new_lo = lo_x - left_oh
+            new_hi = hi_x + right_oh + extra_pad + label_offset
+            if preserve_sym:
+                half = max(abs(new_lo), abs(new_hi))
+                half = min(half, (1.0 + max_extra) * max(abs(lo_x), abs(hi_x)))
+                ax.set_xlim(-half, half)
+            else:
+                ax.set_xlim(min(lo_x, new_lo), max(hi_x, new_hi))
 
     def _apply_metadata_to_axes(self, ax, chart_metadata: Dict[str, Any]):
         if chart_metadata.get("title"):
@@ -451,8 +505,20 @@ class BasePlot(ABC):
         if chart_metadata.get("ylabel"):
             ax.set_ylabel(chart_metadata["ylabel"])
 
-    def _finalize_figure(self, fig, chart_md: Dict[str, Any]) -> Optional[str]:
+    def _finalize_figure(self, fig, ax, chart_md: Dict[str, Any]) -> Optional[str]:
         """Add source, layout, save/show; return saved file name (or None)."""
+        # 0) Ensure all artists exist & have positions computed
+        fig.canvas.draw()
+
+        # 0.5) Centralized, text-aware headroom for ALL plots (once)
+        if getattr(self.ctx, "auto_headroom", True):
+            self.ensure_headroom_for_annotations(
+                ax,
+                label_offset=getattr(self.ctx, "headroom_label_offset", 0.02),
+                extra_pad=getattr(self.ctx, "headroom_extra_pad", 0.04),
+                max_extra=getattr(self.ctx, "headroom_max_extra", 0.20),
+            )
+
         # 1) Run layout first so axes land where they'll stay.
         fig.tight_layout(rect=[0, 0, 1, 0.88])
         # ensure renderer is ready so we can measure text extents accurately
@@ -545,16 +611,7 @@ class BasePlot(ABC):
 
             fig, ax = draw_fn(desc, inf, chart_md, fig, ax, palette)
 
-            # Auto headroom for annotations (bars/points), if enabled
-            if getattr(self.ctx, "auto_headroom", True):
-                self.ensure_headroom_for_annotations(
-                    ax,
-                    label_offset=getattr(self.ctx, "headroom_label_offset", 0.02),
-                    extra_pad=getattr(self.ctx, "headroom_extra_pad", 0.04),
-                    max_extra=getattr(self.ctx, "headroom_max_extra", 0.20),
-                )
-
-            if getattr(self.ctx, "format_value_axis_as_percent", False):
+            if getattr(self.ctx, "format_orientation_axis_as_percent", False):
                 if self.ctx.is_orientation_vertical:
                     ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
                 else:
@@ -576,7 +633,7 @@ class BasePlot(ABC):
             # Centralized legend toggle
             self._apply_legend(ax)
 
-            chart_md["file_name"] = self._finalize_figure(fig, chart_md)
+            chart_md["file_name"] = self._finalize_figure(fig, ax, chart_md)
 
             return {
                 "descriptive_stats": desc,
