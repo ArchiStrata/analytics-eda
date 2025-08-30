@@ -50,6 +50,8 @@ class PlotContext:
     file_name: Optional[str] = None
     show: bool = False
 
+    enable_legend: bool = False # draw a legend when True
+
     format_value_axis_as_percent: bool = False
 
     # Auto headroom for bar labels (on by default)
@@ -570,6 +572,9 @@ class BasePlot(ABC):
                         fontsize="small",
                         color="gray"
                     )
+            
+            # Centralized legend toggle
+            self._apply_legend(ax)
 
             chart_md["file_name"] = self._finalize_figure(fig, chart_md)
 
@@ -585,6 +590,18 @@ class BasePlot(ABC):
             self._draw_clear()
             if fig:
                 plt.close(fig)
+
+    def _apply_legend(self, ax):
+        """
+        Show or hide the legend based on ctx.enable_legend.
+        If False, remove an existing legend (if any).
+        """
+        if getattr(self.ctx, "enable_legend", False):
+            ax.legend()
+        else:
+            lg = ax.get_legend()
+            if lg is not None:
+                lg.remove()
 
     # --- draw cache API ---
     def _draw_set(self, namespace: str, key: str, value: Any) -> None:

@@ -28,6 +28,7 @@ class BalanceLorenzCurveContext(PlotContext):
     xlabel: str = "Cumulative % of categories"
     ylabel: str = "Cumulative % of values"
     show_subtitle: bool = True
+    enable_legend: bool = True
 
 class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
     """
@@ -148,8 +149,6 @@ class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
         ax.yaxis.set_major_locator(MultipleLocator(0.2))
         ax.xaxis.set_major_formatter(PercentFormatter(xmax=1.0))
         ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
-        
-        ax.legend()
 
         return fig, ax
 
