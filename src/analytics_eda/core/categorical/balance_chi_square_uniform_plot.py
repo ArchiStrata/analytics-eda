@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict, Any, Literal
 import numpy as np
 import pandas as pd
 from scipy.stats import chisquare
@@ -24,9 +24,23 @@ from .validate_categorical_named_series import CategoricalSeriesMixin
 @dataclass
 class BalanceChiSquareUniformContext(PlotContext):
     title_template: str = "Chi-Square Goodness-of-Fit: {name}{modifiers}"
-    xlabel: str = "Category"
-    ylabel: str = "Count (Observed vs Expected)"
+    xlabel: str = "Observed − Expected (count)"
+    ylabel: str = "Category"
     alpha: float = 0.05
+    show_subtitle: bool = True
+    is_orientation_vertical: bool = False
+    headroom_preserve_symmetry: bool = True 
+
+    bar_highlight_top: bool = True
+    bar_top_n: int = 1
+    bar_top_include_ties: bool = True
+    sort_mode: Literal["abs_delta", "signed_delta", "category"] = "abs_delta"
+    delta_metric: Literal["count", "std_resid"] = "count"
+    show_value_in_bar_label: bool = True
+    show_count_in_bar_label: bool = False
+    label_value_format: Literal["±count", "ratio", "±count_and_ratio", "std_resid"] = "±count_and_ratio"
+    color_by_sign: bool = False
+
 
 class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
     """
@@ -63,37 +77,147 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         freq = s.value_counts()
         categories = sorted(freq.index.tolist())
-        observed = [int(freq[c]) for c in categories]
-        total = int(sum(observed))
+        observed = np.asarray([int(freq[c]) for c in categories], dtype=float)
+        total = int(observed.sum())
         k = int(len(categories))
-        expected = [total / k] * k if k > 0 else []
+        expected = np.asarray([total / k] * k, dtype=float) if k > 0 else np.array([])
 
-        self._draw_set("chi2_uniform", "labels", categories)
-        self._draw_set("chi2_uniform", "observed", np.asarray(observed, dtype=float))
-        self._draw_set("chi2_uniform", "expected", np.asarray(expected, dtype=float))
+        if k == 0 or total == 0:
+            # clear cache; return minimal desc
+            self._draw_set("chi2_uniform", "labels", [])
+            self._draw_set("chi2_uniform", "observed", np.array([]))
+            self._draw_set("chi2_uniform", "expected", np.array([]))
+            self._draw_set("chi2_uniform", "delta", np.array([]))
+            self._draw_set("chi2_uniform", "std_resid", np.array([]))
+            return {"total": int(total), "k": int(k)}
 
-        abs_diffs = np.abs(np.asarray(observed, float) - np.asarray(expected, float))
-        top_idx = int(max(range(len(abs_diffs)), key=lambda i: abs(abs_diffs[i])))
-        self._draw_set("chi2_uniform", "top_idx", top_idx)
+        delta = observed - expected
 
-        return {
-            "total": total,
-            "k": k
+        # Guard sqrt(E): std resid = (O-E)/sqrt(E); nan where E==0
+        std_resid = np.divide(delta, np.sqrt(expected, where=expected>0), out=np.full_like(delta, np.nan), where=expected>0)
+        ratio = np.divide(observed, expected, out=np.full_like(delta, np.nan), where=expected>0)  # O/E
+        delta_pct_of_expected = np.where(expected > 0, delta / expected, np.nan)  # signed %
+
+        # Sorting
+        mode = getattr(self.ctx, "sort_mode", "abs_delta")
+        if mode == "signed_delta":
+            order = np.argsort(delta)  # neg .. pos
+        elif mode == "category":
+            order = np.arange(k)
+        else:  # abs_delta (default)
+            order = np.argsort(-np.abs(delta))
+
+        labels = np.array(categories)[order].tolist()
+        observed_o = observed[order]
+        expected_o = expected[order]
+        delta_o = delta[order]
+        std_resid_o = std_resid[order]
+        ratio_o = ratio[order]
+        dpexp_o = delta_pct_of_expected[order]
+
+        # Cache for draw
+        self._draw_set("chi2_uniform", "labels", labels)
+        self._draw_set("chi2_uniform", "observed", observed_o)
+        self._draw_set("chi2_uniform", "expected", expected_o)
+        self._draw_set("chi2_uniform", "delta", delta_o)
+        self._draw_set("chi2_uniform", "std_resid", std_resid_o)
+        self._draw_set("chi2_uniform", "ratio", ratio_o)
+        self._draw_set("chi2_uniform", "delta_pct_of_expected", dpexp_o)
+
+        # Winners (based on chosen delta_metric)
+        metric = getattr(self.ctx, "delta_metric", "count")
+        scores = np.abs(std_resid_o) if metric == "std_resid" else np.abs(delta_o)
+        top_n = max(1, int(getattr(self.ctx, "bar_top_n", 1)))
+        include_ties = bool(getattr(self.ctx, "bar_top_include_ties", True))
+
+        pairs = list(zip(labels, scores))
+        pairs.sort(key=lambda kv: (-kv[1], kv[0]))  # stable
+        if pairs:
+            cutoff = pairs[min(top_n, len(pairs)) - 1][1]
+            top_labels = [lbl for lbl, sc in pairs if (sc >= cutoff if include_ties else sc > 0 and sc >= cutoff) and sc > 0]
+        else:
+            top_labels = []
+
+        desc = {
+            "params": {
+                "sort_mode": mode,
+                "delta_metric": metric,
+                "bar_top_n": top_n,
+                "bar_top_include_ties": include_ties,
+                "label_value_format": getattr(self.ctx, "label_value_format", "±count"),
+            },
+            "total": int(total),
+            "k": int(k),
+            "n_over": int(np.sum(delta > 0)),
+            "n_under": int(np.sum(delta < 0)),
+            "max_abs_delta": float(np.nanmax(np.abs(delta))) if k else 0.0,
+            "bars": {
+                lbl: {
+                    "observed": int(o),
+                    "expected": float(e),
+                    "delta": int(d),
+                    "delta_pct_of_expected": float(dp),
+                    "std_resid": float(sr) if np.isfinite(sr) else np.nan,
+                    "ratio_oe": float(r) if np.isfinite(r) else np.nan,
+                }
+                for lbl, o, e, d, dp, sr, r in zip(labels, observed_o, expected_o, delta_o, dpexp_o, std_resid_o, ratio_o)
+            },
+            "top_labels": top_labels,
         }
+        return desc
     
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
-        if not desc or desc.get("k", 0) == 0 or desc.get("total", 0) == 0:
+        total = int(desc.get("total", 0))
+        k = int(desc.get("k", 0))
+        if total == 0 or k == 0:
             return {}
-        
-        labels   = self._draw_get("chi2_uniform", "labels", [])
-        observed = self._draw_get("chi2_uniform", "observed")
-        expected = self._draw_get("chi2_uniform", "expected")
 
-        top_idx = self._draw_get("chi2_uniform", "top_idx")
+        delta  = self._draw_get("chi2_uniform", "delta", np.array([]))
+        if delta is None or len(delta) == 0:
+            return {}
+
+        # All zero deltas -> perfect uniform
+        if float(np.nanmax(np.abs(delta))) == 0.0:
+            return {
+                "context": f"N = {total:,} values across {k} categories",
+                "primary_finding": "Observed frequencies match a uniform expectation.",
+                "secondary_finding": None,
+            }
+
+        winners = list(desc.get("top_labels", []))
+        bars = desc.get("bars", {})
+        fmt = getattr(self.ctx, "label_value_format", "±count")
+
+        def _part(lbl: str) -> str:
+            b = bars.get(lbl, {})
+            d = int(b.get("delta", 0))
+            if fmt == "std_resid":
+                sr = b.get("std_resid", np.nan)
+                return f"{lbl} (±{d:+d}, SR={sr:.2f})"
+            elif fmt == "ratio":
+                r = b.get("ratio_oe", np.nan)
+                return f"{lbl} (O/E={r:.2f})"
+            elif fmt == "±count_and_ratio":
+                r = b.get("ratio_oe", np.nan)
+                return f"{lbl} ({d:+d}, O/E={r:.2f})"
+            else:  # "±count"
+                return f"{lbl} ({d:+d})"
+
+        parts = [_part(lbl) for lbl in sorted(winners)] if winners else []
+
+        primary = "Category frequencies deviate from a uniform expectation."
+        secondary = (
+            f"Largest absolute deviation: {parts[0]}." if len(parts) == 1
+            else ("Largest deviations (tie): " + ", ".join(parts) + ".") if len(parts) > 1
+            else None
+        )
+
         return {
-            "summary": f"Largest deviation: {labels[top_idx]} (obs={observed[top_idx]:,}, exp={expected[top_idx]:.1f}).",
-            "coverage": f"Categories={desc['k']}, Total={desc['total']:,}."
+            "context": f"N = {total:,} values across {k} categories",
+            "primary_finding": primary,
+            "secondary_finding": secondary,
         }
+
 
     def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
         k = desc.get("k", 0)
@@ -105,23 +229,35 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
         expected = self._draw_get("chi2_uniform", "expected")
         observed = self._draw_get("chi2_uniform", "observed")
 
+        # Assumption checks
         if any(e <= 0 for e in expected):
-            return {"chi2_gof_null_uniform": {"warning": "Expected counts are zero; test not computed."}}
+            return {
+                "chi2_gof_null_uniform": {
+                    "warning": "Test not computed: at least one expected cell count is 0 (violates chi-square requirements)."
+                }
+            }
 
-        if any(e < 5 for e in expected):
-            warning = "Some expected counts are below 5; chi-square test results may not be reliable."
+        n_lt5 = int(np.sum(np.asarray(expected) < 5))
+        min_exp = float(np.min(expected)) if len(expected) else float("nan")
+        warning = None
+        if n_lt5 > 0:
+            warning = (
+                f"Assumption caution: {n_lt5} of {k} categories have expected counts < 5 "
+                f"(minimum expected = {min_exp:.2f}); chi-square results may be unreliable."
+            )
 
+        # Test
         chi2_stat, p_val = chisquare(f_obs=observed, f_exp=expected)
-
         df = max(desc.get("k", 0) - 1, 0)
+        alpha = float(getattr(self.ctx, "alpha", 0.05))
 
         res = {
             "chi2_gof_null_uniform": {
                 "df": df,
                 "statistic": float(chi2_stat),
                 "p_value": float(p_val),
-                "alpha": float(getattr(self.ctx, "alpha", 0.05)),
-                "reject": bool(p_val < getattr(self.ctx, "alpha", 0.05)),
+                "alpha": alpha,
+                "reject": bool(p_val < alpha),
             }
         }
         if warning:
@@ -132,33 +268,97 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
         res = (inf or {}).get("chi2_gof_null_uniform")
         if not res:
             return {}
-        decision = "Reject H₀" if res["reject"] else "Fail to reject H₀"
-        return {
-            "hypothesis_tests": f"Uniform GOF: {decision} at α={res['alpha']:.2f} (p={res['p_value']:.3f}, χ²={res['statistic']:.2f}, df={res['df']})."
+
+        k = int(desc.get("k", 0))
+        total = int(desc.get("total", 0))
+        p = float(res.get("p_value", float("nan")))
+        alpha = float(res.get("alpha", 0.05))
+        df = int(res.get("df", max(k - 1, 0)))
+        reject = bool(res.get("reject", False))
+        stat = float(res.get("statistic", float("nan")))
+        warning = res.get("warning")
+
+        decision = (
+            "Frequencies differ from a uniform distribution"
+            if reject else
+            "No statistically significant deviation from uniform"
+        )
+
+        findings = {
+            "context": f"Chi-square GOF on {k} categories (N = {total:,})",
+            "primary_finding": f"{decision} (p = {p:.3f} vs α = {alpha:.2f}).",
+            "secondary_finding": f"χ²(df = {df}) = {stat:.2f}."
         }
 
-    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
-        labels   = self._draw_get("chi2_uniform", "labels", [])
-        observed = self._draw_get("chi2_uniform", "observed")
-        expected = self._draw_get("chi2_uniform", "expected")
-
-        y = range(len(labels))
-        height = 0.38
-
-        ax.barh([i + height/2 for i in y], observed, height, label="Observed", color=palette[0])
-        ax.barh([i - height/2 for i in y], expected, height, label="Expected", color=self.neutral_grey())
-
-        ax.set_yticks(list(y))
-        ax.set_yticklabels(labels)
-        ax.invert_yaxis()  # top-most first
-        ax.legend()
-
-        # annotation
-        res = inf.get("chi2_gof_null_uniform")
-        if res:
-            self.queue_subtitle_below_title(
-                ax,
-                f"Uniform GOF: {'Reject' if res['reject'] else 'Fail to reject'} at α={res['alpha']:.2f} (p={res['p_value']:.3f})"
+        if warning:
+            findings["secondary_finding"] = (
+                f"{findings['secondary_finding']} Assumption warning: {warning}"
+                if findings["secondary_finding"] else
+                f"Assumption warning: {warning}"
             )
 
+        return findings
+
+    def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
+        labels = self._draw_get("chi2_uniform", "labels", [])
+        delta  = self._draw_get("chi2_uniform", "delta", np.array([]))
+        std_r  = self._draw_get("chi2_uniform", "std_resid", np.array([]))
+        ratio  = self._draw_get("chi2_uniform", "ratio", np.array([]))
+
+        if delta is None or len(labels) == 0:
+            return fig, ax
+
+        y = np.arange(len(labels))
+
+        # Base bars
+        bars = ax.barh(y, delta, color=self.neutral_grey())
+
+        # Optional sign color
+        if getattr(self.ctx, "color_by_sign", False):
+            for i, b in enumerate(bars):
+                if delta[i] >= 0:
+                    b.set_color(palette[0])  # “over” color
+                else:
+                    b.set_color(palette[1])  # “under” color
+
+        # Highlight winners (on top of base/sign colors)
+        if getattr(self.ctx, "bar_highlight_top", True):
+            winners = set(desc.get("top_labels", []))
+            for i, lbl in enumerate(labels):
+                if lbl in winners:
+                    bars[i].set_color(palette[0])
+
+        # Zero reference and symmetric limits
+        ax.axvline(0, color=self.neutral_grey("dark"), linewidth=1)
+        if getattr(self.ctx, "symmetric_xlim", True):
+            m = float(np.nanmax(np.abs(delta))) if len(delta) else 1.0
+            ax.set_xlim(-1.05 * m, 1.05 * m)
+
+        # Y ticks
+        ax.set_yticks(y)
+        ax.set_yticklabels(labels)
+        ax.invert_yaxis()
+
+        # Edge labels
+        fmt = getattr(self.ctx, "label_value_format", "±count")
+        def edge_text(i: int) -> str:
+            if fmt == "std_resid" and np.isfinite(std_r[i]):
+                return f"{std_r[i]:+.2f}"
+            elif fmt == "ratio" and np.isfinite(ratio[i]):
+                return f"O/E={ratio[i]:.2f}"
+            elif fmt == "±count_and_ratio" and np.isfinite(ratio[i]):
+                return f"{int(delta[i]):+d} (O/E={ratio[i]:.2f})"
+            else:
+                return f"{int(delta[i]):+d}"
+
+        labels_txt = [edge_text(i) for i in range(len(labels))]
+        text_objs = ax.bar_label(bars, labels=labels_txt, label_type="edge", padding=3, fontsize="small")
+        self.register_annotations(ax, text_objs)
+
         return fig, ax
+
+    def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        res = inf.get("chi2_gof_null_uniform")
+        if res:
+            return f"Uniform GOF: {'Reject' if res['reject'] else 'Fail to reject'} at α={res['alpha']:.2f} (p={res['p_value']:.3f})"
+        return ""

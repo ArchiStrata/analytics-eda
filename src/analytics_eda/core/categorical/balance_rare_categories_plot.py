@@ -36,7 +36,6 @@ class BalanceRareCategoriesContext(SeriesBarChartContext):
     xlabel: str = "Percent of total"
     ylabel: str = "Category"
     is_orientation_vertical: bool = False
-    format_value_axis_as_percent: bool = True
     show_subtitle: bool = True
 
     # plot-specific knobs
