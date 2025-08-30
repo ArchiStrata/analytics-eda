@@ -37,7 +37,7 @@ class BalanceRareCategoriesContext(SeriesBarChartContext):
     ylabel: str = "Category"
     is_orientation_vertical: bool = False
     format_value_axis_as_percent: bool = True
-    show_footer_summary: bool = True
+    show_subtitle: bool = True
 
     # plot-specific knobs
     extreme_lower_bound: float = 0.01  # default: 1% of total if <1, else absolute count
@@ -61,8 +61,6 @@ class BalanceRareCategoriesPlot(CategoricalSeriesMixin, SeriesBarChartMixin, Bas
     Returns (BasePlot.run schema):
       {
         "descriptive_stats": {
-            "k",                        # number of unique categories
-            "n_rare",                   # number of rare categories found
             "threshold_type",           # "proportion" or "count"
             "threshold_value_count",    # cutoff in counts
             "threshold_value_prop"      # cutoff in proportion
@@ -78,8 +76,6 @@ class BalanceRareCategoriesPlot(CategoricalSeriesMixin, SeriesBarChartMixin, Bas
     # ---- defaults when empty/degenerate ----
     def default_descriptive(self) -> Dict[str, Any]:
         desc = super().default_descriptive()
-        desc["k"] = 0
-        desc["n_rare"] = 0
 
         desc["params"] = {
             "threshold_type": "proportion",
@@ -94,7 +90,6 @@ class BalanceRareCategoriesPlot(CategoricalSeriesMixin, SeriesBarChartMixin, Bas
         # frequency table (drop NAs for category analysis)
         counts_all = s.dropna().value_counts()
         total = int(counts_all.sum())
-        k = int(counts_all.size)
 
         # Resolve threshold
         bound = float(self.ctx.extreme_lower_bound)
@@ -129,35 +124,76 @@ class BalanceRareCategoriesPlot(CategoricalSeriesMixin, SeriesBarChartMixin, Bas
             },
         )
 
-        # Add rare-specific summary fields
-        bars_desc.update({
-            "k": k,  # total unique categories in the series (not just rare)
-            "n_rare": int(rare_counts.size),
-        })
-
-        # Skip plotting if nothing to show
-        if bars_desc["n_rare"] == 0 or bars_desc["total"] == 0:
-            bars_desc["skip_plot"] = True
-            bars_desc["error"] = "no rare categories under threshold"
-
         return bars_desc
     
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
         if not desc or desc.get("total", 0) == 0:
             return {}
-        # Short & factual: how many rare; threshold; base
-        ttype = desc.get("params", {}).get("threshold_type", desc.get("threshold_type"))
-        thr_c = desc.get("params", {}).get("threshold_value_count", desc.get("threshold_value_count"))
-        thr_p = desc.get("params", {}).get("threshold_value_prop", desc.get("threshold_value_prop"))
-        return {
-            "context": f"Base = {desc.get('total_nonnull', 0):,} non-null; K = {desc.get('k', 0)} total categories.",
-            "primary_finding": f"Rare categories determined by {ttype} threshold: {desc.get('n_rare', 0)} (≤ {thr_p:.1%} or ≤ {thr_c} count(s)).",
+
+        total_nonnull = desc.get("total_nonnull", 0)
+        k_total = desc.get("unique_categories_total", 0)
+        n_rare = desc.get("input_nonzero_categories", 0)
+
+        params = desc.get("params", {})
+        ttype = params.get("threshold_type", desc.get("threshold_type"))
+        thr_c = params.get("threshold_value_count", desc.get("threshold_value_count"))
+        thr_p = params.get("threshold_value_prop", desc.get("threshold_value_prop"))
+
+        findings = {
+            "context": f"Base = {total_nonnull:,} non-null; K = {k_total} total categories",
             "secondary_finding": None
         }
 
+        # Present if no categories meet the threshold
+        if n_rare == 0:
+            findings["primary_finding"] = "No categories meet the rare threshold."
+            return findings
+
+        # How many rare categories are there and how were they determined?
+        pct_rare_rows = float(desc.get("pct_subset", 0.0)) * 100.0
+        n_rare_rows = int(desc.get("subset_count", 0))
+
+        findings["primary_finding"] = (
+                f"Rare categories (threshold={ttype}: ≤ {thr_p:.1%} or ≤ {thr_c} count) "
+                f"found: {n_rare}; they account for {pct_rare_rows:.1f}% of rows "
+                f"({n_rare_rows:,})."
+            )
+        return findings
+
     # ---- drawing ----
-    def footer_summary_text(self, desc: Dict[str, Any], inf: Dict[str, Any], chart_metadata: Dict[str, Any]) -> str:
-        ttype = desc.get("params", {}).get("threshold_type", desc.get("threshold_type"))
-        thr_c = desc.get("params", {}).get("threshold_value_count", desc.get("threshold_value_count"))
-        thr_p = desc.get("params", {}).get("threshold_value_prop", desc.get("threshold_value_prop"))
-        return f"Rare={desc.get('n_rare',0)} • Total non-null={desc.get('total_nonnull',0):,} • Threshold ({ttype}): ≤ {thr_p:.2%} (≤ {thr_c} count)"
+    def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        # No data → no subtitle
+        if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
+            return ""
+
+        n_rare = int(desc.get("input_nonzero_categories", 0))
+        total_nonnull = int(desc.get("total_nonnull", 0))
+
+        # Nothing to show
+        if n_rare == 0:
+            return "No categories meet the rare threshold"
+
+        # Magnitude: percent + count of rows in rare categories
+        pct_rare_rows = float(desc.get("pct_subset", 0.0)) * 100.0
+        n_rare_rows = int(desc.get("subset_count", 0))
+
+        p = desc.get("params", {})
+        thr_type = p.get("threshold_type")
+        thr_c = p.get("threshold_value_count")
+        thr_p = p.get("threshold_value_prop")
+
+        parts = [
+            f"{n_rare} rare categor{'y' if n_rare == 1 else 'ies'}",
+            f"{pct_rare_rows:.1f}% of {total_nonnull:,} rows ({n_rare_rows:,})",
+        ]
+        # Include threshold only if helpful and available
+        if thr_type in {"proportion", "count"}:
+            thr_bits = []
+            if isinstance(thr_p, (int, float)) and thr_p > 0:
+                thr_bits.append(f"≤{thr_p:.1%}")
+            if isinstance(thr_c, (int, float)) and thr_c > 0:
+                thr_bits.append(f"≤{int(thr_c)}")
+            if thr_bits:
+                parts.append(f"Threshold {' / '.join(thr_bits)}")
+
+        return " • ".join(parts)
