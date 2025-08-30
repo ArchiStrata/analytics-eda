@@ -1,6 +1,5 @@
 import pandas as pd
 import pytest
-from math import isclose
 
 from analytics_eda.analysis.univariate.univariate_categorical_analysis import univariate_categorical_analysis
     
@@ -19,45 +18,18 @@ from analytics_eda.analysis.univariate.univariate_categorical_analysis import un
                 # Expectations for the data_quality section
                 "data_quality": {
                     "missing_data_barchart": {
-                        "descriptive_stats": {
-                            "total": 11,
-                            "missing": 1,
-                            "pct_missing": lambda v: isclose(v, 1/11, rel_tol=1e-12, abs_tol=1e-12),
+                        "chart_metadata": {
+                            "title": "Missing Data for pets",
+                            "xlabel": "Status",
+                            "ylabel": "Percentage of Total",
+                            "data_source": "UnitTest",
+                            "file_name": "Missing Data for pets.png",
                         }
                     },
                     "categorical_cleanliness_barchart": {
-                        "descriptive_stats": {
-                            "total": 11,
-                            "total_nonnull": 10,
-                            "issue_labels": [
-                                "Invalid Category",
-                                "Non-Standard Characters",
-                                "Mixed Casing",
-                                "Leading/Trailing Whitespace"
-                            ],
-                            "issue_counts": [
-                                0,
-                                0,
-                                0,
-                                0
-                            ],
-                            "issue_pcts": [
-                                0.0,
-                                0.0,
-                                0.0,
-                                0.0
-                            ],
-                            "n_whitespace": 0,
-                            "n_mixed_case": 0,
-                            "n_nonstandard_chars": 0,
-                            "n_invalid_category": 0,
-                            "skip_plot": True,
-                            "error": "no cleanliness issues detected"
-                        },
-                        "inferential_stats": {},
                         "chart_metadata": {
                             "title": "Categorical Cleanliness for pets",
-                            "xlabel": "Count",
+                            "xlabel": "Percent of non\u2011null",
                             "ylabel": "Issue Type",
                             "data_source": "UnitTest",
                             "file_name": None
@@ -79,27 +51,8 @@ from analytics_eda.analysis.univariate.univariate_categorical_analysis import un
                 # Expectations for the cardinality section
                 "cardinality": {
                     "barchart": {
-                        "descriptive_stats": {
-                            "params": {
-                                "max_unique_fraction": 0.05,
-                                "max_unique_values": 20,
-                                "integer_tolerance": 1e-08
-                            },
-                            "total": 4,
-                            "nunique": 4,
-                            "uniqueness_ratio": 1.0,
-                            "is_discrete": True,
-                            "labels": [
-                                "4",
-                                "3",
-                                "2",
-                                "1"
-                            ],
-                            "values": "[1. 1. 1. 1.]"
-                        },
-                        "inferential_stats": {},
                         "chart_metadata": {
-                            "title": "Cardinality — Top 10 Value Counts for count",
+                            "title": "Cardinality \u2014 Top 10 Value Counts for count",
                             "xlabel": "Value",
                             "ylabel": "Count",
                             "data_source": "UnitTest",
@@ -114,16 +67,10 @@ from analytics_eda.analysis.univariate.univariate_categorical_analysis import un
                         "pareto": {
                             "chart_metadata":  {
                                 "title": "Pareto Chart of pets",
-                                "xlabel": "Value",
-                                "ylabel": "Count",
+                                "xlabel": "Share of total",
+                                "ylabel": "Category",
                                 "data_source": "UnitTest",
                                 "file_name": "Pareto Chart of pets.png"
-                            },
-                            "descriptive_stats": {
-                                "mode": "C",
-                                "total_count": 10,
-                                "n_categories": 4,
-                                "cumulative_count_at_80pct": 9
                             },
                         },
                     },
@@ -136,81 +83,39 @@ from analytics_eda.analysis.univariate.univariate_categorical_analysis import un
                                 "data_source": "UnitTest",
                                 "file_name": "Distribution Density of count.png"
                             },
-                            "descriptive_stats": {
-                                "n": 4,
-                                "entropy_bits": 1.9999999999942293,
-                                "skewness": 0.0,
-                                "kurtosis": -1.1999999999999993,
-                                "modes_count": 1,
-                                "quartile_skew": 0.0,
-                                "pct_10": 1.3,
-                                "pct_25": 1.75,
-                                "pct_50": 2.5,
-                                "pct_75": 3.25,
-                                "pct_90": 3.7
-                            },
                         },
                         "boxplot": {
                             "chart_metadata":  {
                                 "title": "Dispersion of count (IQR & Outliers)",
+                                "xlabel": "",
                                 "ylabel": "Frequency",
                                 "data_source": "UnitTest",
                                 "file_name": "Dispersion of count (IQR & Outliers).png"
                             },
-                            "descriptive_stats": {
-                                "params": {
-                                    "std_outlier_multiplier": 4.0
-                                },
-                                "n": 4,
-                                "mean": 2.5,
-                                "std": 1.2909944487358056,
-                                "var": 1.6666666666666667,
-                                "min": 1,
-                                "max": 4,
-                                "range": 3,
-                                "mad": 1.0,
-                                "cv": 0.5163977794943222,
-                                "pct_10": 1.3,
-                                "pct_25": 1.75,
-                                "pct_75": 3.25,
-                                "pct_90": 3.7,
-                                "iqr": 1.5,
-                                "extreme_lower_count": 0,
-                                "extreme_upper_count": 0
-                            },
+                        },
+                        "rare_categories": {
+                            "chart_metadata": {
+                                "title": "Rare Categories of pets",
+                                "xlabel": "Percent of total",
+                                "ylabel": "Category",
+                                "data_source": "UnitTest",
+                                "file_name": "Rare Categories of pets.png",
+                            }
                         },
                         "chi_square_uniform": {
                             "chart_metadata":  {
                                 "title": "Chi-Square Goodness-of-Fit: pets",
                                 "xlabel": "Frequency",
-                                "ylabel": "Frequency",
+                                "ylabel": "Category",
                                 "data_source": "UnitTest",
                                 "file_name": "Chi-Square Goodness-of-Fit: pets.png"
                             },
-                            "descriptive_stats": {
-                                "total": 10,
-                                "k": 4
-                            },
-                            "inferential_stats": {
-                                "chi2_gof_null_uniform": {
-                                    "statistic": 2.0,
-                                    "p_value": 0.5724067044708798,
-                                    "alpha": 0.05,
-                                    "reject": False,
-                                    "warning": "Some expected counts are below 5; chi-square test results may not be reliable."
-                                }
-                            },
                         },
                         "lorenz_curve": {
-                            "descriptive_stats": {
-                                "total": 10,
-                                "k": 4,
-                                "gini_index": 0.25
-                            },
                             "chart_metadata": {
                                 "title": "Lorenz Curve of pets",
-                                "xlabel": "Cumulative share of categories",
-                                "ylabel": "Cumulative share of counts",
+                                "xlabel": "Cumulative % of categories",
+                                "ylabel": "Cumulative % of values",
                                 "data_source": "UnitTest",
                                 "file_name": "Lorenz Curve of pets.png"
                             }
