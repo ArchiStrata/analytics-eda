@@ -23,13 +23,18 @@ from analytics_eda.core.data_quality import (
                     "file_name": None,
                 },
                 "descriptive_stats": {
-                    "total": 0,
-                    "total_nonnull": 0,
                     "bars": {},
+                    "subset_count": 0,
+                    "total": 0,
+                    "total_nonnull": 0
                 },
                 "inferential_stats": {},
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": {},
+                "draft_descriptive_findings": {
+                    "context": "N (non‑null) = 0",
+                    "primary_finding": "The series is empty.",
+                    "secondary_finding": None
+                },
             },
         ),
 
@@ -39,15 +44,64 @@ from analytics_eda.core.data_quality import (
             lambda: pd.Series(["Apple", "Banana", "Pear", None], name="clean"),
             {"allowed_categories": ["Apple", "Banana", "Pear"], "case_sensitive_allowed": True},
             {
-                "chart_metadata": {"file_name": None, "version": "1.0.0"},
+                "chart_metadata": {
+                    "title": "Categorical Cleanliness for clean",
+                    "file_name": None,
+                    "version": "1.0.0",
+                    "xlabel": "Percent of non‑null",
+                    "ylabel": "Issue Type"
+                },
                 "descriptive_stats": {
+                    "bars": {
+                        "Invalid Category": {
+                            "count": 0,
+                            "pct_of_nonnull": 0.0
+                        },
+                        "Leading/Trailing Whitespace": {
+                            "count": 0,
+                            "pct_of_nonnull": 0.0
+                        },
+                        "Mixed Casing": {
+                            "count": 0,
+                            "pct_of_nonnull": 0.0
+                        },
+                        "Non-Standard Characters": {
+                            "count": 0,
+                            "pct_of_nonnull": 0.0
+                        }
+                    },
+                    "denominator_key": "pct_of_nonnull",
+                    "error": "no categories to display",
+                    "input_categories": 4,
+                    "input_nonzero_categories": 0,
+                    "n_bars_rendered": 4,
+                    "nonzero_categories": 0,
+                    "params": {
+                        "allowed_categories_count": 3,
+                        "allowed_char_pattern": "^[\\w\\s\\-\\_/.,&()']*$",
+                        "bar_height_source": "values",
+                        "bar_sort_descending": False,
+                        "case_sensitive_allowed": True,
+                        "max_display_bars": 15,
+                        "other_label": "Other",
+                        "show_count_in_bar_label": False,
+                        "show_value_in_bar_label": True,
+                        "treat_empty_as_invalid": True
+                    },
+                    "pct_subset": 0.0,
+                    "skip_plot": True,
+                    "subset_count": 0,
                     "total": 4,
                     "total_nonnull": 3,
-                    "bars": {},
+                    "unique_categories_total": 3
                 },
                 "inferential_stats": {},
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": {},
+                "draft_descriptive_findings": {
+                    "context": "N (non‑null) = 3",
+                    "primary_finding": "No cleanliness issues detected.",
+                    "secondary_finding": None
+                },
             },
         ),
 
@@ -73,9 +127,11 @@ from analytics_eda.core.data_quality import (
                     "title": "Categorical Cleanliness for messy",
                 },
                 "descriptive_stats": {
-                    "total": 11,
-                    "total_nonnull": 10,
                     "bars": {
+                        "Invalid Category": {
+                            "count": 2,
+                            "pct_of_nonnull": 0.2
+                        },
                         "Leading/Trailing Whitespace": {
                             "count": 1,
                             "pct_of_nonnull": 0.1
@@ -87,16 +143,38 @@ from analytics_eda.core.data_quality import (
                         "Non-Standard Characters": {
                             "count": 1,
                             "pct_of_nonnull": 0.1
-                        },
-                        "Invalid Category": {
-                            "count": 2,
-                            "pct_of_nonnull": 0.2
                         }
-                    }
+                    },
+                    "denominator_key": "pct_of_nonnull",
+                    "input_categories": 4,
+                    "input_nonzero_categories": 4,
+                    "n_bars_rendered": 4,
+                    "nonzero_categories": 4,
+                    "params": {
+                        "allowed_categories_count": 3,
+                        "allowed_char_pattern": "^[\\w\\s\\-\\_/.,&()']*$",
+                        "bar_height_source": "values",
+                        "bar_sort_descending": False,
+                        "case_sensitive_allowed": False,
+                        "max_display_bars": 15,
+                        "other_label": "Other",
+                        "show_count_in_bar_label": True,
+                        "show_value_in_bar_label": True,
+                        "treat_empty_as_invalid": True
+                    },
+                    "pct_subset": 0.6,
+                    "subset_count": 6,
+                    "total": 11,
+                    "total_nonnull": 10,
+                    "unique_categories_total": 7
                 },
                 "inferential_stats": {},
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": {}
+                "draft_descriptive_findings": {
+                    "context": "N (non‑null) = 10",
+                    "primary_finding": "60.0% of values show at least one cleanliness issue (6 rows).",
+                    "secondary_finding": "Most frequent issue: Mixed Casing at 20.0% (2 rows)."
+                },
             },
         ),
 
@@ -113,6 +191,55 @@ from analytics_eda.core.data_quality import (
                     "data_source": "UnitTest",
                     "version": "1.0.0",
                 },
+                "descriptive_stats": {
+                    "bars": {
+                        "Invalid Category": {
+                            "count": 0,
+                            "pct_of_nonnull": 0.0
+                        },
+                        "Leading/Trailing Whitespace": {
+                            "count": 1,
+                            "pct_of_nonnull": 0.25
+                        },
+                        "Mixed Casing": {
+                            "count": 1,
+                            "pct_of_nonnull": 0.25
+                        },
+                        "Non-Standard Characters": {
+                            "count": 0,
+                            "pct_of_nonnull": 0.0
+                        }
+                    },
+                    "denominator_key": "pct_of_nonnull",
+                    "input_categories": 4,
+                    "input_nonzero_categories": 2,
+                    "n_bars_rendered": 4,
+                    "nonzero_categories": 2,
+                    "params": {
+                        "allowed_categories_count": 0,
+                        "allowed_char_pattern": "^[\\w\\s\\-\\_/.,&()']*$",
+                        "bar_height_source": "values",
+                        "bar_sort_descending": False,
+                        "case_sensitive_allowed": False,
+                        "max_display_bars": 15,
+                        "other_label": "Other",
+                        "show_count_in_bar_label": False,
+                        "show_value_in_bar_label": True,
+                        "treat_empty_as_invalid": True
+                    },
+                    "pct_subset": 0.5,
+                    "subset_count": 2,
+                    "total": 4,
+                    "total_nonnull": 4,
+                    "unique_categories_total": 4
+                },
+                "draft_descriptive_findings": {
+                    "context": "N (non‑null) = 4",
+                    "primary_finding": "50.0% of values show at least one cleanliness issue (2 rows).",
+                    "secondary_finding": "Most frequent issue: Leading/Trailing Whitespace at 25.0% (1 rows)."
+                },
+                "draft_inferential_findings": {},
+                "inferential_stats": {}
             },
         ),
     ],

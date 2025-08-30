@@ -49,7 +49,7 @@ class SeriesBarChartMixin:
         return {
             "total": 0,
             "total_nonnull": 0,
-            "total_count": 0,
+            "subset_count": 0,
             "bars": {},
         }
 
@@ -59,38 +59,107 @@ class SeriesBarChartMixin:
         s: pd.Series,
         counts: Dict[str, int],
         *,
-        denominator_key: Literal["pct_of_nonnull", "pct_of_total", "pct_of_sum"] = "pct_of_nonnull",
+        denominator_key: Literal["pct_of_nonnull", "pct_of_total"] = "pct_of_nonnull",
         extra_params: Optional[Dict[str, Any]] = None,
         skip_plot_if_zero: bool = True,
     ) -> Dict[str, Any]:
         """
-        Build reporting-friendly bar stats AND cache draw arrays.
+        Build reporting-friendly bar statistics and cache draw arrays.
 
-        Returns a dict ready to merge/return as descriptive_stats:
-        {
-            "params": {...common bar params..., **extra_params},
-            "total": int,
-            "total_nonnull": int,
-            "total_count": int,
-            "denominator_key": str,
-            "bars": {label: {"count": int, <denominator_key>: float, ["_is_other": bool]}},
-            "k": int,         # non-zero categories (incl. Other if present and non-zero)
-            "n_bars": int,    # bars displayed (post-capping)
-            # Optional:
-            # "skip_plot": True, "error": <str>
-        }
+        Parameters
+        ----------
+        s : pd.Series
+            Source series from which bars are derived (used to compute denominators, totals, etc.).
+        counts : dict[str, int]
+            Mapping from bar label -> count. This is typically a filtered/derived subset
+            (e.g., rare categories, invalid tokens). Zero or negative values are coerced to int.
+        denominator_key : {"pct_of_nonnull", "pct_of_total"}, default "pct_of_nonnull"
+            Which base to use for per-bar ratios and `pct_subset`:
+            - "pct_of_nonnull": denominator = number of non-null rows in `s`.
+            - "pct_of_total"  : denominator = total length of `s` (including nulls).
+        extra_params : dict | None
+            Extra plot/context parameters to merge into `desc["params"]`.
+        skip_plot_if_zero : bool, default True
+            If True, set `skip_plot`/`error` when there is no data to display
+            (`total == 0` or `subset_count == 0`).
+
+        Returns
+        -------
+        desc : dict
+            A dictionary suitable to merge/return as `descriptive_stats`:
+
+            Core fields
+            -----------
+            params : dict
+                Plot/mixin parameters merged with `extra_params`. Common keys include:
+                - "show_count_in_bar_label" : bool
+                - "show_value_in_bar_label" : bool
+                - "bar_height_source"       : {"values", ...}
+                - "bar_sort_descending"     : bool
+                - "max_display_bars"        : int | None
+                - "other_label"             : str
+                (Domain-specific keys from callers may be present as well.)
+            total : int
+                Total number of rows in `s` (includes nulls).
+            total_nonnull : int
+                Number of non-null rows in `s`.
+            subset_count : int
+                Sum of all counts in the provided `counts` mapping (i.e., total rows represented
+                by the displayed subset). Example: sum of rare-category counts.
+            pct_subset : float
+                Fraction of the chosen denominator represented by `subset_count`.
+                `pct_subset = subset_count / denominator`, where the denominator is determined
+                by `denominator_key`.
+            denominator_key : str
+                Echo of the denominator selection used for ratios ("pct_of_nonnull" | "pct_of_total").
+
+            Bars payload
+            ------------
+            bars : dict[str, dict]
+                Per-bar stats keyed by label. Each entry has:
+                - "count" : int
+                    The bar's absolute count.
+                - <denominator_key> : float
+                    The bar's ratio against the selected denominator.
+                - "_is_other" : bool (optional)
+                    Present only when an aggregated "Other" bar is created due to capping.
+            unique_categories_total : int
+                Number of distinct non-null category values in s (full series; pre-filter).
+            input_categories : int
+                Number of category labels provided in the raw `counts` mapping (pre-capping).
+            input_nonzero_categories : int
+                Number of category labels in `counts` with positive counts (pre-capping).
+            nonzero_categories : int
+                Number of bars with a positive count (includes "Other" if present and non-zero).
+            n_bars_rendered : int
+                Number of bars actually rendered (after capping/aggregation into "Other").
+
+            Optional fields
+            ---------------
+            skip_plot : bool
+                Present when `skip_plot_if_zero` is True and either `total == 0` or `subset_count == 0`.
+            error : str
+                Diagnostic message accompanying `skip_plot`.
+
+        Notes
+        -----
+        - Capping & "Other": When `max_display_bars` is set and the number of input labels exceeds the cap,
+        surplus labels are aggregated into a single "Other" bar. The label defaults to `other_label`
+        (e.g., "Other" or "Other (k=...)") and the bar includes `"_is_other": True`.
+        - Draw cache: The function caches arrays used for rendering (labels, values, counts, value_key).
         """
         total = int(s.size)
         total_nonnull = int((~s.isna()).sum())
-        total_count = int(sum(int(v) for v in counts.values()))
 
-        assert denominator_key in ("pct_of_nonnull", "pct_of_total", "pct_of_sum")
+        input_categories = int(len(counts))  # raw labels provided
+        input_nonzero_categories = int(sum(int(v) > 0 for v in counts.values()))
+        subset_count = int(sum(int(v) for v in counts.values()))
+
+        assert denominator_key in ("pct_of_nonnull", "pct_of_total")
         if denominator_key == "pct_of_nonnull":
             denom = total_nonnull
         elif denominator_key == "pct_of_total":
             denom = total
-        elif denominator_key == "pct_of_sum":
-            denom = total_count
         else:
             raise ValueError(f"Unknown denominator_key: {denominator_key}")
 
@@ -138,6 +207,8 @@ class SeriesBarChartMixin:
         self._draw_set("series", "counts", counts_arr)
         self._draw_set("series", "value_key", denominator_key)
 
+        unique_categories_total = int(s.dropna().astype("object").nunique())
+
         desc = {
             "params": {
                 "show_count_in_bar_label": bool(getattr(self.ctx, "show_count_in_bar_label", False)),
@@ -150,16 +221,19 @@ class SeriesBarChartMixin:
             },
             "total": total, # total series
             "total_nonnull": total_nonnull, # total nonnull in series
-            "total_count": total_count, # total count displayed
-            "pct_total_count": total_count / denom, # total count % of denominator
+            "subset_count": subset_count, # subset count
+            "pct_subset": subset_count / denom, # subset count % of denominator
             "denominator_key": denominator_key,
             "bars": bars,
-            "k": int(sum(1 for v in bars.values() if int(v["count"]) > 0)),
-            "n_bars": int(len(bars)),
+            "unique_categories_total": unique_categories_total,
+            "input_categories": input_categories,                   # size of counts (pre-capping)
+            "input_nonzero_categories": input_nonzero_categories,   # positive-count labels (pre-capping)
+            "nonzero_categories": int(sum(1 for v in bars.values() if int(v["count"]) > 0)), # post-capping
+            "n_bars_rendered": int(len(bars)), # post-capping
         }
 
         # skip plot conditions
-        if skip_plot_if_zero and (total == 0 or total_count == 0):
+        if skip_plot_if_zero and (total == 0 or subset_count == 0):
             desc["skip_plot"] = True
             desc["error"] = "no categories to display"
 

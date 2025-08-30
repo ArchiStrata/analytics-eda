@@ -16,22 +16,26 @@ from analytics_eda.core.data_quality import (
             {},
             {
                 "chart_metadata": {
-                    "title": "Non-Numeric (String) Values in empty_col",
-                    "xlabel": "Percent of non‑null",
-                    "ylabel": "Category",
                     "data_source": None,
-                    "version": "1.0.0",
                     "file_name": None,
+                    "title": "Non-Numeric (String) Values in empty_col",
+                    "version": "1.0.0",
+                    "xlabel": "Percent of non‑null",
+                    "ylabel": "Category"
                 },
                 "descriptive_stats": {
-                    "total": 0,
-                    "total_nonnull": 0,
-                    "total_count": 0,
                     "bars": {},
+                    "subset_count": 0,
+                    "total": 0,
+                    "total_nonnull": 0
                 },
-                "inferential_stats": {},
+                "draft_descriptive_findings": {
+                    "context": "N (non‑null) = 0",
+                    "primary_finding": "The series is empty.",
+                    "secondary_finding": None
+                },
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": {},  # base=0 → {}
+                "inferential_stats": {}
             },
         ),
 
@@ -40,16 +44,45 @@ from analytics_eda.core.data_quality import (
             lambda: pd.Series([1, 2, 3], dtype="float64", name="all_numeric"),
             {"file_name": "strings.png"},
             {
+                "chart_metadata": {
+                    "data_source": None,
+                    "file_name": None,
+                    "title": "Non-Numeric (String) Values in all_numeric",
+                    "version": "1.0.0",
+                    "xlabel": "Percent of non‑null",
+                    "ylabel": "Category"
+                },
                 "descriptive_stats": {
+                    "bars": {},
+                    "denominator_key": "pct_of_nonnull",
+                    "error": "no categories to display",
+                    "input_categories": 0,
+                    "input_nonzero_categories": 0,
+                    "n_bars_rendered": 0,
+                    "nonzero_categories": 0,
+                    "params": {
+                        "bar_height_source": "values",
+                        "bar_sort_descending": False,
+                        "include_na_literal": False,
+                        "max_display_bars": 15,
+                        "other_label": "Other",
+                        "show_count_in_bar_label": False,
+                        "show_value_in_bar_label": True
+                    },
+                    "pct_subset": 0.0,
+                    "skip_plot": True,
+                    "subset_count": 0,
                     "total": 3,
                     "total_nonnull": 3,
-                    "total_count": 0,
-                    "bars": {},
+                    "unique_categories_total": 3
                 },
-                "chart_metadata": {"file_name": None, "version": "1.0.0"},
-                "inferential_stats": {},
+                "draft_descriptive_findings": {
+                    "context": "N (non‑null) = 3",
+                    "primary_finding": "No non-numeric values detected.",
+                    "secondary_finding": None
+                },
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": {},
+                "inferential_stats": {}
             },
         ),
 
@@ -59,16 +92,52 @@ from analytics_eda.core.data_quality import (
             lambda: pd.Series([1, "x", 2, "y", "x"], name="mixed"),
             {"file_name": "strings.png", "show_count_in_bar_label": True},
             {
+                "chart_metadata": {
+                    "data_source": None,
+                    "file_name": "strings.png",
+                    "title": "Non-Numeric (String) Values in mixed",
+                    "version": "1.0.0",
+                    "xlabel": "Percent of non‑null",
+                    "ylabel": "Category"
+                },
                 "descriptive_stats": {
+                    "bars": {
+                        "x": {
+                            "count": 2,
+                            "pct_of_nonnull": 0.4
+                        },
+                        "y": {
+                            "count": 1,
+                            "pct_of_nonnull": 0.2
+                        }
+                    },
+                    "denominator_key": "pct_of_nonnull",
+                    "input_categories": 2,
+                    "input_nonzero_categories": 2,
+                    "n_bars_rendered": 2,
+                    "nonzero_categories": 2,
+                    "params": {
+                        "bar_height_source": "values",
+                        "bar_sort_descending": False,
+                        "include_na_literal": False,
+                        "max_display_bars": 15,
+                        "other_label": "Other",
+                        "show_count_in_bar_label": True,
+                        "show_value_in_bar_label": True
+                    },
+                    "pct_subset": 0.6,
+                    "subset_count": 3,
                     "total": 5,
                     "total_nonnull": 5,
-                    "total_count": 3,
-                    "bars": {},
+                    "unique_categories_total": 4
                 },
-                "chart_metadata": {"file_name": "strings.png", "version": "1.0.0"},
-                "inferential_stats": {},
+                "draft_descriptive_findings": {
+                    "context": "N (non‑null) = 5",
+                    "primary_finding": "60.0% of values failed numeric coercion (3 rows).",
+                    "secondary_finding": "Most frequent token: 'x' at 40.0% (2 rows)."
+                },
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": {},
+                "inferential_stats": {}
             },
         ),
 
@@ -77,16 +146,45 @@ from analytics_eda.core.data_quality import (
             lambda: pd.Series(["1", "2", "3"], name="numeric_like_strings"),
             {"file_name": "strings.png"},
             {
+                "chart_metadata": {
+                    "data_source": None,
+                    "file_name": None,
+                    "title": "Non-Numeric (String) Values in numeric_like_strings",
+                    "version": "1.0.0",
+                    "xlabel": "Percent of non‑null",
+                    "ylabel": "Category"
+                },
                 "descriptive_stats": {
+                    "bars": {},
+                    "denominator_key": "pct_of_nonnull",
+                    "error": "no categories to display",
+                    "input_categories": 0,
+                    "input_nonzero_categories": 0,
+                    "n_bars_rendered": 0,
+                    "nonzero_categories": 0,
+                    "params": {
+                        "bar_height_source": "values",
+                        "bar_sort_descending": False,
+                        "include_na_literal": False,
+                        "max_display_bars": 15,
+                        "other_label": "Other",
+                        "show_count_in_bar_label": False,
+                        "show_value_in_bar_label": True
+                    },
+                    "pct_subset": 0.0,
+                    "skip_plot": True,
+                    "subset_count": 0,
                     "total": 3,
                     "total_nonnull": 3,
-                    "total_count": 0,
-                    "bars": {},
+                    "unique_categories_total": 3
                 },
-                "chart_metadata": {"file_name": None, "version": "1.0.0"},
-                "inferential_stats": {},
+                "draft_descriptive_findings": {
+                    "context": "N (non‑null) = 3",
+                    "primary_finding": "No non-numeric values detected.",
+                    "secondary_finding": None
+                },
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": {},
+                "inferential_stats": {}
             },
         ),
 
@@ -109,15 +207,52 @@ from analytics_eda.core.data_quality import (
             lambda: pd.Series(["NaN", "None", "3", "4"], name="incl_na_lit"),
             {"include_na_literal": True},
             {
-                "chart_metadata": {"version": "1.0.0"},
+                "chart_metadata": {
+                    "data_source": None,
+                    "file_name": None,
+                    "title": "Non-Numeric (String) Values in incl_na_lit",
+                    "version": "1.0.0",
+                    "xlabel": "Percent of non‑null",
+                    "ylabel": "Category"
+                },
                 "descriptive_stats": {
+                    "bars": {
+                        "NaN": {
+                            "count": 1,
+                            "pct_of_nonnull": 0.25
+                        },
+                        "None": {
+                            "count": 1,
+                            "pct_of_nonnull": 0.25
+                        }
+                    },
+                    "denominator_key": "pct_of_nonnull",
+                    "input_categories": 2,
+                    "input_nonzero_categories": 2,
+                    "n_bars_rendered": 2,
+                    "nonzero_categories": 2,
+                    "params": {
+                    "bar_height_source": "values",
+                    "bar_sort_descending": False,
+                    "include_na_literal": True,
+                    "max_display_bars": 15,
+                    "other_label": "Other",
+                    "show_count_in_bar_label": False,
+                    "show_value_in_bar_label": True
+                    },
+                    "pct_subset": 0.5,
+                    "subset_count": 2,
                     "total": 4,
                     "total_nonnull": 4,
-                    "total_count": 2,
-                    "bars": {},
+                    "unique_categories_total": 4
                 },
-                "inferential_stats": {},
+                "draft_descriptive_findings": {
+                    "context": "N (non‑null) = 4",
+                    "primary_finding": "50.0% of values failed numeric coercion (2 rows).",
+                    "secondary_finding": "Most frequent token: 'NaN' at 25.0% (1 rows)."
+                },
                 "draft_inferential_findings": {},
+                "inferential_stats": {}
             },
         ),
 
@@ -126,15 +261,56 @@ from analytics_eda.core.data_quality import (
             lambda: pd.Series(["a","a","b","c","c","c"], name="descending"),
             {"file_name": "strings.png", "bar_sort_descending": True},
             {
-                "chart_metadata": {"file_name": "strings.png", "version": "1.0.0"},
+                "chart_metadata": {
+                    "data_source": None,
+                    "file_name": "strings.png",
+                    "title": "Non-Numeric (String) Values in descending",
+                    "version": "1.0.0",
+                    "xlabel": "Percent of non‑null",
+                    "ylabel": "Category"
+                },
                 "descriptive_stats": {
+                    "bars": {
+                        "a": {
+                            "count": 2,
+                            "pct_of_nonnull": 0.3333333333333333
+                        },
+                        "b": {
+                            "count": 1,
+                            "pct_of_nonnull": 0.16666666666666666
+                        },
+                        "c": {
+                            "count": 3,
+                            "pct_of_nonnull": 0.5
+                        }
+                    },
+                    "denominator_key": "pct_of_nonnull",
+                    "input_categories": 3,
+                    "input_nonzero_categories": 3,
+                    "n_bars_rendered": 3,
+                    "nonzero_categories": 3,
+                    "params": {
+                        "bar_height_source": "values",
+                        "bar_sort_descending": True,
+                        "include_na_literal": False,
+                        "max_display_bars": 15,
+                        "other_label": "Other",
+                        "show_count_in_bar_label": False,
+                        "show_value_in_bar_label": True
+                    },
+                    "pct_subset": 1.0,
+                    "subset_count": 6,
                     "total": 6,
                     "total_nonnull": 6,
-                    "total_count": 6,
-                    "bars": {},
+                    "unique_categories_total": 3
                 },
-                "inferential_stats": {},
+                "draft_descriptive_findings": {
+                    "context": "N (non‑null) = 6",
+                    "primary_finding": "100.0% of values failed numeric coercion (6 rows).",
+                    "secondary_finding": "Most frequent token: 'c' at 50.0% (3 rows)."
+                },
                 "draft_inferential_findings": {},
+                "inferential_stats": {}
             },
         ),
     ],

@@ -206,8 +206,8 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BaseP
             descriptive_findings["primary_finding"] = "The series is empty."
             return descriptive_findings
         
-        pct_any_issue = desc["pct_total_count"] * 100
-        total_issues = desc["total_count"]
+        pct_any_issue = desc["pct_subset"] * 100
+        total_issues = desc["subset_count"]
         
         # Nothing to report → all values are clean
         if total_issues == 0:
@@ -239,8 +239,8 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BaseP
             return ""
 
         total_nonnull = desc["total_nonnull"]
-        total_issues = desc.get("total_count", 0)
-        pct_any_issue = float(desc.get("pct_total_count", 0.0)) * 100.0
+        total_issues = desc.get("subset_count", 0)
+        pct_any_issue = float(desc.get("pct_subset", 0.0)) * 100.0
 
         # Case 1: all clean
         if total_issues == 0:

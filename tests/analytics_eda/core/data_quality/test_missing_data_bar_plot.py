@@ -22,14 +22,18 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
                     "file_name": None,
                 },
                 "descriptive_stats": {
-                    "total": 0,
-                    "total_nonnull": 0,
-                    "total_count": 0,
                     "bars": {},
+                    "subset_count": 0,
+                    "total": 0,
+                    "total_nonnull": 0
                 },
-                "inferential_stats": {},
+                "draft_descriptive_findings": {
+                    "context": "0 values",
+                    "primary_finding": "The series is empty.",
+                    "secondary_finding": None
+                },
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": {},  # empty base ⇒ no finding
+                "inferential_stats": {}
             },
         ),
 
@@ -38,21 +42,52 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
             lambda: pd.Series([1, 2, 3], dtype="float64", name="no_nans"),
             {"file_name": "missing.png"},
             {
+                "chart_metadata": {
+                    "data_source": None,
+                    "file_name": "missing.png",
+                    "title": "Missing Data for no_nans",
+                    "version": "1.0.0",
+                    "xlabel": "Status",
+                    "ylabel": "Percentage of Total"
+                },
                 "descriptive_stats": {
+                    "bars": {
+                        "Missing": {
+                            "count": 0,
+                            "pct_of_total": 0.0
+                        },
+                        "Present": {
+                            "count": 3,
+                            "pct_of_total": 1.0
+                        }
+                    },
+                    "denominator_key": "pct_of_total",
+                    "input_categories": 2,
+                    "input_nonzero_categories": 1,
+                    "n_bars_rendered": 2,
+                    "nonzero_categories": 1,
+                    "params": {
+                        "bar_height_source": "values",
+                        "bar_sort_descending": True,
+                        "max_display_bars": 15,
+                        "other_label": "Other",
+                        "show_count_in_bar_label": False,
+                        "show_value_in_bar_label": True
+                    },
+                    "pct_subset": 1.0,
+                    "subset_count": 3,
                     "total": 3,
                     "total_nonnull": 3,
-                    "total_count": 3,
-                    "denominator_key": "pct_of_total",
-                    "bars": {
-                        "Present": {"count": 3, "pct_of_total": 1.0},
-                        "Missing": {"count": 0, "pct_of_total": 0.0},
-                    },
+                    "unique_categories_total": 3
                 },
-                "inferential_stats": {},
+                "draft_descriptive_findings": {
+                    "context": "3 values",
+                    "primary_finding": "0.0% of 3 values are missing.",
+                    "secondary_finding": "No missing values detected."
+                },
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": {},
-                "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
-            },
+                "inferential_stats": {}
+            }
         ),
 
         # 2) Some missing values (counts use full length including NaNs)
@@ -60,20 +95,51 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
             lambda: pd.Series([1, np.nan, 2, np.nan], name="some_nans"),
             {"file_name": "missing.png"},
             {
+                "chart_metadata": {
+                    "data_source": None,
+                    "file_name": "missing.png",
+                    "title": "Missing Data for some_nans",
+                    "version": "1.0.0",
+                    "xlabel": "Status",
+                    "ylabel": "Percentage of Total"
+                },
                 "descriptive_stats": {
+                    "bars": {
+                        "Missing": {
+                            "count": 2,
+                            "pct_of_total": 0.5
+                        },
+                        "Present": {
+                            "count": 2,
+                            "pct_of_total": 0.5
+                        }
+                    },
+                    "denominator_key": "pct_of_total",
+                    "input_categories": 2,
+                    "input_nonzero_categories": 2,
+                    "n_bars_rendered": 2,
+                    "nonzero_categories": 2,
+                    "params": {
+                        "bar_height_source": "values",
+                        "bar_sort_descending": True,
+                        "max_display_bars": 15,
+                        "other_label": "Other",
+                        "show_count_in_bar_label": False,
+                        "show_value_in_bar_label": True
+                    },
+                    "pct_subset": 1.0,
+                    "subset_count": 4,
                     "total": 4,
                     "total_nonnull": 2,
-                    "total_count": 4,
-                    "denominator_key": "pct_of_total",
-                    "bars": {
-                        "Present": {"count": 2, "pct_of_total": 0.5},
-                        "Missing": {"count": 2, "pct_of_total": 0.5},
-                    },
+                    "unique_categories_total": 2
                 },
-                "inferential_stats": {},
+                "draft_descriptive_findings": {
+                    "context": "4 values",
+                    "primary_finding": "50.0% of 4 values are missing.",
+                    "secondary_finding": "Missing and present values are evenly split."
+                },
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": {},
-                "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
+                "inferential_stats": {}
             },
         ),
 
@@ -82,20 +148,51 @@ from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBa
             lambda: pd.Series([np.nan, np.nan, np.nan], name="all_nans"),
             {"file_name": "missing.png", "show_count_in_bar_label": True},
             {
+                "chart_metadata": {
+                    "data_source": None,
+                    "file_name": "missing.png",
+                    "title": "Missing Data for all_nans",
+                    "version": "1.0.0",
+                    "xlabel": "Status",
+                    "ylabel": "Percentage of Total"
+                },
                 "descriptive_stats": {
+                    "bars": {
+                        "Missing": {
+                            "count": 3,
+                            "pct_of_total": 1.0
+                        },
+                        "Present": {
+                            "count": 0,
+                            "pct_of_total": 0.0
+                        }
+                    },
+                    "denominator_key": "pct_of_total",
+                    "input_categories": 2,
+                    "input_nonzero_categories": 1,
+                    "n_bars_rendered": 2,
+                    "nonzero_categories": 1,
+                    "params": {
+                        "bar_height_source": "values",
+                        "bar_sort_descending": True,
+                        "max_display_bars": 15,
+                        "other_label": "Other",
+                        "show_count_in_bar_label": True,
+                        "show_value_in_bar_label": True
+                    },
+                    "pct_subset": 1.0,
+                    "subset_count": 3,
                     "total": 3,
                     "total_nonnull": 0,
-                    "total_count": 3,
-                    "denominator_key": "pct_of_total",
-                    "bars": {
-                        "Present": {"count": 0, "pct_of_total": 0.0},
-                        "Missing": {"count": 3, "pct_of_total": 1.0},
-                    },
+                    "unique_categories_total": 0
                 },
-                "inferential_stats": {},
+                "draft_descriptive_findings": {
+                    "context": "3 values",
+                    "primary_finding": "100.0% of 3 values are missing.",
+                    "secondary_finding": "All values are missing."
+                },
                 "draft_inferential_findings": {},
-                "draft_descriptive_findings": {},
-                "chart_metadata": {"file_name": "missing.png", "version": "1.0.0"},
+                "inferential_stats": {}
             },
         ),
 

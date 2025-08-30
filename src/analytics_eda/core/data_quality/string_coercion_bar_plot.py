@@ -116,8 +116,8 @@ class StringCoercionBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
             descriptive_findings["primary_finding"] = "The series is empty."
             return descriptive_findings
         
-        total_nonnum = desc.get("total_count", 0)  # rows that failed numeric coercion (sum of bars)
-        pct_nonnum = float(desc.get("pct_total_count", 0.0)) * 100.0
+        total_nonnum = desc.get("subset_count", 0)  # rows that failed numeric coercion (sum of bars)
+        pct_nonnum = float(desc.get("pct_subset", 0.0)) * 100.0
 
         # Nothing to report (all values numeric after coercion)
         if total_nonnum == 0:
@@ -148,8 +148,8 @@ class StringCoercionBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
             return ""
 
         total_nonnull = desc["total_nonnull"]
-        total_nonnum = desc.get("total_count", 0)
-        pct_nonnum = float(desc.get("pct_total_count", 0.0)) * 100.0
+        total_nonnum = desc.get("subset_count", 0)
+        pct_nonnum = float(desc.get("pct_subset", 0.0)) * 100.0
 
         if total_nonnum == 0:
             return "No non-numeric values detected"
