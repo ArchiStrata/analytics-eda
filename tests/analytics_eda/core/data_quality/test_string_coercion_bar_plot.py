@@ -134,7 +134,7 @@ from analytics_eda.core.data_quality import (
                 "draft_descriptive_findings": {
                     "context": "N (non‑null) = 5",
                     "primary_finding": "60.0% of values failed numeric coercion (3 rows).",
-                    "secondary_finding": "Most frequent token: 'x' at 40.0% (2 rows)."
+                    "secondary_finding": "Most frequent token: 'x' (40.0%, 2 rows)."
                 },
                 "draft_inferential_findings": {},
                 "inferential_stats": {}
@@ -249,7 +249,7 @@ from analytics_eda.core.data_quality import (
                 "draft_descriptive_findings": {
                     "context": "N (non‑null) = 4",
                     "primary_finding": "50.0% of values failed numeric coercion (2 rows).",
-                    "secondary_finding": "Most frequent token: 'NaN' at 25.0% (1 rows)."
+                    "secondary_finding": "Most frequent tokens (tie): 'NaN' (25.0%, 1 rows), 'None' (25.0%, 1 rows)."
                 },
                 "draft_inferential_findings": {},
                 "inferential_stats": {}
@@ -307,7 +307,7 @@ from analytics_eda.core.data_quality import (
                 "draft_descriptive_findings": {
                     "context": "N (non‑null) = 6",
                     "primary_finding": "100.0% of values failed numeric coercion (6 rows).",
-                    "secondary_finding": "Most frequent token: 'c' at 50.0% (3 rows)."
+                    "secondary_finding": "Most frequent token: 'c' (50.0%, 3 rows)."
                 },
                 "draft_inferential_findings": {},
                 "inferential_stats": {}

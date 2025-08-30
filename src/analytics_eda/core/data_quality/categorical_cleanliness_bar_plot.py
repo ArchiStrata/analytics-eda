@@ -195,7 +195,7 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BaseP
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
         total_nonnull = desc["total_nonnull"]
 
-        descriptive_findings = {
+        findings = {
             # how many nonnull values were included in the plot analysis?
             "context": f"N (non‑null) = {total_nonnull:,}",
             "primary_finding": "",
@@ -203,36 +203,41 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BaseP
         }
 
         if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
-            descriptive_findings["primary_finding"] = "The series is empty."
-            return descriptive_findings
+            findings["primary_finding"] = "The series is empty."
+            return findings
         
         pct_any_issue = desc["pct_subset"] * 100
         total_issues = desc["subset_count"]
         
         # Nothing to report → all values are clean
         if total_issues == 0:
-            descriptive_findings["primary_finding"] = "No cleanliness issues detected."
-            return descriptive_findings
-
-        # find most frequent issue
-        bars = desc.get("bars", {})
-        bars = desc.get("bars", {})
-        if bars:
-            top_issue, top_vals = max(bars.items(), key=lambda kv: kv[1]["count"])
-            top_pct = top_vals["pct_of_nonnull"] * 100
-            top_count = top_vals["count"]
-        else:
-            top_issue, top_pct, top_count = None, 0, 0
+            findings["primary_finding"] = "No cleanliness issues detected."
+            return findings
         
         # how many issues are there and how common are they?
-        descriptive_findings["primary_finding"] = f"{pct_any_issue:.1f}% of values show at least one cleanliness issue ({total_issues:,} rows)."
+        findings["primary_finding"] = f"{pct_any_issue:.1f}% of values show at least one cleanliness issue ({total_issues:,} rows)."
 
-        # which issue had the most, how common, and how many?
-        descriptive_findings["secondary_finding"] = (
-            f"Most frequent issue: {top_issue} at {top_pct:.1f}% ({top_count} rows)."
-            if top_issue else None
-        )
-        return descriptive_findings
+        # which issues had the most, how common, and how many?
+        bars = desc.get("bars", {})
+        denom_key = desc.get("denominator_key", "pct_of_nonnull")
+        top_labels: list[str] = list(desc.get("top_labels", []))
+
+        # Build a readable tie-aware message
+        # sort for determinism
+        top_labels = sorted(top_labels)
+        parts = []
+        for lbl in top_labels:
+            v = bars.get(lbl, {})
+            pct = float(v.get(denom_key, 0.0)) * 100.0
+            cnt = int(v.get("count", 0))
+            parts.append(f"{lbl} ({pct:.1f}%, {cnt} rows)")
+
+        if len(parts) == 1:
+            findings["secondary_finding"] = f"Most frequent issue: {parts[0]}."
+        else:
+            findings["secondary_finding"] = "Most frequent issues (tie): " + ", ".join(parts) + "."
+
+        return findings
     
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
         if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:

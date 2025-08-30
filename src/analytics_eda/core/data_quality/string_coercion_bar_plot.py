@@ -105,7 +105,7 @@ class StringCoercionBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
         total_nonnull = desc["total_nonnull"]
 
-        descriptive_findings = {
+        findings = {
             # how many nonnull values were included in the plot analysis?
             "context": f"N (non‑null) = {total_nonnull:,}",
             "primary_finding": "",
@@ -113,35 +113,47 @@ class StringCoercionBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
         }
 
         if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
-            descriptive_findings["primary_finding"] = "The series is empty."
-            return descriptive_findings
+            findings["primary_finding"] = "The series is empty."
+            return findings
         
         total_nonnum = desc.get("subset_count", 0)  # rows that failed numeric coercion (sum of bars)
         pct_nonnum = float(desc.get("pct_subset", 0.0)) * 100.0
 
         # Nothing to report (all values numeric after coercion)
         if total_nonnum == 0:
-            descriptive_findings["primary_finding"] = "No non-numeric values detected."
-            return descriptive_findings
+            findings["primary_finding"] = "No non-numeric values detected."
+            return findings
 
         # how many distinct failed coercion issues are there and how common are they?
         # Primary: overall rate + count
-        descriptive_findings["primary_finding"] = (
+        findings["primary_finding"] = (
             f"{pct_nonnum:.1f}% of values failed numeric coercion "
             f"({total_nonnum:,} rows)."
         )
 
-        # which issue had the most, how common, and how many?
-        # Secondary: most frequent offending token (percent + count)
+        # which issues had the most, how common, and how many?
         bars: Dict[str, Any] = desc.get("bars", {})
-        if bars:
-            top_label, top_vals = max(bars.items(), key=lambda kv: int(kv[1].get("count", 0)))
-            top_pct = float(top_vals.get("pct_of_nonnull", 0.0)) * 100.0
-            top_cnt = int(top_vals.get("count", 0))
-            descriptive_findings["secondary_finding"] = (
-                f"Most frequent token: {repr(top_label)} at {top_pct:.1f}% ({top_cnt:,} rows)."
-            )
-        return descriptive_findings
+        denom_key = desc.get("denominator_key", "pct_of_nonnull")
+
+        top_labels: list[str] = list(desc.get("top_labels", []))
+
+        if not top_labels:
+            return findings  # nothing meaningful to add
+
+        # Build tie-aware secondary finding
+        parts = []
+        for lbl in sorted(top_labels):
+            data = bars.get(lbl, {})
+            pct = float(data.get(denom_key, 0.0)) * 100.0
+            cnt = int(data.get("count", 0))
+            parts.append(f"{repr(lbl)} ({pct:.1f}%, {cnt:,} rows)")
+
+        if len(parts) == 1:
+            findings["secondary_finding"] = f"Most frequent token: {parts[0]}."
+        else:
+            findings["secondary_finding"] = "Most frequent tokens (tie): " + ", ".join(parts) + "."
+
+        return findings
 
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
         if not desc or desc.get("total_nonnull", 0) == 0:

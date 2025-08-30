@@ -173,7 +173,7 @@ from analytics_eda.core.data_quality import (
                 "draft_descriptive_findings": {
                     "context": "N (non‑null) = 10",
                     "primary_finding": "60.0% of values show at least one cleanliness issue (6 rows).",
-                    "secondary_finding": "Most frequent issue: Mixed Casing at 20.0% (2 rows)."
+                    "secondary_finding": "Most frequent issues (tie): Invalid Category (20.0%, 2 rows), Mixed Casing (20.0%, 2 rows)."
                 },
             },
         ),
@@ -236,7 +236,7 @@ from analytics_eda.core.data_quality import (
                 "draft_descriptive_findings": {
                     "context": "N (non‑null) = 4",
                     "primary_finding": "50.0% of values show at least one cleanliness issue (2 rows).",
-                    "secondary_finding": "Most frequent issue: Leading/Trailing Whitespace at 25.0% (1 rows)."
+                    "secondary_finding": "Most frequent issues (tie): Leading/Trailing Whitespace (25.0%, 1 rows), Mixed Casing (25.0%, 1 rows)."
                 },
                 "draft_inferential_findings": {},
                 "inferential_stats": {}

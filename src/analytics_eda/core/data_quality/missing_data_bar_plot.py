@@ -71,34 +71,34 @@ class MissingDataBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
         return desc
     
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
-        descriptive_findings = {
+        findings = {
             # how many total values were included in the plot analysis?
             "context": f"{desc['total']:,} values",
             "primary_finding": "",
             "secondary_finding": None
         }
         if not desc or desc.get("total", 0) == 0:
-            descriptive_findings["primary_finding"] = "The series is empty."
-            return descriptive_findings
+            findings["primary_finding"] = "The series is empty."
+            return findings
 
         # how many missing values were there?
         pct_missing = desc['bars']['Missing']['pct_of_total'] * 100
         total = desc['total']
-        descriptive_findings["primary_finding"] =  f"{pct_missing:.1f}% of {total:,} values are missing."
+        findings["primary_finding"] =  f"{pct_missing:.1f}% of {total:,} values are missing."
         
         if pct_missing == 0:
-            descriptive_findings["secondary_finding"] = "No missing values detected."
+            findings["secondary_finding"] = "No missing values detected."
         elif pct_missing == 100:
-            descriptive_findings["secondary_finding"] = "All values are missing."
+            findings["secondary_finding"] = "All values are missing."
         elif pct_missing < 50:
-            descriptive_findings["secondary_finding"] = "Most values are present."
+            findings["secondary_finding"] = "Most values are present."
         elif pct_missing == 50:
-            descriptive_findings["secondary_finding"] = "Missing and present values are evenly split."
+            findings["secondary_finding"] = "Missing and present values are evenly split."
         else:
-            descriptive_findings["secondary_finding"] = "Missing values exceed present values."
+            findings["secondary_finding"] = "Missing values exceed present values."
 
         
-        return descriptive_findings
+        return findings
     
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
         if not desc or desc.get("total", 0) == 0:

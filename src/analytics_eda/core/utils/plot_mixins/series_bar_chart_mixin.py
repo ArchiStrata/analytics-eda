@@ -28,6 +28,9 @@ class SeriesBarChartContext(PlotContext):
     bar_height_source: Literal["values", "counts"] = "values"
     bar_sort_descending: bool = False
     bar_highlight_top: bool = True
+    bar_top_n: int = 1 # how many top bars to highlight
+    bar_top_include_ties: bool = True # include ties
+
     max_display_bars: Optional[int] = 15       # cap number of bars to display
     other_label: str = "Other"                 # label used when aggregating capped bars
     other_label_format: str = "{label} (k={k_agg})"
@@ -193,9 +196,6 @@ class SeriesBarChartMixin:
                 denominator_key: other_ratio,
                 "_is_other": True,
             }
-            self._draw_set("series", "other_label", other_display)
-        else:
-            self._draw_set("series", "other_label", None)
 
         # cache arrays for draw
         labels = list(bars.keys())
@@ -209,6 +209,35 @@ class SeriesBarChartMixin:
 
         unique_categories_total = int(s.dropna().astype("object").nunique())
 
+        # Determine the primary metric used for bar height
+        bar_height_source = getattr(self.ctx, "bar_height_source", "values")
+        if bar_height_source == "counts":
+            primary = counts_arr.astype(float)
+        else:
+            primary = values.astype(float)
+
+        # Compute top labels according to context
+        top_n = max(1, int(getattr(self.ctx, "bar_top_n", 1)))
+        include_ties = bool(getattr(self.ctx, "bar_top_include_ties", True))
+
+        label_to_metric = {lbl: float(m) for lbl, m in zip(labels, primary)}
+
+        # Exclude "Other" from consideration
+        candidates = [(lbl, label_to_metric[lbl]) for lbl in labels if lbl != other_display]
+        # Sort descending by metric, stable second key = label for determinism
+        candidates.sort(key=lambda kv: (-kv[1], kv[0]))
+
+        if not candidates:
+            top_labels = []
+        else:
+            if include_ties:
+                # metric cutoff at rank top_n (1-indexed)
+                cutoff_idx = min(top_n, len(candidates)) - 1
+                cutoff_val = candidates[cutoff_idx][1]
+                top_labels = [lbl for lbl, m in candidates if m >= cutoff_val and m > 0]
+            else:
+                top_labels = [lbl for lbl, m in candidates[:top_n] if m > 0]
+
         desc = {
             "params": {
                 "show_count_in_bar_label": bool(getattr(self.ctx, "show_count_in_bar_label", False)),
@@ -217,12 +246,14 @@ class SeriesBarChartMixin:
                 "bar_sort_descending": bool(getattr(self.ctx, "bar_sort_descending", False)),
                 "max_display_bars": max_display_bars,
                 "other_label": other_label_base,
+                "bar_top_n": top_n,
+                "bar_top_include_ties": include_ties,
                 **(extra_params or {}),
             },
             "total": total, # total series
             "total_nonnull": total_nonnull, # total nonnull in series
             "subset_count": subset_count, # subset count
-            "pct_subset": subset_count / denom, # subset count % of denominator
+            "pct_subset": (subset_count / denom) if denom > 0 else 0.0, # subset count % of denominator
             "denominator_key": denominator_key,
             "bars": bars,
             "unique_categories_total": unique_categories_total,
@@ -230,6 +261,7 @@ class SeriesBarChartMixin:
             "input_nonzero_categories": input_nonzero_categories,   # positive-count labels (pre-capping)
             "nonzero_categories": int(sum(1 for v in bars.values() if int(v["count"]) > 0)), # post-capping
             "n_bars_rendered": int(len(bars)), # post-capping
+            "top_labels": top_labels,
         }
 
         # skip plot conditions
@@ -256,7 +288,6 @@ class SeriesBarChartMixin:
         labels = self._draw_get("series", "labels") or []
         values = self._draw_get("series", "values")
         counts = self._draw_get("series", "counts")
-        other_label = self._draw_get("series", "other_label")
 
         if values is None or counts is None:
             # nothing cached; nothing to draw
@@ -282,15 +313,12 @@ class SeriesBarChartMixin:
         else:
             bars = ax.barh(labels, heights, color=self.neutral_grey())
 
-        # Highlight the top non-"Other" bar (by the primary metric)
+        # Highlight all top labels (already excludes "Other")
         if self.ctx.bar_highlight_top and len(bars) > 0:
-            other_label = self._draw_get("series", "other_label")
-            # sort indices by height desc
-            order = np.argsort(values)[::-1]
-            for idx in order:
-                if labels[idx] != other_label and values[idx] > 0:
-                    bars[idx].set_color(palette[0])
-                    break  # first valid winner only
+            winners = set(desc.get("top_labels", []))
+            for i, lbl in enumerate(labels):
+                if lbl in winners:
+                    bars[i].set_color(palette[0])
 
         # Build edge labels
         def _label(h, c):
