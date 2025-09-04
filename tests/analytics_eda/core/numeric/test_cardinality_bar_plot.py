@@ -255,7 +255,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
         "float_high_cardinality_tol_flip",
     ],
 )
-def test_plot_cardinality_barchart_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_cardinality_bar_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
 
     # If a file_name is provided, also set save_path to tmp_path

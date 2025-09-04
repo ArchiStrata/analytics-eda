@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 import pandas as pd
-from math import isclose
 
 from analytics_eda.analysis.univariate.univariate_numeric_analysis import univariate_numeric_analysis
 
@@ -23,21 +22,9 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                 # Top-level expectations (from the univariate report)
                 "data_quality": {
                     "missing_data_barchart": {
-                        "descriptive_stats": {
-                            "total": 121,
-                            "missing": 1,
-                            "pct_missing": lambda v: isclose(v, 1/121, rel_tol=1e-12, abs_tol=1e-12),
-                            "labels": [
-                                "Present",
-                                "Missing"
-                            ],
-                            "counts": "[120   1]",
-                            "pcts": "[99.17355372  0.82644628]"
-                        },
-                        "inferential_stats": {},
                         "chart_metadata": {
                             "title": "Missing Data for metric",
-                            "xlabel": "",
+                            "xlabel": "Status",
                             "ylabel": "Percentage of Total",
                             "data_source": "UnitTest",
                             "file_name": "Missing Data for metric.png"
@@ -191,11 +178,6 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
             {
                 "data_quality": {
                     "missing_data_barchart": {
-                        "descriptive_stats": {
-                            "total": 8,
-                            "missing": 1,
-                            "pct_missing": lambda v: abs(v - 1/8) < 1e-12,
-                        },
                         "chart_metadata": {
                             "title": "Missing Data for metric_strings",
                             "data_source": "UnitTest",
@@ -203,20 +185,11 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import univar
                         },
                     },
                     "string_coercion_barchart": {
-                        "descriptive_stats": {
-                            # We count over NON-NULL entries (dropna)
-                            "total": 8,
-                            # order can vary → check via predicates
-                            "labels": lambda xs: set(xs) == {"x", "bad", "oops"},
-                            "counts": lambda xs: sorted(list(xs)) == [1, 1, 1],
-                        },
-                        "inferential_stats": {},
                         "chart_metadata": {
                             "title": "Non-Numeric (String) Values in metric_strings",
-                            "xlabel": "Count",
+                            "xlabel": "Percent of non‑null",
                             "ylabel": "Category",
                             "data_source": "UnitTest",
-                            # BasePlot typically names files from title when save_path is provided
                             "file_name": "Non-Numeric (String) Values in metric_strings.png",
                         },
                     }

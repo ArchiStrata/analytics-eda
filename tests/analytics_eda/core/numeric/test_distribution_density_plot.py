@@ -360,7 +360,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
         "17_custom_title_labels_source_and_save",
     ],
 )
-def test_plot_distribution_density_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_distribution_density_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
     if "file_name" in kwargs:
         kwargs = kwargs.copy()

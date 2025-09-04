@@ -241,7 +241,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
         "9_violin_outliers_and_save",
     ],
 )
-def test_plot_dispersion_boxplot_param(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_dispersion_box_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
 
     # If a file_name is provided, also set save_path to tmp_path
