@@ -12,64 +12,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict, Any, Literal
 import numpy as np
 import pandas as pd
 
-from ..utils.base_plot import BasePlot, PlotContext
+from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+
+from ..utils.base_plot import BasePlot
 from .validate_numeric_named_series import NumericSeriesMixin
 
 @dataclass
-class CardinalityBarContext(PlotContext):
-    title_template: str = "Cardinality — Top {top_k} Value Counts for {name}{modifiers}"
-    xlabel: str = "Value"
-    ylabel: str = "Count"
+class CardinalityBarContext(SeriesBarChartContext):
+    title_template: str = "Cardinality Check — Discrete vs. Continuous for {name}{modifiers}"
+    xlabel: str = "Number of Records"
+    ylabel: str = "Values (Top N)"
+    show_subtitle: bool = True
+    is_orientation_vertical: bool = False
+
+    bar_height_source: Literal["values","counts"] = "counts"
+    bar_sort_descending: bool = True
+    format_orientation_axis_as_percent: bool = False
 
     # plot-specific
-    top_k: int = 10
     max_unique_fraction: float = 0.05
     max_unique_values: int = 20
     integer_tolerance: float = 1e-8
 
-class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
+class CardinalityBarPlot(NumericSeriesMixin, SeriesBarChartMixin, BasePlot):
     """
-    Generate a bar chart that tells the cardinality story of a numeric variable.
+    Show how a numeric field’s mass is concentrated among its most frequent values.
 
-    Why:
-        Cardinality measures the number of distinct values.  
-        • High cardinality → treat as continuous (histograms, density plots).  
-        • Low cardinality → may be discrete/categorical; consider bar plots or bucketing.
+    Why this matters:
+        Cardinality (how many unique values) and frequency concentration inform whether a field
+        should be treated as discrete or continuous and whether to bucket or keep as-is.
 
-    What:
-        - Computes number of unique values (nunique).  
-        - Ranks values by frequency and displays the top k in a bar chart.  
-        - Optionally annotates data source and saves the figure.  
-        - Returns cardinality metric and chart metadata for reporting.
-
-    Returns BasePlot.run() schema:
-      {
-        "descriptive_stats": {
-          "params": {...},
-          "total", "nunique", "uniqueness_ratio", "is_discrete"
-        },
-        "inferential_stats": {},
-        "chart_metadata": {..., "top_k": int}
-      }
+    What this plot does:
+        Computes uniqueness and a discreteness heuristic, ranks value counts, displays the top N
+        values (aggregating the tail into “Other”), and reports coverage of the named values.
     """
 
-    def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
-        # Make {top_k} available to the title_template AND optionally add a modifier
-        return {
-            "top_k": int(self.ctx.top_k),
-            # If you also want "(Top 10)" in the (...) modifiers, add an extra_desc:
-            # "extra_desc": f"Top {int(self.ctx.top_k)}",
-        }
-    
-    def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
-        # Put top_k into chart metadata payload for consumers/tests
-        return {
-            "top_k": int(self.ctx.top_k),
-        }
+    def plot_semantic_version(self) -> str:
+        """
+        Return the semantic version of this plot implementation.
+        """
+        return "1.0.0"
 
     def default_descriptive(self) -> Dict[str, Any]:
         return {
@@ -79,19 +65,32 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
                 "integer_tolerance": float(self.ctx.integer_tolerance),
             },
             "total": 0,
-            "nunique": 0,
+            "nunique_native": 0,
             "uniqueness_ratio": 0.0,
-            "coverage_top_k": 0.0,
+            "coverage_named": 0.0,
             "is_discrete": None,
-            # payload for draw():
-            "labels": [],
-            "values": np.array([], dtype=float),
+            "bars": {},
         }
 
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
-        total = int(s.size)
-        nunique = int(s.nunique())
-        uniqueness_ratio = (nunique / total) if total else 0.0
+        # 1) Build bars once (mixin handles totals, Other, capping, ratios)
+        full_counts = s.value_counts().to_dict()
+        desc = self.build_series_bar_desc(
+            s,
+            full_counts,
+            denominator_key="pct_of_total",
+            extra_params={
+                "max_unique_fraction": float(self.ctx.max_unique_fraction),
+                "max_unique_values": int(self.ctx.max_unique_values),
+                "integer_tolerance": float(self.ctx.integer_tolerance),
+            },
+            skip_plot_if_zero=True,
+        )
+
+        # 2) Cardinality metrics (plot-specific)
+        total_nonnull = int(desc.get("total_nonnull", 0))
+        nunique_native = int(s.dropna().nunique())
+        uniqueness_ratio = (nunique_native / total_nonnull) if total_nonnull else 0.0
 
         is_discrete = self._is_discrete_numeric(
             s,
@@ -100,57 +99,94 @@ class CardinalityBarPlot(NumericSeriesMixin, BasePlot):
             integer_tolerance=self.ctx.integer_tolerance,
         )
 
-        counts = s.value_counts().head(self.ctx.top_k)
-        labels = counts.index.astype(str).tolist()
-        values = counts.values.astype(float)
+        # 3) Coverage of the *named* top bars (exclude aggregated “Other”)
+        bars = desc.get("bars", {})
+        other_display = (desc.get("params") or {}).get("other_display")
+        named_counts = [
+            int(bars[k]["count"]) for k in bars.keys()
+            if (k != other_display)
+        ]
+        coverage_named = (sum(named_counts) / total_nonnull) if total_nonnull else 0.0
 
-        # compute coverage
-        coverage = float(values.sum()) / total if total else 0.0
-
-        return {
-            "params": {
-                "max_unique_fraction": float(self.ctx.max_unique_fraction),
-                "max_unique_values": int(self.ctx.max_unique_values),
-                "integer_tolerance": float(self.ctx.integer_tolerance),
-            },
-            "total": total,
-            "nunique": nunique,
+        # 4) Merge in cardinality stats
+        desc.update({
+            "nunique_native": nunique_native,
             "uniqueness_ratio": float(uniqueness_ratio),
-            "coverage_top_k": coverage,
+            "coverage_named": float(coverage_named),
             "is_discrete": bool(is_discrete),
-            # payload:
-            "labels": labels,
-            "values": values,
+        })
+
+        return desc
+    
+    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+        total_nonnull = int(desc.get("total_nonnull", 0))
+        nunique = int(desc.get("nunique_native", 0))
+        if total_nonnull == 0 or nunique == 0:
+            return {}
+
+        ur = float(desc.get("uniqueness_ratio", 0.0))
+        is_discrete = bool(desc.get("is_discrete"))
+        params = desc.get("params") or {}
+        max_k = int(params.get("max_display_bars") or 0)
+        other_display = params.get("other_display")
+        coverage = float(desc.get("coverage_named", 0.0))
+
+        # ---- Context (add coverage only when a named cut exists and it's informative) ----
+        ctx_parts = [f"N = {total_nonnull:,} non-null", f"{nunique:,} unique ({ur:.1%})"]
+        has_named_cut = bool(other_display) or (max_k and nunique > max_k)
+        if has_named_cut and coverage > 0:
+            ctx_parts.append(f"Top-{max_k} named coverage: {coverage:.1%}")
+        context = " | ".join(ctx_parts)
+
+        findings = {
+            "context": context,
+            "primary_finding": "Variable behaves discrete." if is_discrete else "Variable behaves continuous.",
+            "secondary_finding": None,
         }
 
-    def draw(
-        self,
-        s: pd.Series,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
-        *,
-        fig,
-        ax,
-        palette,
-    ):
+        # ---- Secondary (only if discrete: who leads; stay concise) ----
+        if is_discrete:
+            bars = desc.get("bars", {})
+            if bars:
+                denom_k = desc.get("denominator_key", "pct_of_total")
+                # exclude "Other"
+                named = [(k, v) for k, v in bars.items() if k != other_display]
+                if named:
+                    max_share = max(float(v.get(denom_k, 0.0)) for _, v in named)
+                    eps = max(1e-12, 1e-6 * max_share)
+                    leaders = [k for k, v in named if abs(float(v.get(denom_k, 0.0)) - max_share) <= eps]
+                    pct = max_share * 100.0
+                    if len(leaders) == 1:
+                        findings["secondary_finding"] = f"Most frequent value {repr(leaders[0])} at {pct:.1f}%."
+                    else:
+                        preview = ", ".join(repr(x) for x in leaders[:3])
+                        more = f" +{len(leaders) - 3} more" if len(leaders) > 3 else ""
+                        findings["secondary_finding"] = f"Top values (tie at {pct:.1f}%): {preview}{more}."
 
-        # horizontal bars
-        ax.barh(desc["labels"], desc["values"])
-        ax.invert_yaxis()  # highest count at top
+        return findings
+    
+    def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        # Empty / invalid
+        if not desc or desc.get("total_nonnull", 0) == 0:
+            return ""
 
-        # build subtitle from descriptive stats
-        coverage = desc.get("coverage_top_k", 0.0)
-        subtitle = (
-            f"{'Discrete' if desc['is_discrete'] else 'Continuous'} "
-            f"| Unique: {desc['nunique']:,} ({desc['uniqueness_ratio']:.1%})"
-        )
-        if coverage > 0:
-            subtitle += f" | Top-{self.ctx.top_k} coverage: {coverage:.1%}"
+        is_discrete = bool(desc.get("is_discrete"))
+        total_nonnull = int(desc.get("total_nonnull", 0))
+        nunique = int(desc.get("nunique_native", 0))
+        ur = float(desc.get("uniqueness_ratio", 0.0))
+        coverage = float(desc.get("coverage_named", 0.0))
+        max_k = int((desc.get("params") or {}).get("max_display_bars") or 0)
+        other_display = (desc.get("params") or {}).get("other_display")
 
-        self.queue_subtitle_below_title(ax, subtitle)
+        # Lead with the classification (the plot’s big idea)
+        lead = "Discrete" if is_discrete else "Continuous"
+        subtitle = f"{lead} • Non-null: {total_nonnull:,} • Unique: {nunique:,} ({ur:.1%})"
 
-        return fig, ax
+        # Only show coverage when there is a named cut (top-N or “Other”)
+        if (other_display or (max_k and nunique > max_k)) and coverage > 0:
+            subtitle += f" • Top-{max_k} named coverage: {coverage:.1%}"
+
+        return subtitle
 
     # ---- helper: discreteness ----
     @staticmethod

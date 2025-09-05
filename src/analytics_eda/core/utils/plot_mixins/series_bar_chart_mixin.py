@@ -158,6 +158,9 @@ class SeriesBarChartMixin:
         total = int(s.size)
         total_nonnull = int((~s.isna()).sum())
 
+        # normalize counts: string labels + int counts
+        counts = {str(k): int(v) for k, v in counts.items()}
+
         input_categories = int(len(counts))  # raw labels provided
         input_nonzero_categories = int(sum(int(v) > 0 for v in counts.values()))
         subset_count = int(sum(int(v) for v in counts.values()))
@@ -206,12 +209,30 @@ class SeriesBarChartMixin:
         existing_other_count = int(counts.get(other_label_base, 0)) if has_existing_other else 0
         items_wo_other = [(k, n, r) for (k, n, r) in items if k != other_label_base]
 
+        # Determine sort intent
+        sort_desc = bool(getattr(self.ctx, "bar_sort_descending", False))
+        # Choose metric to sort by: counts if primary is counts, else ratios
+        primary_by_counts = getattr(self.ctx, "bar_height_source", "values") == "counts"
+        if sort_desc:
+            if primary_by_counts:
+                # sort by count desc, then label for stability
+                items_wo_other.sort(key=lambda kv: (-kv[1], kv[0]))
+            else:
+                # sort by ratio desc, then label for stability
+                items_wo_other.sort(key=lambda kv: (-kv[2], kv[0]))
+        else:
+            if primary_by_counts:
+                # sort by count asc, then label for stability
+                items_wo_other.sort(key=lambda kv: (kv[1], kv[0]))
+            else:
+                # sort by ratio asc, then label for stability
+                items_wo_other.sort(key=lambda kv: (kv[2], kv[0]))
+
+        # Determine top items
         top_items = items_wo_other
         clipped: list[tuple[str, int, float]] = []
         if isinstance(max_display_bars, int) and max_display_bars > 0 and len(items) > max_display_bars:
             keep = max_display_bars - 1  # reserve 1 slot for displayed Other
-            # Sort for determinism if desired; otherwise preserve incoming order
-            # items_wo_other.sort(key=lambda kv: (-kv[1], kv[0]))
             top_items = items_wo_other[:max(0, keep)]
             clipped = items_wo_other[max(0, keep):]
 
@@ -357,6 +378,7 @@ class SeriesBarChartMixin:
             bars = ax.bar(labels, heights, color=self.neutral_grey())
         else:
             bars = ax.barh(labels, heights, color=self.neutral_grey())
+            ax.invert_yaxis()  # ensure first label (often highest) is displayed at the top
 
         # Highlight all top labels (already excludes "Other")
         if self.ctx.bar_highlight_top and len(bars) > 0:
