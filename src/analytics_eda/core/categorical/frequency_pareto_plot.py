@@ -90,7 +90,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
             desc["skip_plot"] = True
 
         # Derive Pareto arrays in the plotted order
-        labels  = self._draw_get("series", "labels") or []
+        labels  = self.draw_cache_get("series", "labels") or []
         bars    = desc.get("bars", {})
         denom_k = desc.get("denominator_key", "pct_of_total")
 
@@ -102,11 +102,11 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         thr_count = int(sum(int(bars[lbl]["count"]) for lbl in labels[: max(thr_idx, -1) + 1])) if thr_idx >= 0 else 0
 
         # Cache for draw
-        self._draw_set("pareto", "cumperc", cum)
-        self._draw_set("pareto", "relpct", rel)
-        self._draw_set("pareto", "threshold_idx", thr_idx)
-        self._draw_set("pareto", "threshold_pct", thr_pct)
-        self._draw_set("pareto", "threshold_count", thr_count)
+        self.draw_cache_set("pareto", "cumperc", cum)
+        self.draw_cache_set("pareto", "relpct", rel)
+        self.draw_cache_set("pareto", "threshold_idx", thr_idx)
+        self.draw_cache_set("pareto", "threshold_pct", thr_pct)
+        self.draw_cache_set("pareto", "threshold_count", thr_count)
 
         # Extend desc with Pareto-specific summaries
         desc.update({
@@ -134,7 +134,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
             findings["primary_finding"] = "Distribution is too sparse to summarize with a Pareto threshold."
             return findings
 
-        labels = self._draw_get("series", "labels") or list((desc.get("bars") or {}).keys())
+        labels = self.draw_cache_get("series", "labels") or list((desc.get("bars") or {}).keys())
         bars   = desc.get("bars", {})
         denom_k = desc.get("denominator_key", "pct_of_total")
 
@@ -196,11 +196,11 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
 
         # 2) Pareto cumulative line (optional)
         mode   = getattr(self.ctx, "pareto_mode", "dual")
-        cum    = self._draw_get("pareto", "cumperc", np.array([]))
-        thr_pct = float(self._draw_get("pareto", "threshold_pct", 80.0))
+        cum    = self.draw_cache_get("pareto", "cumperc", np.array([]))
+        thr_pct = float(self.draw_cache_get("pareto", "threshold_pct", 80.0))
         show_thr_label = bool(getattr(self.ctx, "show_threshold_label", True))
 
-        labels = self._draw_get("series", "labels") or []
+        labels = self.draw_cache_get("series", "labels") or []
         ticks = np.arange(len(labels))
 
         if mode == "none" or len(labels) == 0:

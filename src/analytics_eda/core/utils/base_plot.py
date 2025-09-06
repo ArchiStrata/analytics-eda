@@ -33,69 +33,6 @@ class BasePlot(ABC):
         self._subtitle_queue: list[tuple] = []
         self._draw_cache: dict[str, dict[str, Any]] = {}   # per-run cache (cleared each run)
 
-    def default_descriptive(self) -> Dict[str, Any]:
-        return {}
-    
-    def default_inferential(self) -> Dict[str, Any]:
-        return {}
-    
-    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Return draft, human-readable statements derived from descriptive stats.
-        Child plots may override. Default: {}.
-        """
-        return {}
-
-    def draft_inferential_findings(self, inf: Dict[str, Any], desc: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Return draft, human-readable statements derived from inferential stats
-        (and optionally descriptive context). Child plots may override. Default: {}.
-        """
-        return {}
-
-    # ======== OPTIONAL SERIES API (only implement in univariate plots) ========
-
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
-        raise NotImplementedError("Series-based compute descriptive not implemented for this plot.")
-
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
-        return {}
-
-    def draw(
-        self,
-        s: pd.Series,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
-        *,
-        fig,
-        ax,
-        palette,
-    ):
-        raise NotImplementedError("Series-based draw not implemented for this plot.")
-
-    # ======== OPTIONAL FRAME API (only implement in new bi/multivariate plots) ========
-
-    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None) -> Dict[str, Any]:
-        raise NotImplementedError("Frame-based descriptive not implemented for this plot.")
-
-    def compute_inferential_frame(self, df: pd.DataFrame, desc: Dict[str, Any], *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None) -> Dict[str, Any]:
-        return {}
-
-    def draw_frame(
-        self,
-        df: pd.DataFrame,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
-        *,
-        cols: Sequence[str],
-        role_map: Optional[Mapping[str,str]] = None,
-        fig=None,
-        ax=None,
-        palette=None,
-    ):
-        raise NotImplementedError("Frame-based draw not implemented for this plot.")
     # ======== Metadata & Title ========
     def plot_semantic_version(self) -> str:
         """
@@ -155,6 +92,94 @@ class BasePlot(ABC):
             metadata_overrides_cb=self.metadata_overrides,  # subclass hook
         )
 
+    # ======== Descriptive Statistics ========
+
+    def default_descriptive(self) -> Dict[str, Any]:
+        return {}
+    
+    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+        raise NotImplementedError("Series-based compute descriptive not implemented for this plot.")
+
+    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None) -> Dict[str, Any]:
+        raise NotImplementedError("Frame-based descriptive not implemented for this plot.")
+
+    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Return draft, human-readable statements derived from descriptive stats.
+        Child plots may override. Default: {}.
+        """
+        return {}
+
+    # ======== Inferential Statistics ========
+
+    def default_inferential(self) -> Dict[str, Any]:
+        return {}
+    
+    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+        return {}
+    
+    def compute_inferential_frame(self, df: pd.DataFrame, desc: Dict[str, Any], *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None) -> Dict[str, Any]:
+        return {}
+
+    def draft_inferential_findings(self, inf: Dict[str, Any], desc: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Return draft, human-readable statements derived from inferential stats
+        (and optionally descriptive context). Child plots may override. Default: {}.
+        """
+        return {}
+
+    # ======== Draw ========
+    def draw(
+        self,
+        s: pd.Series,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+        *,
+        fig,
+        ax,
+        palette,
+    ):
+        raise NotImplementedError("Series-based draw not implemented for this plot.")
+
+    def draw_frame(
+        self,
+        df: pd.DataFrame,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+        *,
+        cols: Sequence[str],
+        role_map: Optional[Mapping[str,str]] = None,
+        fig=None,
+        ax=None,
+        palette=None,
+    ):
+        raise NotImplementedError("Frame-based draw not implemented for this plot.")
+    
+    def subtitle_text(
+        self,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+    ) -> str:
+        """
+        Optional override: return a short subtitle derived from descriptive/inferential
+        stats. Return ''/None to suppress.
+        """
+        return ""
+    
+    def footer_summary_text(
+        self,
+        desc: Dict[str, Any],
+        inf: Dict[str, Any],
+        chart_metadata: Dict[str, Any],
+    ) -> str:
+        """
+        Optional override: return a short footer summary derived from descriptive/inferential stats.
+        Return ''/None to suppress.
+        """
+        return ""
     # ======== Public API with dispatch (Series OR DataFrame) ========
     def run(
         self,
@@ -206,30 +231,6 @@ class BasePlot(ABC):
                 df, desc, inf, md, cols=cols, role_map=role_map, fig=fig, ax=ax, palette=palette
             ),
         )
-
-    def subtitle_text(
-        self,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
-    ) -> str:
-        """
-        Optional override: return a short subtitle derived from descriptive/inferential
-        stats. Return ''/None to suppress.
-        """
-        return ""
-    
-    def footer_summary_text(
-        self,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
-    ) -> str:
-        """
-        Optional override: return a short footer summary derived from descriptive/inferential stats.
-        Return ''/None to suppress.
-        """
-        return ""
     
     # central place to create a publication-quality fig + colorblind palette
     def _new_figure_and_palette(self):
@@ -265,7 +266,7 @@ class BasePlot(ABC):
         r, g, b = tuple(int(h[i:i+2], 16)/255.0 for i in (0, 2, 4))
         return (r, g, b, float(alpha))
     
-    def queue_subtitle_below_title(
+    def _queue_subtitle_below_title(
         self,
         ax,
         subtitle: str,
@@ -494,7 +495,7 @@ class BasePlot(ABC):
             if getattr(self.ctx, "show_subtitle", True):
                 sub = self.subtitle_text(desc, inf, chart_md) or ""
                 if sub.strip():
-                    self.queue_subtitle_below_title(ax, sub)
+                    self._queue_subtitle_below_title(ax, sub)
 
             fig, ax = draw_fn(desc, inf, chart_md, fig, ax, palette)
 
@@ -548,10 +549,10 @@ class BasePlot(ABC):
                 lg.remove()
 
     # --- draw cache API ---
-    def _draw_set(self, namespace: str, key: str, value: Any) -> None:
+    def draw_cache_set(self, namespace: str, key: str, value: Any) -> None:
         self._draw_cache.setdefault(namespace, {})[key] = value
 
-    def _draw_get(self, namespace: str, key: str, default: Any = None) -> Any:
+    def draw_cache_get(self, namespace: str, key: str, default: Any = None) -> Any:
         return self._draw_cache.get(namespace, {}).get(key, default)
 
     def _draw_clear(self, namespace: Optional[str] = None) -> None:

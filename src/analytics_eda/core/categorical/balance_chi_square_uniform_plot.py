@@ -92,11 +92,11 @@ class BalanceChiSquareUniformPlot(BasePlot):
 
         if k == 0 or total == 0:
             # clear cache; return minimal desc
-            self._draw_set("chi2_uniform", "labels", [])
-            self._draw_set("chi2_uniform", "observed", np.array([]))
-            self._draw_set("chi2_uniform", "expected", np.array([]))
-            self._draw_set("chi2_uniform", "delta", np.array([]))
-            self._draw_set("chi2_uniform", "std_resid", np.array([]))
+            self.draw_cache_set("chi2_uniform", "labels", [])
+            self.draw_cache_set("chi2_uniform", "observed", np.array([]))
+            self.draw_cache_set("chi2_uniform", "expected", np.array([]))
+            self.draw_cache_set("chi2_uniform", "delta", np.array([]))
+            self.draw_cache_set("chi2_uniform", "std_resid", np.array([]))
             return {"total": int(total), "k": int(k)}
 
         delta = observed - expected
@@ -124,13 +124,13 @@ class BalanceChiSquareUniformPlot(BasePlot):
         dpexp_o = delta_pct_of_expected[order]
 
         # Cache for draw
-        self._draw_set("chi2_uniform", "labels", labels)
-        self._draw_set("chi2_uniform", "observed", observed_o)
-        self._draw_set("chi2_uniform", "expected", expected_o)
-        self._draw_set("chi2_uniform", "delta", delta_o)
-        self._draw_set("chi2_uniform", "std_resid", std_resid_o)
-        self._draw_set("chi2_uniform", "ratio", ratio_o)
-        self._draw_set("chi2_uniform", "delta_pct_of_expected", dpexp_o)
+        self.draw_cache_set("chi2_uniform", "labels", labels)
+        self.draw_cache_set("chi2_uniform", "observed", observed_o)
+        self.draw_cache_set("chi2_uniform", "expected", expected_o)
+        self.draw_cache_set("chi2_uniform", "delta", delta_o)
+        self.draw_cache_set("chi2_uniform", "std_resid", std_resid_o)
+        self.draw_cache_set("chi2_uniform", "ratio", ratio_o)
+        self.draw_cache_set("chi2_uniform", "delta_pct_of_expected", dpexp_o)
 
         # Winners (based on chosen delta_metric)
         metric = getattr(self.ctx, "delta_metric", "count")
@@ -180,7 +180,7 @@ class BalanceChiSquareUniformPlot(BasePlot):
         if total == 0 or k == 0:
             return {}
 
-        delta  = self._draw_get("chi2_uniform", "delta", np.array([]))
+        delta  = self.draw_cache_get("chi2_uniform", "delta", np.array([]))
         if delta is None or len(delta) == 0:
             return {}
 
@@ -234,8 +234,8 @@ class BalanceChiSquareUniformPlot(BasePlot):
             return {}
 
         warning = None
-        expected = self._draw_get("chi2_uniform", "expected")
-        observed = self._draw_get("chi2_uniform", "observed")
+        expected = self.draw_cache_get("chi2_uniform", "expected")
+        observed = self.draw_cache_get("chi2_uniform", "observed")
 
         # Assumption checks
         if any(e <= 0 for e in expected):
@@ -308,10 +308,10 @@ class BalanceChiSquareUniformPlot(BasePlot):
         return findings
 
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
-        labels = self._draw_get("chi2_uniform", "labels", [])
-        delta  = self._draw_get("chi2_uniform", "delta", np.array([]))
-        std_r  = self._draw_get("chi2_uniform", "std_resid", np.array([]))
-        ratio  = self._draw_get("chi2_uniform", "ratio", np.array([]))
+        labels = self.draw_cache_get("chi2_uniform", "labels", [])
+        delta  = self.draw_cache_get("chi2_uniform", "delta", np.array([]))
+        std_r  = self.draw_cache_get("chi2_uniform", "std_resid", np.array([]))
+        ratio  = self.draw_cache_get("chi2_uniform", "ratio", np.array([]))
 
         if delta is None or len(labels) == 0:
             return fig, ax

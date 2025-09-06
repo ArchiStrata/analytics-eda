@@ -103,8 +103,8 @@ class BalanceLorenzCurvePlot(BasePlot):
         x_lorenz, y_lorenz = self._lorenz_curve_from_counts(freq_values)
         gini = self._gini_from_lorenz(x_lorenz, y_lorenz)
 
-        self._draw_set("lorenz_curve", "x_lorenz", x_lorenz)
-        self._draw_set("lorenz_curve", "y_lorenz", y_lorenz)
+        self.draw_cache_set("lorenz_curve", "x_lorenz", x_lorenz)
+        self.draw_cache_set("lorenz_curve", "y_lorenz", y_lorenz)
 
         return {
             "total": total,
@@ -138,8 +138,8 @@ class BalanceLorenzCurvePlot(BasePlot):
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
 
         # Lorenz curve
-        x_lorenz = self._draw_get("lorenz_curve", "x_lorenz")
-        y_lorenz = self._draw_get("lorenz_curve", "y_lorenz")
+        x_lorenz = self.draw_cache_get("lorenz_curve", "x_lorenz")
+        y_lorenz = self.draw_cache_get("lorenz_curve", "y_lorenz")
 
         # Equality line
         sns.lineplot(x=[0.0, 1.0], y=[0.0, 1.0], ax=ax, linestyle="--", label="Equality line", color=self.neutral_grey())
