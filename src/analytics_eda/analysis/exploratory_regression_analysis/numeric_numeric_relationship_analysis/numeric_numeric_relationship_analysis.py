@@ -20,7 +20,7 @@ import uuid
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 
-from analytics_eda.core.utils import build_plot_context
+from analytics_eda.core.visualization.context import build_plot_context
 from ....core.reporting import write_json_report
 
 from .relationship_structure_scatter_plot import (

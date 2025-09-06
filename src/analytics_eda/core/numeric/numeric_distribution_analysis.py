@@ -30,7 +30,7 @@ from .distribution_probability_function_plot import DistributionProbabilityFunct
 from analytics_eda.core.visualization.validation import numeric_validator
 
 from ..reporting import write_json_report
-from ..utils.build_plot_context import build_plot_context
+from ..visualization.context.build_plot_context import build_plot_context
 
 logger = logging.getLogger(__name__)
 

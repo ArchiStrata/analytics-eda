@@ -17,7 +17,7 @@ from typing import Any, Dict, Optional
 import uuid
 import pandas as pd
 
-from analytics_eda.core.utils import build_plot_context
+from analytics_eda.core.visualization.context import build_plot_context
 from analytics_eda.core.visualization.validation import categorical_validator
 
 from ...core.categorical import categorical_distribution_analysis

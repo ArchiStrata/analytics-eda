@@ -28,7 +28,7 @@ from .balance_rare_categories_plot import BalanceRareCategoriesPlot, BalanceRare
 from ..numeric import DispersionBoxPlot, DispersionBoxplotContext, DistributionDensityPlot, DistributionDensityContext
 
 from ..reporting import write_json_report
-from ..utils.build_plot_context import build_plot_context
+from ..visualization.context.build_plot_context import build_plot_context
 
 logger = logging.getLogger(__name__)
 

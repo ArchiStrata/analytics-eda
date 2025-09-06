@@ -18,7 +18,7 @@ import uuid
 
 import pandas as pd
 
-from analytics_eda.core.utils import build_plot_context
+from analytics_eda.core.visualization.context import build_plot_context
 from analytics_eda.core.visualization.validation import named_only_validator
 
 from ...core.numeric import CardinalityBarContext, CardinalityBarPlot, numeric_distribution_analysis
