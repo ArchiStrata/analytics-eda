@@ -41,7 +41,11 @@ Findings are **plot-scoped** — each plot tells one piece of the story.
 - Limit to ~1 bullet for `primary_finding` and 0–1 for `secondary_finding` to respect cognitive load.
 - Use phrasing consistent with the plot’s theme (e.g., central tendency, dispersion, shape, extremes, comparison).
 - Do not repeat raw numbers already in `descriptive_stats`; summarize them.
-- If `desc` is empty or insufficient, return `{}`.
+- If `desc` is empty `{}`, return `{}`.
+- If there is `context` to report (e.g., total rows, total non-nulls, slice metadata) but the series is insufficient for meaningful findings:
+  - Always populate `context` with a short explanation of what data was available
+  - Set `primary_finding` and `secondary_finding` to None.
+  - Optionally include a neutral `primary_finding` message such as `"The series is empty."` when appropriate.
 
 #### Secondary finding – when to include
 
