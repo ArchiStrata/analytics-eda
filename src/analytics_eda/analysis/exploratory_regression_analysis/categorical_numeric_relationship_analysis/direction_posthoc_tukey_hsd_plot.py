@@ -112,6 +112,7 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
                 "pairs": [],
                 "alpha": ctx.alpha,
                 # keep raw labels for drawing (even if empty)
+                # TODO: BasePlot support caching descriptive stats calculated specifically for drawing
                 "_labels_disp": truncate_labels([str(x) for x in group_names], ctx.max_label_len),
             }
 

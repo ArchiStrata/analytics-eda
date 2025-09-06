@@ -1,3 +1,2 @@
-from .base_plot import PlotContext, BasePlot
-from .named_series_mixin import NamedSeriesMixin, validate_named_series
+from .base_plot import BasePlot
 from .build_plot_context import build_plot_context

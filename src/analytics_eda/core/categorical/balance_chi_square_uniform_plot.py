@@ -18,8 +18,10 @@ import numpy as np
 import pandas as pd
 from scipy.stats import chisquare
 
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import categorical_validator
+
 from ..utils.base_plot import BasePlot, PlotContext
-from .validate_categorical_named_series import CategoricalSeriesMixin
 
 @dataclass
 class BalanceChiSquareUniformContext(PlotContext):
@@ -42,7 +44,7 @@ class BalanceChiSquareUniformContext(PlotContext):
     color_by_sign: bool = False
 
 
-class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
+class BalanceChiSquareUniformPlot(BasePlot):
     """
     Tests whether categorical frequencies deviate from a uniform distribution.
 
@@ -65,6 +67,12 @@ class BalanceChiSquareUniformPlot(CategoricalSeriesMixin, BasePlot):
         "chart_metadata": {...}
       }
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=categorical_validator()
+        )
+        super().__init__(ctx, parts)
+
     def plot_semantic_version(self) -> str:
         """
         Return the semantic version of this plot implementation.

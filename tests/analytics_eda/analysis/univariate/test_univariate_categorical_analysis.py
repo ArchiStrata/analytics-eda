@@ -52,12 +52,11 @@ from analytics_eda.analysis.univariate.univariate_categorical_analysis import un
                 "cardinality": {
                     "barchart": {
                         "chart_metadata": {
-                            "title": "Cardinality \u2014 Top 10 Value Counts for count",
-                            "xlabel": "Value",
-                            "ylabel": "Count",
+                            "title": "Cardinality Check — Discrete vs. Continuous for count",
+                            "xlabel": "Number of Records",
+                            "ylabel": "Values (Top N)",
                             "data_source": "UnitTest",
-                            "file_name": "Cardinality — Top 10 Value Counts for count.png",
-                            "top_k": 10
+                            "file_name": "Cardinality Check — Discrete vs. Continuous for count.png"
                         }
                     }
                 },

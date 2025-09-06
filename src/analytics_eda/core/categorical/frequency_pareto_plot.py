@@ -18,9 +18,10 @@ import numpy as np
 import pandas as pd
 
 from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import categorical_validator
 
 from ..utils.base_plot import BasePlot
-from .validate_categorical_named_series import CategoricalSeriesMixin
 
 @dataclass
 class FrequencyParetoContext(SeriesBarChartContext):
@@ -30,6 +31,8 @@ class FrequencyParetoContext(SeriesBarChartContext):
     is_orientation_vertical: bool = False
     show_subtitle: bool = True
 
+    bar_sort_descending: bool = True
+
     pareto_mode: Literal["dual", "shared", "none"] = "shared"
     pareto_threshold_pct: float = 80.0
     pareto_line_color: str = "black"
@@ -38,7 +41,7 @@ class FrequencyParetoContext(SeriesBarChartContext):
     show_threshold_label: bool = True
 
 
-class FrequencyParetoPlot(CategoricalSeriesMixin, SeriesBarChartMixin, BasePlot):
+class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
     """
     Shows how a small set of categories accounts for most occurrences (Pareto concentration).
 
@@ -50,6 +53,12 @@ class FrequencyParetoPlot(CategoricalSeriesMixin, SeriesBarChartMixin, BasePlot)
     - Draws bars for category shares and a cumulative line.
     - Highlights how many categories are needed to reach a chosen threshold (e.g., 80%).
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=categorical_validator()
+        )
+        super().__init__(ctx, parts)
+
     def plot_semantic_version(self) -> str:
         """
         Return the semantic version of this plot implementation.

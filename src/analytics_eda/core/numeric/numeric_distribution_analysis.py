@@ -27,7 +27,7 @@ from .distribution_qq_fit_plot import DistributionQqFitContext, DistributionQqFi
 from .distribution_probability_function_plot import DistributionProbabilityFunctionContext, DistributionProbabilityFunctionPlot
 
 
-from .validate_numeric_named_series import validate_numeric_named_series
+from analytics_eda.core.visualization.validation import numeric_validator
 
 from ..reporting import write_json_report
 from ..utils.build_plot_context import build_plot_context
@@ -90,12 +90,12 @@ def numeric_distribution_analysis(
            `'central_tendency'`, `'dispersion'`, and `'shape'`, each containing
            plot metadata and descriptive statistics.
     """
-    validate_numeric_named_series(series)
+    cleaned_series = numeric_validator().validate(series)
 
     logger.info(
         "Starting numeric_distribution_analysis",
         extra={
-            'series_name': series.name,
+            'series_name': cleaned_series.name,
             'report_log_id': report_log_id
         }
     )
@@ -116,7 +116,7 @@ def numeric_distribution_analysis(
         base=common_base,
         overrides=plot_central_tendency_histogram_overrides,
     )
-    central_tendency["histogram"] = CentralTendencyHistogramPlot(hist_ctx).run(series)
+    central_tendency["histogram"] = CentralTendencyHistogramPlot(hist_ctx).run(cleaned_series)
 
 
     violin_ctx = build_plot_context(
@@ -124,7 +124,7 @@ def numeric_distribution_analysis(
         base=common_base,
         overrides=plot_central_tendency_violin_overrides,
     )
-    central_tendency["violin"] = CentralTendencyViolinPlot(violin_ctx).run(series)
+    central_tendency["violin"] = CentralTendencyViolinPlot(violin_ctx).run(cleaned_series)
 
     # TODO: Central Tendency time series analysis
 
@@ -135,7 +135,7 @@ def numeric_distribution_analysis(
         base=common_base,
         overrides=plot_dispersion_boxplot_overrides,
     )
-    dispersion["boxplot"] = DispersionBoxPlot(box_ctx).run(series)
+    dispersion["boxplot"] = DispersionBoxPlot(box_ctx).run(cleaned_series)
 
     # TODO: Dispersion time series analysis
 
@@ -150,7 +150,7 @@ def numeric_distribution_analysis(
         base=common_base,
         overrides=plot_distribution_ecdf_gap_overrides,
     )
-    shape["ecdf_gap"] = DistributionECDFGapPlot(ecdf_gap_ctx).run(series)
+    shape["ecdf_gap"] = DistributionECDFGapPlot(ecdf_gap_ctx).run(cleaned_series)
 
 
     # Density plot
@@ -159,7 +159,7 @@ def numeric_distribution_analysis(
         base=common_base,
         overrides=plot_distribution_density_overrides,
     )
-    shape["density"] = DistributionDensityPlot(dens_ctx).run(series)
+    shape["density"] = DistributionDensityPlot(dens_ctx).run(cleaned_series)
 
     # probability
     prob_ctx = build_plot_context(
@@ -167,7 +167,7 @@ def numeric_distribution_analysis(
         base=common_base,
         overrides=plot_distribution_probability_overrides,
     )
-    shape["probability"] = DistributionProbabilityFunctionPlot(prob_ctx).run(series)
+    shape["probability"] = DistributionProbabilityFunctionPlot(prob_ctx).run(cleaned_series)
 
 
     # Fit each theoretical distribution
@@ -185,8 +185,8 @@ def numeric_distribution_analysis(
         )
 
         distribution_fits[dist] = {
-            "ecdf_vs_cdf": DistributionECDFvsCDFPlot(ecdf_vs_cdf_ctx).run(series),
-            "qq_fit": DistributionQqFitPlot(qq_ctx).run(series),
+            "ecdf_vs_cdf": DistributionECDFvsCDFPlot(ecdf_vs_cdf_ctx).run(cleaned_series),
+            "qq_fit": DistributionQqFitPlot(qq_ctx).run(cleaned_series),
         }
     
     shape['distribution_fits'] = distribution_fits
@@ -197,7 +197,7 @@ def numeric_distribution_analysis(
         descriptive_stats   = norm_qq['descriptive_stats']
         inferential_stats   = norm_qq.get('inferential_stats', {})
         transforms_meta = evaluate_transforms_fn(
-            series=series,
+            series=cleaned_series,
             is_discrete=is_discrete,
             descriptive_stats=descriptive_stats,
             normality_tests=inferential_stats,
@@ -221,7 +221,7 @@ def numeric_distribution_analysis(
     logger.info(
         "Completed numeric_distribution_analysis",
         extra={
-            'series_name': series.name,
+            'series_name': cleaned_series.name,
             'report_log_id': report_log_id
         }
     )
@@ -237,14 +237,14 @@ def numeric_distribution_analysis(
             'version': '1.0.0',
             'report_name': 'numeric_distribution_analysis',
             'parameters': {
-                'series': series.name,
+                'series': cleaned_series.name,
                 'distribution_names': distribution_names
             }
         },
         'data': distribution_report
     }
 
-    report_file_name = f"{series.name.replace(' ', '_')}_numeric_distribution_analysis_report.json"
+    report_file_name = f"{cleaned_series.name.replace(' ', '_')}_numeric_distribution_analysis_report.json"
     report_file_path = report_path / report_file_name
     write_json_report(full_report, report_file_path)
 

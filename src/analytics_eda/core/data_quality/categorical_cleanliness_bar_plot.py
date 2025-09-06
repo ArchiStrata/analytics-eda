@@ -19,9 +19,10 @@ import re
 import pandas as pd
 
 from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import named_only_validator
 
 from ..utils.base_plot import BasePlot
-from ..utils.named_series_mixin import NamedSeriesMixin
 
 
 @dataclass
@@ -61,7 +62,7 @@ class CategoricalCleanlinessBarContext(SeriesBarChartContext):
     treat_empty_as_invalid: bool = True
 
 
-class CategoricalCleanlinessBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
+class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
     """
     Visual audit of categorical label cleanliness.
 
@@ -95,6 +96,12 @@ class CategoricalCleanlinessBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BaseP
     -----
     - Percentages use the non-null base (`total_nonnull`).
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=named_only_validator(dropna=False, cast_str=False)
+        )
+        super().__init__(ctx, parts)
+
     def plot_semantic_version(self) -> str:
         """
         Return the semantic version of this plot implementation.

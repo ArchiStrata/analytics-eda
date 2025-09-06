@@ -19,7 +19,9 @@ import pandas as pd
 from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
 
 from ..utils.base_plot import BasePlot
-from .validate_numeric_named_series import NumericSeriesMixin
+
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import numeric_validator
 
 @dataclass
 class CardinalityBarContext(SeriesBarChartContext):
@@ -38,7 +40,7 @@ class CardinalityBarContext(SeriesBarChartContext):
     max_unique_values: int = 20
     integer_tolerance: float = 1e-8
 
-class CardinalityBarPlot(NumericSeriesMixin, SeriesBarChartMixin, BasePlot):
+class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
     """
     Show how a numeric field’s mass is concentrated among its most frequent values.
 
@@ -50,6 +52,11 @@ class CardinalityBarPlot(NumericSeriesMixin, SeriesBarChartMixin, BasePlot):
         Computes uniqueness and a discreteness heuristic, ranks value counts, displays the top N
         values (aggregating the tail into “Other”), and reports coverage of the named values.
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=numeric_validator()
+        )
+        super().__init__(ctx, parts)
 
     def plot_semantic_version(self) -> str:
         """

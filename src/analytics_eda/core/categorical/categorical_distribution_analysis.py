@@ -18,7 +18,7 @@ import uuid
 from pathlib import Path
 import pandas as pd
 
-from .validate_categorical_named_series import validate_categorical_named_series
+from analytics_eda.core.visualization.validation import categorical_validator
 
 from .frequency_pareto_plot import FrequencyParetoPlot, FrequencyParetoContext
 from .balance_chi_square_uniform_plot import BalanceChiSquareUniformPlot, BalanceChiSquareUniformContext
@@ -90,12 +90,12 @@ def categorical_distribution_analysis(
         Dictionary with the relative path to the generated JSON report.
     """
     # validate input
-    validate_categorical_named_series(series)
+    cleaned_series = categorical_validator().validate(series)
 
     logger.info(
         "Starting categorical_distribution_analysis",
         extra={
-            'series_name': series.name,
+            'series_name': cleaned_series.name,
             'report_log_id': report_log_id
         }
     )
@@ -119,7 +119,7 @@ def categorical_distribution_analysis(
         overrides=plot_frequency_pareto_overrides,
     )
     fp_plot = FrequencyParetoPlot(fp_ctx)
-    frequency_distribution["pareto"] = fp_plot.run(series)
+    frequency_distribution["pareto"] = fp_plot.run(cleaned_series)
 
     # TODO: Word cloud
     # TODO: Categorical time series analysis - Category Drift: Do category definitions or distributions change over time?
@@ -133,7 +133,7 @@ def categorical_distribution_analysis(
 
     balance = {}
 
-    freq_counts = series.copy().dropna().value_counts()
+    freq_counts = cleaned_series.value_counts()
 
     # Density plot (Histogram + KDE)
     dens_ctx = build_plot_context(
@@ -161,7 +161,7 @@ def categorical_distribution_analysis(
         overrides=plot_balance_rare_categories_overrides,
     )
     rare_cat_plot = BalanceRareCategoriesPlot(rare_cat_ctx)
-    balance["rare_categories"] = rare_cat_plot.run(series)
+    balance["rare_categories"] = rare_cat_plot.run(cleaned_series)
 
     # Chi-square goodness-of-fit against a uniform distribution
     chi_ctx = build_plot_context(
@@ -170,7 +170,7 @@ def categorical_distribution_analysis(
         overrides=plot_balance_chi_square_uniform_overrides,
     )
     chi_plot = BalanceChiSquareUniformPlot(chi_ctx)
-    balance["chi_square_uniform"] = chi_plot.run(series)
+    balance["chi_square_uniform"] = chi_plot.run(cleaned_series)
 
     # Lorenz curve with Gini index
     lor_ctx = build_plot_context(
@@ -179,7 +179,7 @@ def categorical_distribution_analysis(
         overrides=plot_balance_lorenz_curve_overrides,
     )
     lor_plot = BalanceLorenzCurvePlot(lor_ctx)
-    balance["lorenz_curve"] = lor_plot.run(series)
+    balance["lorenz_curve"] = lor_plot.run(cleaned_series)
 
     # compile report
     distribution_report = {
@@ -192,7 +192,7 @@ def categorical_distribution_analysis(
             'version': '1.0.0',
             'report_name': 'categorical_distribution_analysis',
             'parameters': {
-                'series': series.name
+                'series': cleaned_series.name
             }
         },
         'data': distribution_report
@@ -201,12 +201,12 @@ def categorical_distribution_analysis(
     logger.info(
         "Completed categorical_distribution_analysis",
         extra={
-            'series_name': series.name,
+            'series_name': cleaned_series.name,
             'report_log_id': report_log_id
         }
     )
 
-    report_file_name = f"{series.name.replace(' ', '_')}_categorical_distribution_analysis_report.json"
+    report_file_name = f"{cleaned_series.name.replace(' ', '_')}_categorical_distribution_analysis_report.json"
     report_file_path = report_path / report_file_name
     write_json_report(full_report, report_file_path)
 

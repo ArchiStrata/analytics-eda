@@ -17,8 +17,9 @@ import pandas as pd
 
 from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartMixin, SeriesBarChartContext
 
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import named_only_validator
 from ..utils.base_plot import BasePlot
-from ..utils.named_series_mixin import NamedSeriesMixin
 
 
 @dataclass
@@ -30,7 +31,7 @@ class MissingDataBarContext(SeriesBarChartContext):
     bar_sort_descending: bool = True
 
 
-class MissingDataBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
+class MissingDataBarPlot(SeriesBarChartMixin, BasePlot):
     """
     Shows the share of missing values to quickly assess data quality risk.
 
@@ -50,6 +51,12 @@ class MissingDataBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
         }
       }
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=named_only_validator(dropna=False, cast_str=False)
+        )
+        super().__init__(ctx, parts)
+
     def plot_semantic_version(self) -> str:
         """
         Return the semantic version of this plot implementation.

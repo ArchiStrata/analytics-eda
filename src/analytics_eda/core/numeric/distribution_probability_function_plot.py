@@ -18,7 +18,8 @@ import pandas as pd
 from scipy.stats import gaussian_kde
 
 from ..utils.base_plot import BasePlot, PlotContext
-from .validate_numeric_named_series import NumericSeriesMixin
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import numeric_validator
 
 @dataclass
 class DistributionProbabilityFunctionContext(PlotContext):
@@ -31,7 +32,7 @@ class DistributionProbabilityFunctionContext(PlotContext):
     bw_method: Union[str, float] = "scott"  # used for KDE when continuous
 
 
-class DistributionProbabilityFunctionPlot(NumericSeriesMixin, BasePlot):
+class DistributionProbabilityFunctionPlot(BasePlot):
     """
     Plots an explicit Probability Mass Function (PMF) for discrete data or an explicit Probability Density Function (PDF) estimate for continuous data.
 
@@ -48,6 +49,11 @@ class DistributionProbabilityFunctionPlot(NumericSeriesMixin, BasePlot):
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=numeric_validator()
+        )
+        super().__init__(ctx, parts)
 
     def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
         is_disc = bool(self.ctx.is_discrete)

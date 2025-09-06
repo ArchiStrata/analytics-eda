@@ -19,11 +19,12 @@ import uuid
 import pandas as pd
 
 from analytics_eda.core.utils import build_plot_context
+from analytics_eda.core.visualization.validation import named_only_validator
 
 from ...core.numeric import CardinalityBarContext, CardinalityBarPlot, numeric_distribution_analysis
 from ...core.reporting import write_json_report
 from ...core.data_quality import StringCoercionBarPlot, StringCoercionBarContext, MissingDataBarContext, MissingDataBarPlot
-from ...core.utils import validate_named_series
+
 
 logger = logging.getLogger(__name__)
 
@@ -86,18 +87,16 @@ def univariate_numeric_analysis(
             }
         }
     """
-    validate_named_series(series)
+    # 1. Validation (Named, Typed)
+    series_copy = named_only_validator(dropna=False, cast_str=False).validate(series)
 
     logger.info(
         "Starting univariate_numeric_analysis",
         extra={
-            'series_name': series.name,
+            'series_name': series_copy.name,
             'report_log_id': report_log_id
         }
     )
-
-    # Always work from a copy
-    series_copy = series.copy()
 
     # Prepare directory
     report_path = Path(report_root) / series_copy.name.replace(' ', '_')
@@ -121,7 +120,7 @@ def univariate_numeric_analysis(
     md_plot = MissingDataBarPlot(md_ctx)
     data_quality['missing_data_barchart'] = md_plot.run(series_copy)
 
-    # Check for strings in numeric series. requires removing the initial full validate_numeric_named_series check.
+    # Check for strings in numeric series.
     string_coercion_ctx = build_plot_context(
         StringCoercionBarContext,
         base=common_base,

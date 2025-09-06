@@ -19,8 +19,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import categorical_validator
+
 from ..utils.base_plot import BasePlot, PlotContext
-from .validate_categorical_named_series import CategoricalSeriesMixin
 
 @dataclass
 class BalanceLorenzCurveContext(PlotContext):
@@ -30,7 +32,7 @@ class BalanceLorenzCurveContext(PlotContext):
     show_subtitle: bool = True
     enable_legend: bool = True
 
-class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
+class BalanceLorenzCurvePlot(BasePlot):
     """
     Visualizes category imbalance using a Lorenz curve and summarizes it with the Gini index.
 
@@ -44,6 +46,12 @@ class BalanceLorenzCurvePlot(CategoricalSeriesMixin, BasePlot):
           "descriptive_stats": {"total", "k", "gini_index"}
         }
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=categorical_validator()
+        )
+        super().__init__(ctx, parts)
+
     def plot_semantic_version(self) -> str:
         """
         Return the semantic version of this plot implementation.

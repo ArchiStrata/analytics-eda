@@ -18,7 +18,8 @@ import pandas as pd
 from scipy import stats
 
 from ..utils.base_plot import BasePlot, PlotContext
-from .validate_numeric_named_series import NumericSeriesMixin
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import numeric_validator
 
 DistName = Literal['norm', 'lognorm', 'gamma', 'expon']
 
@@ -27,12 +28,13 @@ class DistributionECDFvsCDFContext(PlotContext):
     title_template: str = "ECDF vs. Theoretical CDF of {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "CDF"
+    enable_legend: bool = True
 
     # plot-specific
     distribution_name: DistName = 'norm'
     alpha: float = 0.05
 
-class DistributionECDFvsCDFPlot(NumericSeriesMixin, BasePlot):
+class DistributionECDFvsCDFPlot(BasePlot):
     """
     Generate an ECDF vs. theoretical CDF plot with goodness-of-fit tests (KS, AD, CvM).
 
@@ -64,6 +66,11 @@ class DistributionECDFvsCDFPlot(NumericSeriesMixin, BasePlot):
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=numeric_validator()
+        )
+        super().__init__(ctx, parts)
 
     ALLOWED: Tuple[DistName, ...] = ('norm', 'lognorm', 'gamma', 'expon')
 
@@ -140,6 +147,7 @@ class DistributionECDFvsCDFPlot(NumericSeriesMixin, BasePlot):
         cdf_theo = dist.cdf(x, *fit_params)
 
         # payload for drawing
+        # TODO: BasePlot support caching descriptive stats calculated specifically for drawing
         ks_D = float(np.max(np.abs(ecdf - cdf_theo)))
         desc.update({"x": x, "ecdf": ecdf, "cdf_theo": cdf_theo, "ks_D": ks_D})
         return desc
@@ -227,8 +235,6 @@ class DistributionECDFvsCDFPlot(NumericSeriesMixin, BasePlot):
                 x[idx_gap], cdf_theo[idx_gap], ecdf[idx_gap],
                 color='red', linewidth=1.5, label=f"KS D = {desc['ks_D']:.3f}"
             )
-
-        ax.legend()
 
         # stats textbox (summary)
         lines = [f"n = {desc['n']}"]

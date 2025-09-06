@@ -18,8 +18,9 @@ import uuid
 import pandas as pd
 
 from analytics_eda.core.utils import build_plot_context
+from analytics_eda.core.visualization.validation import categorical_validator
 
-from ...core.categorical import validate_categorical_named_series, categorical_distribution_analysis
+from ...core.categorical import categorical_distribution_analysis
 from ...core.reporting import write_json_report
 from ...core.numeric import CardinalityBarContext, CardinalityBarPlot
 from ...core.data_quality import CategoricalCleanlinessBarPlot, CategoricalCleanlinessBarContext, MissingDataBarContext, MissingDataBarPlot
@@ -81,22 +82,19 @@ def univariate_categorical_analysis(
             }
         }
     """
-    # 1. Validation
-    validate_categorical_named_series(series)
+    # 1. Validation (Named, Typed)
+    series_copy = categorical_validator(dropna=False, cast_str=False).validate(series)
 
     logger.info(
         "Starting univariate_categorical_analysis",
         extra={
-            'series_name': series.name,
+            'series_name': series_copy.name,
             'report_log_id': report_log_id
         }
     )
 
-    # Always work from a copy
-    series_copy = series.copy()
-
     # Prepare save directory
-    report_path = Path(report_root) / series.name.replace(' ', '_')
+    report_path = Path(report_root) / series_copy.name.replace(' ', '_')
     report_path.mkdir(parents=True, exist_ok=True)
 
     # Convenience: base context kwargs shared by all plots

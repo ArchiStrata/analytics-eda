@@ -17,18 +17,20 @@ import numpy as np
 import pandas as pd
 
 from ..utils.base_plot import BasePlot, PlotContext
-from .validate_numeric_named_series import NumericSeriesMixin
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import numeric_validator
 
 @dataclass
 class DistributionECDFGapContext(PlotContext):
     title_template: str = "ECDF Gap Analysis of {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "ECDF"
+    enable_legend: bool = True
 
     # plot-specific knobs
     threshold: Optional[float] = None
 
-class DistributionECDFGapPlot(NumericSeriesMixin, BasePlot):
+class DistributionECDFGapPlot(BasePlot):
     """
     Generate an Empirical Cumulative Distribution Function (ECDF) plot that highlights and quantifies gaps in a numeric distribution.
 
@@ -61,6 +63,11 @@ class DistributionECDFGapPlot(NumericSeriesMixin, BasePlot):
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=numeric_validator()
+        )
+        super().__init__(ctx, parts)
 
     def default_descriptive(self) -> Dict[str, Any]:
         return {
@@ -193,5 +200,4 @@ class DistributionECDFGapPlot(NumericSeriesMixin, BasePlot):
             bbox=dict(boxstyle="round", facecolor="white", alpha=0.5),
         )
 
-        ax.legend()
         return fig, ax

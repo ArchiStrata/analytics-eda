@@ -8,4 +8,3 @@ from .distribution_ecdf_gap_plot import DistributionECDFGapContext, Distribution
 from .distribution_ecdf_vs_cdf_plot import DistributionECDFvsCDFContext, DistributionECDFvsCDFPlot
 from .distribution_probability_function_plot import DistributionProbabilityFunctionContext, DistributionProbabilityFunctionPlot
 from .distribution_qq_fit_plot import DistributionQqFitContext, DistributionQqFitPlot
-from .validate_numeric_named_series import validate_numeric_named_series, NumericSeriesMixin

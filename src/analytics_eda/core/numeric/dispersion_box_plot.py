@@ -16,7 +16,8 @@ from typing import Dict, Any
 import pandas as pd
 
 from ..utils.base_plot import BasePlot, PlotContext
-from .validate_numeric_named_series import NumericSeriesMixin
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import numeric_validator
 
 @dataclass
 class DispersionBoxplotContext(PlotContext):
@@ -26,7 +27,7 @@ class DispersionBoxplotContext(PlotContext):
     # plot-specific knobs
     std_outlier_multiplier: float = 4.0
 
-class DispersionBoxPlot(NumericSeriesMixin, BasePlot):
+class DispersionBoxPlot(BasePlot):
     """
     Generate a boxplot (with violin silhouette) that effectively communicates
     the dispersion of a numeric variable, flagging extreme values and returning
@@ -55,6 +56,11 @@ class DispersionBoxPlot(NumericSeriesMixin, BasePlot):
         "chart_metadata": {"title","ylabel","data_source","file_name"}
       }
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=numeric_validator()
+        )
+        super().__init__(ctx, parts)
 
     def default_descriptive(self) -> Dict[str, Any]:
         return {

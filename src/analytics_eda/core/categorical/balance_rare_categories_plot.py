@@ -18,9 +18,10 @@ import numpy as np
 import pandas as pd
 
 from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import categorical_validator
 
 from ..utils.base_plot import BasePlot
-from .validate_categorical_named_series import CategoricalSeriesMixin
 
 
 @dataclass
@@ -42,7 +43,7 @@ class BalanceRareCategoriesContext(SeriesBarChartContext):
     extreme_lower_bound: float = 0.01  # default: 1% of total if <1, else absolute count
 
 
-class BalanceRareCategoriesPlot(CategoricalSeriesMixin, SeriesBarChartMixin, BasePlot):
+class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
     """
     Highlights and visualizes low-frequency categories in a categorical distribution.
 
@@ -66,6 +67,12 @@ class BalanceRareCategoriesPlot(CategoricalSeriesMixin, SeriesBarChartMixin, Bas
         },
       }
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=categorical_validator()
+        )
+        super().__init__(ctx, parts)
+
     def plot_semantic_version(self) -> str:
         """
         Return the semantic version of this plot implementation.

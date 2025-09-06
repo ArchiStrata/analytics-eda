@@ -1,4 +1,3 @@
-from .validate_categorical_named_series import validate_categorical_named_series, CategoricalSeriesMixin
 from .categorical_distribution_analysis import categorical_distribution_analysis
 from .frequency_pareto_plot import FrequencyParetoPlot, FrequencyParetoContext
 from .balance_chi_square_uniform_plot import BalanceChiSquareUniformPlot, BalanceChiSquareUniformContext

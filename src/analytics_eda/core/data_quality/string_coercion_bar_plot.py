@@ -18,8 +18,9 @@ import pandas as pd
 
 from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
 
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import named_only_validator
 from ..utils.base_plot import BasePlot
-from ..utils.named_series_mixin import NamedSeriesMixin
 
 
 @dataclass
@@ -39,7 +40,7 @@ class StringCoercionBarContext(SeriesBarChartContext):
     include_na_literal: bool = False      # if True, include literal strings like "NaN", "None" if they fail coercion
 
 
-class StringCoercionBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
+class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
     """
     Bar chart of string (category) → count for values that failed numeric coercion.
 
@@ -62,6 +63,12 @@ class StringCoercionBarPlot(NamedSeriesMixin, SeriesBarChartMixin, BasePlot):
         }
       }
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=named_only_validator(dropna=False, cast_str=False)
+        )
+        super().__init__(ctx, parts)
+
     def plot_semantic_version(self) -> str:
         """
         Return the semantic version of this plot implementation.

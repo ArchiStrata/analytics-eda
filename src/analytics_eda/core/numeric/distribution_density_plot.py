@@ -19,7 +19,8 @@ from scipy import stats
 from scipy.signal import find_peaks
 
 from ..utils.base_plot import BasePlot, PlotContext
-from .validate_numeric_named_series import NumericSeriesMixin
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import numeric_validator
 from .binning_rules import doane_bins, freedman_diaconis_bins, scott_bins, sturges_bins
 
 BinMethod = Literal['sturges', 'scott', 'freedman_diaconis', 'doane']
@@ -37,7 +38,7 @@ class DistributionDensityContext(PlotContext):
     bw_adjust: float = 1.0
 
 
-class DistributionDensityPlot(NumericSeriesMixin, BasePlot):
+class DistributionDensityPlot(BasePlot):
     """
     Generate a histogram overlaid with a KDE to communicate the shape of a numeric distribution.
 
@@ -66,6 +67,12 @@ class DistributionDensityPlot(NumericSeriesMixin, BasePlot):
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=numeric_validator()
+        )
+        super().__init__(ctx, parts)
+
 
     def default_descriptive(self) -> Dict[str, Any]:
         return {

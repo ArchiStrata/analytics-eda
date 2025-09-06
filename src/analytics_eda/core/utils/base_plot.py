@@ -14,58 +14,23 @@
 
 from abc import ABC
 from collections import defaultdict
-from dataclasses import dataclass
 import os
-from typing import Any, Callable, Dict, Literal, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 from matplotlib import pyplot as plt
 from matplotlib.ticker import PercentFormatter
 import seaborn as sns
 import pandas as pd
 
+from analytics_eda.core.visualization.context.plot_context import PlotContext
+from analytics_eda.core.visualization.plot_parts import PlotParts
+
 Desc = Union[str, Sequence[str], None]
 
-@dataclass
-class PlotContext:
-    name: Optional[str] = None
-    filter_desc: Desc = None
-    transform_desc: Desc = None
-    fit_desc: Desc = None
-    extra_desc: Desc = None
-    title_fmt: Optional[Dict[str, Any]] = None
-    title_template: str = "{name}{modifiers}"
-    show_subtitle: bool = False   # auto-draw a subtitle if provided by the plot
-
-    is_orientation_vertical: bool = True   # True = vertical bars/values on Y; False = horizontal
-    xlabel: str = ""
-    ylabel: str = ""
-    data_source: Optional[str] = None
-
-    show_footer_summary: bool = False
-
-    figsize: Tuple[int, int] = (14, 9)
-    dpi: int = 200
-    save_path: Optional[str] = None
-    file_name: Optional[str] = None
-    show: bool = False
-
-    enable_legend: bool = False # draw a legend when True
-
-    format_orientation_axis_as_percent: bool = False
-
-    # Auto headroom for bar labels (on by default)
-    auto_headroom: bool = True
-    headroom_label_offset: float = 0.02
-    headroom_extra_pad: float = 0.04
-    headroom_max_extra: float = 0.20
-    headroom_use_text_extents: bool = True        # measure label text bboxes to set limits
-    headroom_preserve_symmetry: bool = False      # keep +/- limits symmetric when expanding
-    headroom_axis: Literal["auto","x","y"] = "auto"  # which axis to expand (auto = by orientation)
-
-
 class BasePlot(ABC):
-    def __init__(self, ctx: PlotContext):
+    def __init__(self, ctx: PlotContext, parts: Optional[PlotParts] = None):
         self.ctx = ctx
+        self.parts = parts or PlotParts()
         self._subtitle_queue: list[tuple] = []
         self._draw_cache: dict[str, dict[str, Any]] = {}   # per-run cache (cleared each run)
 
@@ -90,8 +55,6 @@ class BasePlot(ABC):
         return {}
 
     # ======== OPTIONAL SERIES API (only implement in univariate plots) ========
-    def validate(self, series: pd.Series) -> pd.Series:
-        raise NotImplementedError("Series-based validate not implemented for this plot.")
 
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         raise NotImplementedError("Series-based compute descriptive not implemented for this plot.")
@@ -113,9 +76,6 @@ class BasePlot(ABC):
         raise NotImplementedError("Series-based draw not implemented for this plot.")
 
     # ======== OPTIONAL FRAME API (only implement in new bi/multivariate plots) ========
-    def validate_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None) -> pd.DataFrame:
-        """Override in frame-aware plots; default is identity."""
-        return df
 
     def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None) -> Dict[str, Any]:
         raise NotImplementedError("Frame-based descriptive not implemented for this plot.")
@@ -304,7 +264,7 @@ class BasePlot(ABC):
         # ---- SERIES PATH (unchanged API) ----
         if isinstance(data, pd.Series):
             s_in = data.copy(deep=True)
-            s = self.validate(s_in)
+            s = self._validate_series(s_in)
 
             return self._pipeline_execute(
                 is_empty=s.empty,
@@ -332,7 +292,7 @@ class BasePlot(ABC):
         df = df_in.loc[:, list(cols)]
 
         # True bi/multivariate path via frame hooks
-        df = self.validate_frame(df, cols=cols, role_map=role_map)
+        df = self._validate_frame(df, cols=cols, role_map=role_map)
 
         return self._pipeline_execute(
             is_empty=df.empty,
@@ -672,3 +632,30 @@ class BasePlot(ABC):
             self._draw_cache.clear()
         else:
             self._draw_cache.pop(namespace, None)
+
+    # ----------------- unified validation dispatchers -----------------
+    def _validate_series(self, s_in: pd.Series) -> pd.Series:
+        """
+        Prefer injected SeriesValidator; fall back to existing validate().
+        This is the only call site the rest of BasePlot uses.
+        """
+        if self.parts.series_validator is not None:
+            return self.parts.series_validator.validate(s_in)
+
+        raise NotImplementedError("Series-based validate not implemented for this plot.")
+
+    def _validate_frame(
+        self,
+        df_in: pd.DataFrame,
+        *,
+        cols: Sequence[str],
+        role_map: Optional[Mapping[str, str]] = None,
+    ) -> pd.DataFrame:
+        """
+        Prefer injected FrameValidator; fall back to existing validate_frame().
+        This is the only call site the rest of BasePlot uses.
+        """
+        if self.parts.frame_validator is not None:
+            return self.parts.frame_validator.validate(df_in, cols=cols, role_map=role_map)
+        # Back-compat path:
+        return df_in

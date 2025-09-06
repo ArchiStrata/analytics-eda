@@ -19,7 +19,8 @@ import seaborn as sns
 from scipy import stats
 
 from ..utils.base_plot import BasePlot, PlotContext
-from .validate_numeric_named_series import NumericSeriesMixin
+from analytics_eda.core.visualization.plot_parts import PlotParts
+from analytics_eda.core.visualization.validation import numeric_validator
 
 MeanCIMethod = Literal['t', 'bootstrap']
 MedianCIMethod = Literal['bootstrap', None]
@@ -29,6 +30,7 @@ class CentralTendencyViolinContext(PlotContext):
     title_template: str = "Distribution of {name}{modifiers}: Central Tendency (Violin)"
     xlabel: str = "Value"
     ylabel: str = "Density"
+    enable_legend: bool = True
 
     # plot-specific
     mean_ci_method: MeanCIMethod = "t"
@@ -41,7 +43,7 @@ class CentralTendencyViolinContext(PlotContext):
     popmedian: Optional[float] = None
     popvariance: Optional[float] = None
 
-class CentralTendencyViolinPlot(NumericSeriesMixin, BasePlot):
+class CentralTendencyViolinPlot(BasePlot):
     """
     Violin distribution with mean/median and CIs, plus optional inferential tests.
 
@@ -59,6 +61,11 @@ class CentralTendencyViolinPlot(NumericSeriesMixin, BasePlot):
         "chart_metadata": {...}
       }
     """
+    def __init__(self, ctx):
+        parts = PlotParts(
+            series_validator=numeric_validator()
+        )
+        super().__init__(ctx, parts)
 
     def default_descriptive(self) -> Dict[str, Any]:
         return {
@@ -277,5 +284,4 @@ class CentralTendencyViolinPlot(NumericSeriesMixin, BasePlot):
         fig.text(0.99, 0.01, f"n = {desc['n']}", ha="right", va="bottom",
                  fontsize="small", color="gray")
 
-        ax.legend()
         return fig, ax
