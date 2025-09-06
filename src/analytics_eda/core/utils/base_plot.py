@@ -13,12 +13,8 @@
 # limitations under the License.
 
 from abc import ABC
-import os
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
 
-from matplotlib import pyplot as plt
-from matplotlib.ticker import PercentFormatter
-import seaborn as sns
 import pandas as pd
 
 from analytics_eda.core.visualization.context.plot_context import PlotContext
@@ -180,6 +176,26 @@ class BasePlot(ABC):
         Return ''/None to suppress.
         """
         return ""
+    
+    def neutral_grey(self, variant: str = "medium", alpha: float | None = None):
+        return self.parts.renderer.neutral_grey(variant, alpha)
+    
+    def register_annotations(self, ax, texts):
+        return self.parts.renderer.register_annotations(ax, texts)
+
+    # --- draw cache API ---
+    def draw_cache_set(self, namespace: str, key: str, value: Any) -> None:
+        self._draw_cache.setdefault(namespace, {})[key] = value
+
+    def draw_cache_get(self, namespace: str, key: str, default: Any = None) -> Any:
+        return self._draw_cache.get(namespace, {}).get(key, default)
+
+    def _draw_clear(self, namespace: Optional[str] = None) -> None:
+        if namespace is None:
+            self._draw_cache.clear()
+        else:
+            self._draw_cache.pop(namespace, None)
+
     # ======== Public API with dispatch (Series OR DataFrame) ========
     def run(
         self,
@@ -231,224 +247,6 @@ class BasePlot(ABC):
                 df, desc, inf, md, cols=cols, role_map=role_map, fig=fig, ax=ax, palette=palette
             ),
         )
-    
-    # central place to create a publication-quality fig + colorblind palette
-    def _new_figure_and_palette(self):
-        fig, ax = plt.subplots(figsize=self.ctx.figsize, dpi=self.ctx.dpi)
-        palette = sns.color_palette("colorblind")
-        # apply palette to this axis' property cycle so lines/bars use it by default
-        ax.set_prop_cycle(color=palette)
-        return fig, ax, palette
-    
-    def neutral_grey(self, variant: str = "medium", alpha: float | None = None):
-        """
-        Return a colorblind-friendly neutral grey for de-emphasis ("move to background").
-
-        Variants:
-          - "light"  (~82% gray):  good for gridlines / subtle guides
-          - "medium" (~69% gray):  good for secondary bars/lines/labels (default)
-          - "dark"   (~43% gray):  good for text on light backgrounds
-
-        Returns a Matplotlib-compatible color:
-          - hex string if alpha is None
-          - RGBA tuple if alpha is provided (0..1)
-        """
-        presets = {
-            "light":  "#D0D0D0",  # ~82% gray
-            "medium": "#B0B0B0",  # ~69% gray (default)
-            "dark":   "#6E6E6E",  # ~43% gray
-        }
-        hex_color = presets.get(variant, presets["medium"])
-        if alpha is None:
-            return hex_color
-        # Convert hex to normalized RGBA with requested alpha
-        h = hex_color.lstrip("#")
-        r, g, b = tuple(int(h[i:i+2], 16)/255.0 for i in (0, 2, 4))
-        return (r, g, b, float(alpha))
-    
-    def _queue_subtitle_below_title(
-        self,
-        ax,
-        subtitle: str,
-        *,
-        fontsize: int = 10,
-        color: str = "gray",
-        gap_from_axes_pts: float = 1.5,
-    ):
-        """
-        Queue a subtitle to be drawn after layout, directly above the axes (outside plot area)
-        and below the main title. Call this in draw(); it will be positioned in _finalize_figure().
-        """
-        if not subtitle:
-            return
-        self._subtitle_queue.append((ax, subtitle, fontsize, color, gap_from_axes_pts))
-
-
-    def register_annotations(self, ax, texts):
-        """
-        Register one or many matplotlib.text.Text objects for headroom measurement.
-        Safe to call with a single Text, a list/tuple of Texts, or nested lists.
-        """
-        if not hasattr(self, "_headroom_texts"):
-            self._headroom_texts = {}
-        if texts is None:
-            return
-        flat = []
-        stack = list(texts if isinstance(texts, (list, tuple)) else [texts])
-        while stack:
-            t = stack.pop()
-            if t is None:
-                continue
-            if isinstance(t, (list, tuple)):
-                stack.extend(t)
-            else:
-                flat.append(t)
-        if flat:
-            self._headroom_texts.setdefault(ax, []).extend(flat)
-
-    def _gather_headroom_texts(self, ax):
-        # Prefer explicitly registered texts; fall back to visible axis texts.
-        texts = getattr(self, "_headroom_texts", {}).get(ax, [])
-        return texts if texts else [t for t in ax.texts if t.get_visible()]
-
-    def _measure_overhang_in_data(self, ax):
-        """
-        Return (left_oh, right_oh, bottom_oh, top_oh) overhang in DATA units
-        caused by registered text extending beyond current x/y limits.
-        """
-        fig = ax.figure
-        # ensure layout is finalized for accurate text extents
-        fig.canvas.draw()
-        renderer = fig.canvas.get_renderer()
-        inv = ax.transData.inverted()
-
-        lo_x, hi_x = ax.get_xlim()
-        lo_y, hi_y = ax.get_ylim()
-
-        left_oh = right_oh = bottom_oh = top_oh = 0.0
-        for t in self._gather_headroom_texts(ax):
-            bb = t.get_window_extent(renderer=renderer)
-            (x0, y0) = inv.transform((bb.x0, bb.y0))
-            (x1, y1) = inv.transform((bb.x1, bb.y1))
-            left, right   = min(x0, x1), max(x0, x1)
-            bottom, top   = min(y0, y1), max(y0, y1)
-
-            if left   < lo_x: left_oh   = max(left_oh,   lo_x - left)
-            if right  > hi_x: right_oh  = max(right_oh,  right - hi_x)
-            if bottom < lo_y: bottom_oh = max(bottom_oh, lo_y - bottom)
-            if top    > hi_y: top_oh    = max(top_oh,    top - hi_y)
-
-        return left_oh, right_oh, bottom_oh, top_oh
-
-    def ensure_headroom_for_annotations(self, ax, *, label_offset=0.02, extra_pad=0.04, max_extra=0.20):
-        """
-        Text-aware headroom that expands along the 'value' axis by default.
-        Preserves symmetry if requested (either globally or plot-level).
-        """
-        if not getattr(self.ctx, "auto_headroom", True):
-            return
-
-        # orientation -> which axis holds the values
-        val_is_y = bool(getattr(self.ctx, "is_orientation_vertical", True))
-        axis_pref = getattr(self.ctx, "headroom_axis", "auto") if hasattr(self.ctx, "headroom_axis") else "auto"
-        if axis_pref == "x":
-            val_is_y = False
-        elif axis_pref == "y":
-            val_is_y = True
-
-        preserve_sym = getattr(self.ctx, "headroom_preserve_symmetry", False)
-        use_text = bool(getattr(self.ctx, "headroom_use_text_extents", True)) if hasattr(self.ctx, "headroom_use_text_extents") else True
-
-        lo_x, hi_x = ax.get_xlim()
-        lo_y, hi_y = ax.get_ylim()
-
-        left_oh = right_oh = bottom_oh = top_oh = 0.0
-        if use_text:
-            left_oh, right_oh, bottom_oh, top_oh = self._measure_overhang_in_data(ax)
-
-        if val_is_y:
-            new_lo = lo_y - bottom_oh
-            new_hi = hi_y + top_oh + extra_pad
-            if preserve_sym:
-                half = max(abs(new_lo), abs(new_hi))
-                half = min(half, (1.0 + max_extra) * max(abs(lo_y), abs(hi_y)))
-                ax.set_ylim(-half, half)
-            else:
-                ax.set_ylim(min(lo_y, new_lo), max(hi_y, new_hi))
-        else:
-            new_lo = lo_x - left_oh
-            new_hi = hi_x + right_oh + extra_pad + label_offset
-            if preserve_sym:
-                half = max(abs(new_lo), abs(new_hi))
-                half = min(half, (1.0 + max_extra) * max(abs(lo_x), abs(hi_x)))
-                ax.set_xlim(-half, half)
-            else:
-                ax.set_xlim(min(lo_x, new_lo), max(hi_x, new_hi))
-
-    def _apply_metadata_to_axes(self, ax, chart_metadata: Dict[str, Any]):
-        if chart_metadata.get("title"):
-            ax.title_ref = ax.set_title(chart_metadata["title"], pad=14, fontsize=12, fontweight="bold")
-        if chart_metadata.get("xlabel"):
-            ax.set_xlabel(chart_metadata["xlabel"])
-        if chart_metadata.get("ylabel"):
-            ax.set_ylabel(chart_metadata["ylabel"])
-
-    def _finalize_figure(self, fig, ax, chart_md: Dict[str, Any]) -> Optional[str]:
-        """Add source, layout, save/show; return saved file name (or None)."""
-        # 0) Ensure all artists exist & have positions computed
-        fig.canvas.draw()
-
-        # 0.5) Centralized, text-aware headroom for ALL plots (once)
-        if getattr(self.ctx, "auto_headroom", True):
-            self.ensure_headroom_for_annotations(
-                ax,
-                label_offset=getattr(self.ctx, "headroom_label_offset", 0.02),
-                extra_pad=getattr(self.ctx, "headroom_extra_pad", 0.04),
-                max_extra=getattr(self.ctx, "headroom_max_extra", 0.20),
-            )
-
-        # 1) Run layout first so axes land where they'll stay.
-        fig.tight_layout(rect=[0, 0, 1, 0.88])
-        # ensure renderer is ready so we can measure text extents accurately
-        fig.canvas.draw()
-
-        # 2) Now place queued subtitles relative to the actual title bounding box
-        if getattr(self, "_subtitle_queue", None):
-            renderer = fig.canvas.get_renderer()
-            fig_w_px, fig_h_px = fig.bbox.width, fig.bbox.height
-
-            for ax, subtitle, fontsize, color, gap_pts in self._subtitle_queue:
-                t = getattr(ax, "title_ref", None)
-                if t is not None:
-                    tb = t.get_window_extent(renderer=renderer)  # in display (px)
-                    # convert a gap in points to pixels
-                    gap_px = gap_pts * fig.dpi / 72.0
-                    # position centered on the title horizontally, just below title
-                    x_px = (tb.x0 + tb.x1) / 2.0
-                    y_px = tb.y0 + gap_px
-
-                    # convert to figure coordinates (0..1)
-                    xf, yf = x_px / fig_w_px, y_px / fig_h_px
-                    fig.text(xf, yf, subtitle, ha="center", va="top", fontsize=fontsize, color=color)
-
-            self._subtitle_queue.clear()
-
-        # Optional: add data source footer
-        if self.ctx.data_source:
-            fig.text(
-                0.01, 0.01, f"Source: {self.ctx.data_source}",
-                ha="left", va="bottom", fontsize="small", color="gray"
-            )
-
-        # 3) Save/show
-        saved_name = None
-        if self.ctx.save_path:
-            saved_name = self.ctx.file_name or f'{chart_md["title"]}.png'
-            os.makedirs(self.ctx.save_path, exist_ok=True)
-            fig.savefig(os.path.join(self.ctx.save_path, saved_name), bbox_inches="tight", dpi=getattr(self.ctx, "dpi", None))
-        if self.ctx.show:
-            plt.show()
-        return saved_name
 
     def _pipeline_execute(
         self,
@@ -460,7 +258,6 @@ class BasePlot(ABC):
         draw_fn: Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any], Any, Any, Any], Tuple[Any, Any]],
     ) -> Dict[str, Any]:
         """Shared execution flow for both Series and Frame paths."""
-        fig = None
         try:
             chart_md = build_md()
 
@@ -489,39 +286,15 @@ class BasePlot(ABC):
                     "chart_metadata": chart_md,
                 }
             
-            fig, ax, palette = self._new_figure_and_palette()
-            self._apply_metadata_to_axes(ax, chart_md)
-
-            if getattr(self.ctx, "show_subtitle", True):
-                sub = self.subtitle_text(desc, inf, chart_md) or ""
-                if sub.strip():
-                    self._queue_subtitle_below_title(ax, sub)
-
-            fig, ax = draw_fn(desc, inf, chart_md, fig, ax, palette)
-
-            if getattr(self.ctx, "format_orientation_axis_as_percent", False):
-                if self.ctx.is_orientation_vertical:
-                    ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
-                else:
-                    ax.xaxis.set_major_formatter(PercentFormatter(xmax=1.0))
-
-            if getattr(self.ctx, "show_footer_summary", False):
-                ft = self.footer_summary_text(desc, inf, chart_md) or ""
-                if ft.strip():
-                    fig.text(
-                        0.99,
-                        0.01,
-                        ft,
-                        ha="right",
-                        va="bottom",
-                        fontsize="small",
-                        color="gray"
-                    )
-            
-            # Centralized legend toggle
-            self._apply_legend(ax)
-
-            chart_md["file_name"] = self._finalize_figure(fig, ax, chart_md)
+            chart_md["file_name"] = self.parts.renderer.render(
+                ctx=self.ctx,
+                chart_md=chart_md,
+                desc=desc,
+                inf=inf,
+                draw_fn=draw_fn,
+                subtitle_text=(self.subtitle_text(desc, inf, chart_md)),
+                footer_text=(self.footer_summary_text(desc, inf, chart_md))
+            )
 
             return {
                 "descriptive_stats": desc,
@@ -533,33 +306,6 @@ class BasePlot(ABC):
         finally:
             # reset per-run cache
             self._draw_clear()
-            if fig:
-                plt.close(fig)
-
-    def _apply_legend(self, ax):
-        """
-        Show or hide the legend based on ctx.enable_legend.
-        If False, remove an existing legend (if any).
-        """
-        if getattr(self.ctx, "enable_legend", False):
-            ax.legend()
-        else:
-            lg = ax.get_legend()
-            if lg is not None:
-                lg.remove()
-
-    # --- draw cache API ---
-    def draw_cache_set(self, namespace: str, key: str, value: Any) -> None:
-        self._draw_cache.setdefault(namespace, {})[key] = value
-
-    def draw_cache_get(self, namespace: str, key: str, default: Any = None) -> Any:
-        return self._draw_cache.get(namespace, {}).get(key, default)
-
-    def _draw_clear(self, namespace: Optional[str] = None) -> None:
-        if namespace is None:
-            self._draw_cache.clear()
-        else:
-            self._draw_cache.pop(namespace, None)
 
     # ----------------- unified validation dispatchers -----------------
     def _validate_series(self, s_in: pd.Series) -> pd.Series:

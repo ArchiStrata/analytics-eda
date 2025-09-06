@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
+from analytics_eda.core.visualization.rendering import DefaultMatplotlibRenderer, RendererProtocol
 from analytics_eda.core.visualization.validation import FrameValidator, SeriesValidator
 from analytics_eda.core.visualization.chart_metadata import ChartMetadataBuilderProtocol, DefaultChartMetadataBuilder
 
@@ -22,4 +23,5 @@ from analytics_eda.core.visualization.chart_metadata import ChartMetadataBuilder
 class PlotParts:
     series_validator: Optional[SeriesValidator] = None
     frame_validator: Optional[FrameValidator] = None
-    chart_metadata_builder: ChartMetadataBuilderProtocol = DefaultChartMetadataBuilder()
+    chart_metadata_builder: ChartMetadataBuilderProtocol = field(default_factory=DefaultChartMetadataBuilder)
+    renderer: RendererProtocol = field(default_factory=DefaultMatplotlibRenderer)

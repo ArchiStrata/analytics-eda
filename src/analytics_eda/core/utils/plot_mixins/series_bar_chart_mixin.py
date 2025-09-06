@@ -265,9 +265,9 @@ class SeriesBarChartMixin:
         values = np.array([bars[k][denominator_key] for k in labels], dtype=float)
         counts_arr = np.array([bars[k]["count"] for k in labels], dtype=int)
 
-        self._draw_set("series", "labels", labels)
-        self._draw_set("series", "values", values)
-        self._draw_set("series", "counts", counts_arr)
+        self.draw_cache_set("series", "labels", labels)
+        self.draw_cache_set("series", "values", values)
+        self.draw_cache_set("series", "counts", counts_arr)
 
         unique_categories_total = int(s.dropna().astype("object").nunique())
 
@@ -351,9 +351,9 @@ class SeriesBarChartMixin:
         - show_value_in_bar_label shows the *primary* metric (the one plotted)
         - show_count_in_bar_label appends raw counts (if not already primary)
         """
-        labels = self._draw_get("series", "labels") or []
-        values = self._draw_get("series", "values")
-        counts = self._draw_get("series", "counts")
+        labels = self.draw_cache_get("series", "labels") or []
+        values = self.draw_cache_get("series", "values")
+        counts = self.draw_cache_get("series", "counts")
 
         if values is None or counts is None:
             # nothing cached; nothing to draw
