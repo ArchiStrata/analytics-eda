@@ -18,7 +18,7 @@ import re
 
 import pandas as pd
 
-from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import named_only_validator
 
