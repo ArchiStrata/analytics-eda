@@ -16,9 +16,10 @@ from dataclasses import dataclass
 from typing import Optional
 
 from analytics_eda.core.visualization.validation import FrameValidator, SeriesValidator
-
+from analytics_eda.core.visualization.chart_metadata import ChartMetadataBuilderProtocol, DefaultChartMetadataBuilder
 
 @dataclass
 class PlotParts:
     series_validator: Optional[SeriesValidator] = None
     frame_validator: Optional[FrameValidator] = None
+    chart_metadata_builder: ChartMetadataBuilderProtocol = DefaultChartMetadataBuilder()
