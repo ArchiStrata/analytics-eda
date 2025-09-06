@@ -17,7 +17,7 @@ from typing import Any, Dict, Literal, Optional
 import numpy as np
 import pandas as pd
 
-from analytics_eda.core.utils.base_plot import PlotContext
+from analytics_eda.core.visualization.base_plot import PlotContext
 
 @dataclass
 class SeriesBarChartContext(PlotContext):

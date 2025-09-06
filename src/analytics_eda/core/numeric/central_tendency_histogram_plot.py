@@ -19,7 +19,7 @@ import seaborn as sns
 
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import numeric_validator
-from ..utils.base_plot import BasePlot, PlotContext
+from ..visualization.base_plot import BasePlot, PlotContext
 from .binning_rules import choose_bins
 
 @dataclass

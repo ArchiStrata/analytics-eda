@@ -21,7 +21,7 @@ from scipy.stats import chisquare
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import categorical_validator
 
-from ..utils.base_plot import BasePlot, PlotContext
+from ..visualization.base_plot import BasePlot, PlotContext
 
 @dataclass
 class BalanceChiSquareUniformContext(PlotContext):

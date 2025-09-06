@@ -18,8 +18,8 @@ import pandas as pd
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 from ..utils.utils import resolve_cat_col, resolve_num_col, truncate_labels
-from ....core.utils.base_plot import PlotContext, BasePlot
-
+from ....core.visualization.base_plot import BasePlot
+from ....core.visualization.context import PlotContext
 
 # ---------------- Context ----------------
 

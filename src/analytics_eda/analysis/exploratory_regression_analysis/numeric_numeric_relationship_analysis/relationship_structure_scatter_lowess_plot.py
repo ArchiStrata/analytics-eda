@@ -19,7 +19,8 @@ import pandas as pd
 from statsmodels.nonparametric.smoothers_lowess import lowess
 
 from ..utils.utils import resolve_num_col, dropna_on
-from ....core.utils.base_plot import PlotContext, BasePlot
+from ....core.visualization.base_plot import BasePlot
+from ....core.visualization.context import PlotContext
 
 
 # ---------------- Context ----------------

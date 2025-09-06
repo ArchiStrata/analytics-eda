@@ -18,7 +18,8 @@ import pandas as pd
 from scipy.stats import kruskal
 
 from ..utils.utils import resolve_cat_col, resolve_num_col, grouped_arrays, truncate_labels
-from ....core.utils.base_plot import PlotContext, BasePlot
+from ....core.visualization.base_plot import BasePlot
+from ....core.visualization.context import PlotContext
 
 
 # ---------------- Context ----------------

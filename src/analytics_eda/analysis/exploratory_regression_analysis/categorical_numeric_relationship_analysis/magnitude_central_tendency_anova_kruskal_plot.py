@@ -24,7 +24,8 @@ from ..utils.utils import (
     grouped_arrays,
     truncate_labels,
 )
-from ....core.utils.base_plot import PlotContext, BasePlot
+from ....core.visualization.base_plot import BasePlot
+from ....core.visualization.context import PlotContext
 
 
 # ---------------- Context ----------------

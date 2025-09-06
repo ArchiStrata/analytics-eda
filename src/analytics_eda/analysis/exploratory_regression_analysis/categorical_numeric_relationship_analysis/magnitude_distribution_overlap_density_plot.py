@@ -20,7 +20,8 @@ from matplotlib import pyplot as plt
 
 from ..utils.utils import resolve_cat_col, resolve_num_col, grouped_arrays, truncate_labels, agg_mean
 
-from ....core.utils.base_plot import PlotContext, BasePlot
+from ....core.visualization.base_plot import BasePlot
+from ....core.visualization.context import PlotContext
 
 # ---------------- Context ----------------
 

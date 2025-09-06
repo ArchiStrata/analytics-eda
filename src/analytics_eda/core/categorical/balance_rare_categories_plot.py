@@ -21,7 +21,7 @@ from analytics_eda.core.utils.plot_mixins.series_bar_chart_mixin import SeriesBa
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import categorical_validator
 
-from ..utils.base_plot import BasePlot
+from ..visualization.base_plot import BasePlot
 
 
 @dataclass

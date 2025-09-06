@@ -18,7 +18,7 @@ import pandas as pd
 from scipy import stats
 from scipy.signal import find_peaks
 
-from ..utils.base_plot import BasePlot, PlotContext
+from ..visualization.base_plot import BasePlot, PlotContext
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import numeric_validator
 from .binning_rules import doane_bins, freedman_diaconis_bins, scott_bins, sturges_bins

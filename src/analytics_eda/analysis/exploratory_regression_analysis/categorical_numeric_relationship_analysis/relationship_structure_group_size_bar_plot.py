@@ -18,7 +18,8 @@ import pandas as pd
 
 from ..utils.utils import resolve_cat_col, resolve_num_col, dropna_on, truncate_labels, postprocess_series, agg_sum
 
-from ....core.utils.base_plot import PlotContext, BasePlot
+from ....core.visualization.base_plot import BasePlot
+from ....core.visualization.context import PlotContext
 
 # ---------------- Context ----------------
 
