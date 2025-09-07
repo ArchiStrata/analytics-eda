@@ -132,7 +132,7 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
             return findings
         
         total_nonnum = desc.get("subset_count", 0)  # rows that failed numeric coercion (sum of bars)
-        pct_nonnum = float(desc.get("pct_subset", 0.0)) * 100.0
+        pct_nonnum = float(desc.get("pct_subset", 0.0))
 
         # Nothing to report (all values numeric after coercion)
         if total_nonnum == 0:
@@ -142,7 +142,7 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         # how many distinct failed coercion issues are there and how common are they?
         # Primary: overall rate + count
         findings["primary_finding"] = (
-            f"{pct_nonnum:.1f}% of values failed numeric coercion "
+            f"{self.format_report_percent(pct_nonnum)} of values failed numeric coercion "
             f"({total_nonnum:,} rows)."
         )
 
@@ -159,9 +159,9 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         parts = []
         for lbl in sorted(top_labels):
             data = bars.get(lbl, {})
-            pct = float(data.get(denom_key, 0.0)) * 100.0
+            pct = float(data.get(denom_key, 0.0))
             cnt = int(data.get("count", 0))
-            parts.append(f"{repr(lbl)} ({pct:.1f}%, {cnt:,} rows)")
+            parts.append(f"{repr(lbl)} ({self.format_report_percent(pct)}, {cnt:,} rows)")
 
         if len(parts) == 1:
             findings["secondary_finding"] = f"Most frequent token: {parts[0]}."
@@ -176,9 +176,9 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
 
         total_nonnull = desc["total_nonnull"]
         total_nonnum = desc.get("subset_count", 0)
-        pct_nonnum = float(desc.get("pct_subset", 0.0)) * 100.0
+        pct_nonnum = float(desc.get("pct_subset", 0.0))
 
         if total_nonnum == 0:
             return "No non-numeric values detected"
 
-        return f"{pct_nonnum:.1f}% of {total_nonnull:,} non-null values are non-numeric ({total_nonnum:,} rows)"
+        return f"{self.format_report_percent(pct_nonnum)} of {total_nonnull:,} non-null values are non-numeric ({total_nonnum:,} rows)"

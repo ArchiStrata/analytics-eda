@@ -369,7 +369,7 @@ class SeriesBarChartMixin:
                 return ax
             heights = np.asarray(values, dtype=float)
             def fmt_primary(v):  # percent
-                return f"{v*100:.1f}%"
+                return self.format_report_percent(float(v))
 
         # Neutral base
         if self.ctx.is_orientation_vertical:

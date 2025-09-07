@@ -36,7 +36,6 @@ class AxisFormat:
     datetime_format: Optional[str] = None  # e.g., "%Y-%m-%d"
 
     # Escape hatch: custom formatter
-    # Provide a Matplotlib Formatter OR a function(float)->str
     formatter: Optional[Callable[[float], str]] = None
 
 @dataclass
@@ -76,3 +75,7 @@ class PlotContext:
     headroom_use_text_extents: bool = True        # measure label text bboxes to set limits
     headroom_preserve_symmetry: bool = False      # keep +/- limits symmetric when expanding
     headroom_axis: Literal["auto","x","y"] = "auto"  # which axis to expand (auto = by orientation)
+
+    # Report Formatting
+    report_default_decimals: int = 2
+    report_default_unit: Optional[str] = None

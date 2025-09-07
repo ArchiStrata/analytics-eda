@@ -96,25 +96,26 @@ class MissingDataBarPlot(SeriesBarChartMixin, BasePlot):
             return findings
 
         # how many missing values were there?
-        pct_missing = desc['bars']['Missing']['pct_of_total'] * 100
+        pct_missing = desc['bars']['Missing']['pct_of_total']
         total = desc['total']
-        findings["primary_finding"] =  f"{pct_missing:.1f}% of {total:,} values are missing."
+        findings["primary_finding"] =  f"{self.format_report_percent(pct_missing)} of {total:,} values are missing."
         
         if pct_missing == 0:
             findings["secondary_finding"] = "No missing values detected."
-        elif pct_missing == 100:
+        elif pct_missing == 1.0:
             findings["secondary_finding"] = "All values are missing."
-        elif pct_missing < 50:
+        elif pct_missing < 0.5:
             findings["secondary_finding"] = "Most values are present."
-        elif pct_missing == 50:
+        elif pct_missing == 0.5:
             findings["secondary_finding"] = "Missing and present values are evenly split."
         else:
             findings["secondary_finding"] = "Missing values exceed present values."
 
-        
         return findings
     
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
         if not desc or desc.get("total", 0) == 0:
             return ""
-        return f"{desc['bars']['Missing']['pct_of_total']*100:.1f}% of {desc['total']:,} values missing"
+        pct_missing = desc["bars"]["Missing"]["pct_of_total"]
+        total = desc["total"]
+        return f"{self.format_report_percent(pct_missing)} of {total:,} values missing"
