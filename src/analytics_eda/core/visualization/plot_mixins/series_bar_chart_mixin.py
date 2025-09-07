@@ -21,8 +21,6 @@ from analytics_eda.core.visualization.base_plot import PlotContext
 
 @dataclass
 class SeriesBarChartContext(PlotContext):
-    format_orientation_axis_as_percent: bool = True
-
     show_count_in_bar_label: bool = False
     show_value_in_bar_label: bool = True
     bar_height_source: Literal["values", "counts"] = "values"

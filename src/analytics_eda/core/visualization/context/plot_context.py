@@ -12,11 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
-from typing import Any, Dict, Literal, Optional, Sequence, Tuple, Union
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, Literal, Optional, Sequence, Tuple, Union
 
 
 Desc = Union[str, Sequence[str], None]
+
+@dataclass
+class AxisFormat:
+    # High-level style
+    kind: Literal["auto", "number", "percent", "currency", "category", "datetime"] = "auto"
+
+    # Number/percent/currency options
+    decimals: Optional[int] = None         # e.g., 0, 1, 2; None = don't force
+    thousands_sep: bool = True             # 12,345 vs 12345
+    unit_suffix: Optional[str] = None      # e.g., "ms", "kg" (appended after value)
+    currency_code: Optional[str] = None    # e.g., "USD" (used if kind == "currency")
+
+    # Percent options
+    percent_scale_0to1: bool = True        # True if data are proportions (0..1)
+
+    # Datetime options
+    datetime_format: Optional[str] = None  # e.g., "%Y-%m-%d"
+
+    # Escape hatch: custom formatter
+    # Provide a Matplotlib Formatter OR a function(float)->str
+    formatter: Optional[Callable[[float], str]] = None
 
 @dataclass
 class PlotContext:
@@ -44,8 +65,8 @@ class PlotContext:
 
     enable_legend: bool = False # draw a legend when True
 
-    # TODO: Should this include formatting options like numeric units/value_decimals?
-    format_orientation_axis_as_percent: bool = False
+    x_format: AxisFormat = field(default_factory=AxisFormat)
+    y_format: AxisFormat = field(default_factory=AxisFormat)
 
     # Auto headroom for bar labels (on by default)
     auto_headroom: bool = True

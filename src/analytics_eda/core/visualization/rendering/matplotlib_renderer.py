@@ -16,10 +16,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 import os
+from matplotlib.dates import DateFormatter, AutoDateFormatter, AutoDateLocator
 import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.ticker import PercentFormatter
+from matplotlib.ticker import Formatter, FuncFormatter, PercentFormatter, StrMethodFormatter
 
+from analytics_eda.core.visualization.context.plot_context import AxisFormat
 from analytics_eda.core.visualization.rendering.renderer_protocol import DrawFnSeries, RendererProtocol
 
 @dataclass
@@ -206,6 +208,61 @@ class DefaultMatplotlibRenderer(RendererProtocol):
         h = hex_color.lstrip("#")
         r, g, b = tuple(int(h[i:i+2], 16)/255.0 for i in (0, 2, 4))
         return (r, g, b, float(alpha))
+    
+    # ---------- axis format -----------
+    def _apply_axis_format(self, axis, fmt: AxisFormat):
+        # Custom formatter wins
+        if fmt.formatter is not None:
+            if isinstance(fmt.formatter, Formatter):
+                axis.set_major_formatter(fmt.formatter)
+            else:
+                axis.set_major_formatter(FuncFormatter(lambda v, _: fmt.formatter(v)))
+            return
+
+        # Auto: do nothing (let Matplotlib pick)
+        if fmt.kind == "auto":
+            return
+
+        if fmt.kind == "percent":
+            # If data are 0..1 proportions
+            if fmt.percent_scale_0to1:
+                axis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=fmt.decimals))
+            else:  # data already 0..100
+                axis.set_major_formatter(PercentFormatter(xmax=100.0, decimals=fmt.decimals))
+            return
+
+        if fmt.kind == "number" or fmt.kind == "currency":
+            # Build a numeric format string
+            # e.g., "{:,.2f}" or "{:.0f}"
+            sep = "," if fmt.thousands_sep else ""
+            decimals = fmt.decimals if fmt.decimals is not None else 0
+            base_spec = f"{{:{sep}.{decimals}f}}"
+
+            if fmt.kind == "currency":
+                code = (fmt.currency_code or "").strip()
+                axis.set_major_formatter(
+                    FuncFormatter(lambda v, _: f"{code} {base_spec.format(v)}".strip())
+                )
+            else:
+                if fmt.unit_suffix:
+                    axis.set_major_formatter(
+                        FuncFormatter(lambda v, _: f"{base_spec.format(v)} {fmt.unit_suffix}")
+                    )
+                else:
+                    axis.set_major_formatter(StrMethodFormatter(base_spec))
+            return
+
+        if fmt.kind == "datetime":
+            # Let Matplotlib handle with AutoDateFormatter if no explicit format given
+            if fmt.datetime_format:
+                axis.set_major_formatter(DateFormatter(fmt.datetime_format))
+            else:
+                axis.set_major_formatter(AutoDateFormatter(AutoDateLocator()))
+            return
+
+        if fmt.kind == "category":
+            # Usually categorical ticks set by plotting function; no formatter required.
+            return
 
     # ---------- finalization ----------
     def _finalize(self, ctx, fig, ax, chart_md: Dict[str, Any]) -> Optional[str]:
@@ -279,11 +336,8 @@ class DefaultMatplotlibRenderer(RendererProtocol):
             # call the plot-specific drawing callback
             fig, ax = draw_fn(desc, inf, chart_md, fig, ax, palette)
 
-            if bool(getattr(ctx, "format_orientation_axis_as_percent", False)):
-                if bool(getattr(ctx, "is_orientation_vertical", True)):
-                    ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
-                else:
-                    ax.xaxis.set_major_formatter(PercentFormatter(xmax=1.0))
+            self._apply_axis_format(ax.xaxis, ctx.x_format)
+            self._apply_axis_format(ax.yaxis, ctx.y_format)
 
             self._apply_footer_summary(getattr(ctx, "show_footer_summary", False), fig, footer_text)
 

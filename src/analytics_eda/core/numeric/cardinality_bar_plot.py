@@ -19,9 +19,8 @@ import pandas as pd
 from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
 
 from ..visualization.base_plot import BasePlot
-
-from analytics_eda.core.visualization.plot_parts import PlotParts
-from analytics_eda.core.visualization.validation import numeric_validator
+from ..visualization.plot_parts import PlotParts
+from ..visualization.validation import numeric_validator
 
 @dataclass
 class CardinalityBarContext(SeriesBarChartContext):
@@ -33,7 +32,6 @@ class CardinalityBarContext(SeriesBarChartContext):
 
     bar_height_source: Literal["values","counts"] = "counts"
     bar_sort_descending: bool = True
-    format_orientation_axis_as_percent: bool = False
 
     # plot-specific
     max_unique_fraction: float = 0.05

@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Any
 import pandas as pd
 
+from analytics_eda.core.visualization.context.plot_context import AxisFormat
 from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import SeriesBarChartMixin, SeriesBarChartContext
 
 from analytics_eda.core.visualization.plot_parts import PlotParts
@@ -30,6 +31,12 @@ class MissingDataBarContext(SeriesBarChartContext):
     show_subtitle: bool = True
     bar_sort_descending: bool = True
 
+    x_format: AxisFormat = field(
+        default_factory=lambda: AxisFormat(kind="category")
+    )
+    y_format: AxisFormat = field(
+        default_factory=lambda: AxisFormat(kind="percent", decimals=1, percent_scale_0to1=True)
+    )
 
 class MissingDataBarPlot(SeriesBarChartMixin, BasePlot):
     """

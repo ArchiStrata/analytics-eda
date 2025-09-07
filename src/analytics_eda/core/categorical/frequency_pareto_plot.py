@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Any, Literal
 import numpy as np
 import pandas as pd
 
+from analytics_eda.core.visualization.context.plot_context import AxisFormat
 from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import categorical_validator
@@ -30,6 +31,13 @@ class FrequencyParetoContext(SeriesBarChartContext):
     ylabel: str = "Category"
     is_orientation_vertical: bool = False
     show_subtitle: bool = True
+
+    x_format: AxisFormat = field(
+        default_factory=lambda: AxisFormat(kind="percent", decimals=1, percent_scale_0to1=True)
+    )
+    y_format: AxisFormat = field(
+        default_factory=lambda: AxisFormat(kind="category")
+    )
 
     bar_sort_descending: bool = True
 
