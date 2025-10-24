@@ -177,9 +177,9 @@ class CentralTendencyHistogramPlot(BasePlot):
 
         # Primary finding: where the data centers
         if modality == "unimodal" and modes:
-            primary = f"The distribution is unimodal with a central peak around {modes[0]:.2f}."
+            primary = f"The distribution is unimodal with a central peak around {self.formatter.format_numeric_value(modes[0])}."
         elif modality == "bimodal" and len(modes) >= 2:
-            primary = f"The distribution is bimodal with peaks near {modes[0]:.2f} and {modes[1]:.2f}."
+            primary = f"The distribution is bimodal with peaks near {self.formatter.format_numeric_value(modes[0])} and {self.formatter.format_numeric_value(modes[1])}."
         elif modality == "multimodal":
             primary = "The distribution is multimodal, indicating several distinct peaks."
         else:
@@ -188,11 +188,11 @@ class CentralTendencyHistogramPlot(BasePlot):
         # Secondary finding: relationship between mean and median
         if not np.isnan(mean) and not np.isnan(median):
             if abs(mean - median) < 1e-6:  # effectively equal
-                secondary = f"Mean and median are nearly identical at {mean:.2f}, suggesting a symmetric distribution."
+                secondary = f"Mean and median are nearly identical at {self.formatter.format_numeric_value(mean)}, suggesting a symmetric distribution."
             elif mean > median:
-                secondary = f"Mean ({mean:.2f}) is greater than median ({median:.2f}), suggesting right-skew."
+                secondary = f"Mean ({self.formatter.format_numeric_value(mean)}) is greater than median ({self.formatter.format_numeric_value(median)}), suggesting right-skew."
             else:
-                secondary = f"Mean ({mean:.2f}) is less than median ({median:.2f}), suggesting left-skew."
+                secondary = f"Mean ({self.formatter.format_numeric_value(mean)}) is less than median ({self.formatter.format_numeric_value(median)}), suggesting left-skew."
         else:
             secondary = None
 
@@ -217,9 +217,9 @@ class CentralTendencyHistogramPlot(BasePlot):
 
         # Add modality
         if modality == "unimodal" and modes:
-            subtitle += f"Central peak around {modes[0]:.2f}. "
+            subtitle += f"Central peak around {self.formatter.format_numeric_value(modes[0])}. "
         elif modality == "bimodal" and len(modes) >= 2:
-            subtitle += f"Bimodal with peaks near {modes[0]:.2f} and {modes[1]:.2f}. "
+            subtitle += f"Bimodal with peaks near {self.formatter.format_numeric_value(modes[0])} and {self.formatter.format_numeric_value(modes[1])}. "
         elif modality == "multimodal":
             subtitle += "Multiple peaks indicate a multimodal distribution. "
         else:
@@ -228,11 +228,11 @@ class CentralTendencyHistogramPlot(BasePlot):
         # Add mean/median relationship
         if not np.isnan(mean) and not np.isnan(median):
             if abs(mean - median) < 1e-6:
-                subtitle += f"Mean and median align at {mean:.2f}, suggesting symmetry."
+                subtitle += f"Mean and median align at {self.formatter.format_numeric_value(mean)}, suggesting symmetry."
             elif mean > median:
-                subtitle += f"Mean ({mean:.2f}) exceeds median ({median:.2f}), suggesting right-skew."
+                subtitle += f"Mean ({self.formatter.format_numeric_value(mean)}) exceeds median ({self.formatter.format_numeric_value(median)}), suggesting right-skew."
             else:
-                subtitle += f"Mean ({mean:.2f}) is below median ({median:.2f}), suggesting left-skew."
+                subtitle += f"Mean ({self.formatter.format_numeric_value(mean)}) is below median ({self.formatter.format_numeric_value(median)}), suggesting left-skew."
 
         return subtitle.strip()
 

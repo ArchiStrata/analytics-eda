@@ -129,7 +129,7 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
         if total_nonnull == 0 or nunique == 0:
             return {}
 
-        ur = float(desc.get("uniqueness_ratio", 0.0))
+        ur = self.formatter.format_percent(float(desc.get("uniqueness_ratio", 0.0)))
         is_discrete = bool(desc.get("is_discrete"))
         params = desc.get("params") or {}
         max_k = int(params.get("max_display_bars") or 0)
@@ -137,10 +137,10 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
         coverage = float(desc.get("coverage_named", 0.0))
 
         # ---- Context (add coverage only when a named cut exists and it's informative) ----
-        ctx_parts = [f"N = {total_nonnull:,} non-null", f"{nunique:,} unique ({ur:.1%})"]
+        ctx_parts = [f"N = {total_nonnull:,} non-null", f"{nunique:,} unique ({ur})"]
         has_named_cut = bool(other_display) or (max_k and nunique > max_k)
         if has_named_cut and coverage > 0:
-            ctx_parts.append(f"Top-{max_k} named coverage: {coverage:.1%}")
+            ctx_parts.append(f"Top-{max_k} named coverage: {self.formatter.format_percent(coverage)}")
         context = " | ".join(ctx_parts)
 
         findings = {
@@ -160,13 +160,13 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
                     max_share = max(float(v.get(denom_k, 0.0)) for _, v in named)
                     eps = max(1e-12, 1e-6 * max_share)
                     leaders = [k for k, v in named if abs(float(v.get(denom_k, 0.0)) - max_share) <= eps]
-                    pct = max_share * 100.0
+                    pct = self.formatter.format_percent(max_share)
                     if len(leaders) == 1:
-                        findings["secondary_finding"] = f"Most frequent value {repr(leaders[0])} at {pct:.1f}%."
+                        findings["secondary_finding"] = f"Most frequent value {repr(leaders[0])} at {pct}."
                     else:
                         preview = ", ".join(repr(x) for x in leaders[:3])
                         more = f" +{len(leaders) - 3} more" if len(leaders) > 3 else ""
-                        findings["secondary_finding"] = f"Top values (tie at {pct:.1f}%): {preview}{more}."
+                        findings["secondary_finding"] = f"Top values (tie at {pct}): {preview}{more}."
 
         return findings
     
@@ -178,18 +178,18 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
         is_discrete = bool(desc.get("is_discrete"))
         total_nonnull = int(desc.get("total_nonnull", 0))
         nunique = int(desc.get("nunique_native", 0))
-        ur = float(desc.get("uniqueness_ratio", 0.0))
+        ur = self.formatter.format_percent(float(desc.get("uniqueness_ratio", 0.0)))
         coverage = float(desc.get("coverage_named", 0.0))
         max_k = int((desc.get("params") or {}).get("max_display_bars") or 0)
         other_display = (desc.get("params") or {}).get("other_display")
 
         # Lead with the classification (the plot’s big idea)
         lead = "Discrete" if is_discrete else "Continuous"
-        subtitle = f"{lead} • Non-null: {total_nonnull:,} • Unique: {nunique:,} ({ur:.1%})"
+        subtitle = f"{lead} • Non-null: {total_nonnull:,} • Unique: {nunique:,} ({ur})"
 
         # Only show coverage when there is a named cut (top-N or “Other”)
         if (other_display or (max_k and nunique > max_k)) and coverage > 0:
-            subtitle += f" • Top-{max_k} named coverage: {coverage:.1%}"
+            subtitle += f" • Top-{max_k} named coverage: {self.formatter.format_percent(coverage)}"
 
         return subtitle
 

@@ -142,7 +142,7 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         # how many distinct failed coercion issues are there and how common are they?
         # Primary: overall rate + count
         findings["primary_finding"] = (
-            f"{self.format_report_percent(pct_nonnum)} of values failed numeric coercion "
+            f"{self.formatter.format_percent(pct_nonnum)} of values failed numeric coercion "
             f"({total_nonnum:,} rows)."
         )
 
@@ -161,7 +161,7 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
             data = bars.get(lbl, {})
             pct = float(data.get(denom_key, 0.0))
             cnt = int(data.get("count", 0))
-            parts.append(f"{repr(lbl)} ({self.format_report_percent(pct)}, {cnt:,} rows)")
+            parts.append(f"{repr(lbl)} ({self.formatter.format_percent(pct)}, {cnt:,} rows)")
 
         if len(parts) == 1:
             findings["secondary_finding"] = f"Most frequent token: {parts[0]}."
@@ -181,4 +181,4 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         if total_nonnum == 0:
             return "No non-numeric values detected"
 
-        return f"{self.format_report_percent(pct_nonnum)} of {total_nonnull:,} non-null values are non-numeric ({total_nonnum:,} rows)"
+        return f"{self.formatter.format_percent(pct_nonnum)} of {total_nonnull:,} non-null values are non-numeric ({total_nonnum:,} rows)"

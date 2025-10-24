@@ -42,7 +42,7 @@ class FrequencyParetoContext(SeriesBarChartContext):
     bar_sort_descending: bool = True
 
     pareto_mode: Literal["dual", "shared", "none"] = "shared"
-    pareto_threshold_pct: float = 80.0
+    pareto_threshold_pct: float = 0.8
     pareto_line_color: str = "black"
     pareto_line_marker: str = "o"
     pareto_line_style: str = "-"
@@ -79,7 +79,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         # Build standard series-bar desc (percent base is pct_of_total for Pareto)
         extra_params = {
             "pareto_mode": getattr(self.ctx, "pareto_mode", "shared"),
-            "pareto_threshold_pct": float(getattr(self.ctx, "pareto_threshold_pct", 80.0)),
+            "pareto_threshold_pct": float(getattr(self.ctx, "pareto_threshold_pct", 0.8)),
             "show_threshold_label": bool(getattr(self.ctx, "show_threshold_label", True)),
             "pareto_line_color": getattr(self.ctx, "pareto_line_color", "black"),
             "pareto_line_marker": getattr(self.ctx, "pareto_line_marker", "o"),
@@ -102,10 +102,10 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         bars    = desc.get("bars", {})
         denom_k = desc.get("denominator_key", "pct_of_total")
 
-        rel = np.array([float(bars[lbl].get(denom_k, 0.0)) * 100.0 for lbl in labels], dtype=float)
+        rel = np.array([float(bars[lbl].get(denom_k, 0.0)) for lbl in labels], dtype=float)
         cum = np.cumsum(rel)
 
-        thr_pct = float(getattr(self.ctx, "pareto_threshold_pct", 80.0))
+        thr_pct = float(getattr(self.ctx, "pareto_threshold_pct", 0.8))
         thr_idx = int(np.argmax(cum >= thr_pct)) if len(cum) else -1
         thr_count = int(sum(int(bars[lbl]["count"]) for lbl in labels[: max(thr_idx, -1) + 1])) if thr_idx >= 0 else 0
 
@@ -136,7 +136,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         }
 
         # Pareto threshold summary
-        thr_pct = float(desc.get("threshold_pct", 80.0))
+        thr_pct = float(desc.get("threshold_pct", 0.8))
         thr_idx = int(desc.get("threshold_idx", -1))
         if thr_idx < 0:
             findings["primary_finding"] = "Distribution is too sparse to summarize with a Pareto threshold."
@@ -153,20 +153,21 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         other_in_cut = bool(other_label and other_label in threshold_slice)
 
         # Primary: acknowledge Other when it’s part of the cut
+        thr_pct_formatted = self.formatter.format_percent(thr_pct, decimals=0)
         if other_in_cut:
             non_other = [lbl for lbl in threshold_slice if lbl != other_label]
             if len(non_other) == 0:
-                primary = f"≈{thr_pct:.0f}% of occurrences are covered by {other_label}."
+                primary = f"≈{thr_pct_formatted} of occurrences are covered by {other_label}."
             elif len(non_other) == 1:
-                primary = f"≈{thr_pct:.0f}% of occurrences are covered by {repr(non_other[0])} and {other_label}."
+                primary = f"≈{thr_pct_formatted} of occurrences are covered by {repr(non_other[0])} and {other_label}."
             elif len(non_other) == 2:
-                primary = f"≈{thr_pct:.0f}% of occurrences are covered by {repr(non_other[0])}, {repr(non_other[1])}, and {other_label}."
+                primary = f"≈{thr_pct_formatted} of occurrences are covered by {repr(non_other[0])}, {repr(non_other[1])}, and {other_label}."
             else:
-                primary = f"≈{thr_pct:.0f}% of occurrences are covered by {len(non_other)} named categories plus {other_label}."
+                primary = f"≈{thr_pct_formatted} of occurrences are covered by {len(non_other)} named categories plus {other_label}."
             findings["primary_finding"] = primary
         else:
             findings["primary_finding"] = (
-                f"≈{thr_pct:.0f}% of occurrences are concentrated in the top {thr_idx + 1} categories."
+                f"≈{thr_pct_formatted} of occurrences are concentrated in the top {thr_idx + 1} categories."
             )
 
         # Secondary: top category(ies) + (if applicable) Other’s share inside the cut
@@ -177,23 +178,23 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         max_share = max(v for _, v in shares)
         eps = max(1e-12, 1e-6 * max_share)
         tied = [lbl for lbl, v in shares if abs(v - max_share) <= eps]
-        top_pct = max_share * 100.0
+        top_pct = self.formatter.format_percent(max_share)
 
         parts = []
         if len(tied) == 1:
-            parts.append(f"Top category: {repr(tied[0])} at {top_pct:.1f}%.")
+            parts.append(f"Top category: {repr(tied[0])} at {top_pct}.")
         else:
             preview = ", ".join(repr(x) for x in tied[:3])
             more = f" +{len(tied) - 3} more" if len(tied) > 3 else ""
-            parts.append(f"Top categories (tie at {top_pct:.1f}%): {preview}{more}.")
+            parts.append(f"Top categories (tie at {top_pct}): {preview}{more}.")
 
         if other_in_cut and other_label in bars:
-            other_pct = float(bars[other_label].get(denom_k, 0.0)) * 100.0
+            other_pct = self.formatter.format_percent(float(bars[other_label].get(denom_k, 0.0)))
             k_agg = bars[other_label].get("k_agg")
             if isinstance(k_agg, int) and k_agg > 0:
-                parts.append(f"{other_label} contributes {other_pct:.1f}% within the threshold.")
+                parts.append(f"{other_label} contributes {other_pct} within the threshold.")
             else:
-                parts.append(f"{other_label} contributes {other_pct:.1f}% within the threshold.")
+                parts.append(f"{other_label} contributes {other_pct} within the threshold.")
 
         findings["secondary_finding"] = " ".join(parts) if parts else None
         return findings
@@ -205,7 +206,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         # 2) Pareto cumulative line (optional)
         mode   = getattr(self.ctx, "pareto_mode", "dual")
         cum    = self.draw_cache_get("pareto", "cumperc", np.array([]))
-        thr_pct = float(self.draw_cache_get("pareto", "threshold_pct", 80.0))
+        thr_pct = float(self.draw_cache_get("pareto", "threshold_pct", 0.8))
         show_thr_label = bool(getattr(self.ctx, "show_threshold_label", True))
 
         labels = self.draw_cache_get("series", "labels") or []
@@ -222,13 +223,13 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         if horiz:
             # Horizontal bars: value axis is X → put cumulative on top axis for "dual"
             if mode == "shared":
-                cum01 = cum / 100.0
-                thr01 = thr_pct / 100.0
+                cum01 = cum
+                thr01 = thr_pct
                 ax.plot(cum01, ticks, marker=mk, linestyle=ls, color=lc)
                 ax.set_xlim(0, max(1.0, float(np.nanmax(cum01)) * 1.05))
                 ax.axvline(thr01, color=palette[0], linestyle="--")
                 if show_thr_label and len(ticks) > 0:
-                    ax.text(thr01, ticks[-1], f"{thr_pct:.0f}% threshold", ha="left", va="top", color=palette[0])
+                    ax.text(thr01, ticks[-1], f"{thr_pct:.0%} threshold", ha="left", va="top", color=palette[0])
             else:
                 ax2 = ax.twiny()
                 ax2.plot(cum, ticks, marker=mk, linestyle=ls, color=lc)
@@ -236,17 +237,17 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
                 ax2.set_xlim(0, max(100.0, np.nanmax(cum) * 1.05))
                 ax2.axvline(thr_pct, color=palette[0], linestyle="--")
                 if show_thr_label and len(ticks) > 0:
-                    ax2.text(thr_pct, ticks[-1], f"{thr_pct:.0f}%", ha="left", va="top", color=palette[0])
+                    ax2.text(thr_pct, ticks[-1], f"{thr_pct:.0%}", ha="left", va="top", color=palette[0])
         else:
             # Vertical bars: value axis is Y → put cumulative on right axis for "dual"
             if mode == "shared":
-                cum01 = cum / 100.0
-                thr01 = thr_pct / 100.0
+                cum01 = cum
+                thr01 = thr_pct
                 ax.plot(ticks, cum01, marker=mk, linestyle=ls, color=lc)
                 ax.set_ylim(0, max(1.0, float(np.nanmax(cum01)) * 1.05))
                 ax.axhline(thr01, color=palette[0], linestyle="--")
                 if show_thr_label and len(ticks) > 0:
-                    ax.text(ticks[-1], thr01, f"{thr_pct:.0f}%", ha="right", va="bottom", color=palette[0])
+                    ax.text(ticks[-1], thr01, f"{thr_pct:.0%}", ha="right", va="bottom", color=palette[0])
             else:
                 ax2 = ax.twinx()
                 ax2.plot(ticks, cum, marker=mk, linestyle=ls, color=lc)
@@ -254,7 +255,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
                 ax2.set_ylim(0, max(100.0, np.nanmax(cum) * 1.05))
                 ax2.axhline(thr_pct, color=palette[0], linestyle="--")
                 if show_thr_label and len(ticks) > 0:
-                    ax2.text(ticks[-1], thr_pct, f"{thr_pct:.0f}%", ha="right", va="bottom", color=palette[0])
+                    ax2.text(ticks[-1], thr_pct, f"{thr_pct:.0%}", ha="right", va="bottom", color=palette[0])
 
         return fig, ax
 

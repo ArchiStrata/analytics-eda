@@ -122,7 +122,7 @@ class BalanceLorenzCurvePlot(BasePlot):
 
         findings = {
             "context": f"N = {total:,} values across {k} categories",
-            "primary_finding": f"Category imbalance measured by Gini index = {gini:.3f} "
+            "primary_finding": f"Category imbalance measured by Gini index = {self.formatter.format_numeric_value(gini, decimals=3, unit=None)} "
                             "(0 = perfectly balanced, 1 = highly imbalanced).",
             "secondary_finding": None
         }
@@ -165,6 +165,7 @@ class BalanceLorenzCurvePlot(BasePlot):
             return ""
 
         gini = float(desc["gini_index"])
+        gini_formatted = self.formatter.format_numeric_value(gini, decimals=3, unit=None)
         k = desc["k"]
         total = desc["total"]
 
@@ -172,6 +173,6 @@ class BalanceLorenzCurvePlot(BasePlot):
         if gini == 0:
             return f"Perfect balance across {k} categories (N = {total:,})"
         elif gini > 0.8:
-            return f"Severe imbalance: Gini = {gini:.3f} across {k} categories (N = {total:,})"
+            return f"Severe imbalance: Gini = {gini_formatted} across {k} categories (N = {total:,})"
         else:
-            return f"Gini = {gini:.3f} across {k} categories (N = {total:,})"
+            return f"Gini = {gini_formatted} across {k} categories (N = {total:,})"

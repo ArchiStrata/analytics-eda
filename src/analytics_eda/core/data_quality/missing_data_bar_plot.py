@@ -98,7 +98,7 @@ class MissingDataBarPlot(SeriesBarChartMixin, BasePlot):
         # how many missing values were there?
         pct_missing = desc['bars']['Missing']['pct_of_total']
         total = desc['total']
-        findings["primary_finding"] =  f"{self.format_report_percent(pct_missing)} of {total:,} values are missing."
+        findings["primary_finding"] =  f"{self.formatter.format_percent(pct_missing)} of {total:,} values are missing."
         
         if pct_missing == 0:
             findings["secondary_finding"] = "No missing values detected."
@@ -118,4 +118,4 @@ class MissingDataBarPlot(SeriesBarChartMixin, BasePlot):
             return ""
         pct_missing = desc["bars"]["Missing"]["pct_of_total"]
         total = desc["total"]
-        return f"{self.format_report_percent(pct_missing)} of {total:,} values missing"
+        return f"{self.formatter.format_percent(pct_missing)} of {total:,} values missing"

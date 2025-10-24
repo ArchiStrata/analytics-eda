@@ -116,7 +116,7 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
                 },
                 "draft_inferential_findings": {
                     "context": "Chi-square GOF on 3 categories (N = 6)",
-                    "primary_finding": "No statistically significant deviation from uniform (p = 1.000 vs α = 0.05).",
+                    "primary_finding": "No statistically significant deviation from uniform (p = 1 vs α = 0.05).",
                     "secondary_finding": "χ²(df = 2) = 0.00. Assumption warning: Assumption caution: 3 of 3 categories have expected counts < 5 (minimum expected = 2.00); chi-square results may be unreliable."
                 },
                 "inferential_stats": {

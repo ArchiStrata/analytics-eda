@@ -151,7 +151,7 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
         params = desc.get("params", {})
         ttype = params.get("threshold_type", desc.get("threshold_type"))
         thr_c = params.get("threshold_value_count", desc.get("threshold_value_count"))
-        thr_p = params.get("threshold_value_prop", desc.get("threshold_value_prop"))
+        thr_p = self.formatter.format_percent(params.get("threshold_value_prop", desc.get("threshold_value_prop")))
 
         findings = {
             "context": f"Base = {total_nonnull:,} non-null; K = {k_total} total categories",
@@ -164,12 +164,12 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
             return findings
 
         # How many rare categories are there and how were they determined?
-        pct_rare_rows = float(desc.get("pct_subset", 0.0)) * 100.0
+        pct_rare_rows = self.formatter.format_percent(float(desc.get("pct_subset", 0.0)))
         n_rare_rows = int(desc.get("subset_count", 0))
 
         findings["primary_finding"] = (
-                f"Rare categories (threshold={ttype}: ≤ {thr_p:.1%} or ≤ {thr_c} count) "
-                f"found: {n_rare}; they account for {pct_rare_rows:.1f}% of rows "
+                f"Rare categories (threshold={ttype}: ≤ {thr_p} or ≤ {thr_c} count) "
+                f"found: {n_rare}; they account for {pct_rare_rows} of rows "
                 f"({n_rare_rows:,})."
             )
         return findings
@@ -188,7 +188,7 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
             return "No categories meet the rare threshold"
 
         # Magnitude: percent + count of rows in rare categories
-        pct_rare_rows = float(desc.get("pct_subset", 0.0)) * 100.0
+        pct_rare_rows = self.formatter.format_percent(float(desc.get("pct_subset", 0.0)))
         n_rare_rows = int(desc.get("subset_count", 0))
 
         p = desc.get("params", {})
@@ -198,13 +198,13 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
 
         parts = [
             f"{n_rare} rare categor{'y' if n_rare == 1 else 'ies'}",
-            f"{pct_rare_rows:.1f}% of {total_nonnull:,} rows ({n_rare_rows:,})",
+            f"{pct_rare_rows} of {total_nonnull:,} rows ({n_rare_rows:,})",
         ]
         # Include threshold only if helpful and available
         if thr_type in {"proportion", "count"}:
             thr_bits = []
             if isinstance(thr_p, (int, float)) and thr_p > 0:
-                thr_bits.append(f"≤{thr_p:.1%}")
+                thr_bits.append(f"≤{self.formatter.format_percent(thr_p)}")
             if isinstance(thr_c, (int, float)) and thr_c > 0:
                 thr_bits.append(f"≤{int(thr_c)}")
             if thr_bits:

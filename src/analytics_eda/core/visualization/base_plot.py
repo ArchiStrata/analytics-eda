@@ -15,10 +15,10 @@
 from abc import ABC
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
 
-import numpy as np
 import pandas as pd
 
 from analytics_eda.core.visualization.context.plot_context import PlotContext
+from analytics_eda.core.visualization.formatting.report_formatter import ReportFormatter
 from analytics_eda.core.visualization.plot_parts import PlotParts
 
 Desc = Union[str, Sequence[str], None]
@@ -29,6 +29,7 @@ class BasePlot(ABC):
         self.parts = parts or PlotParts()
         self._subtitle_queue: list[tuple] = []
         self._draw_cache: dict[str, dict[str, Any]] = {}   # per-run cache (cleared each run)
+        self.formatter = ReportFormatter(ctx=self)
 
     # ======== Metadata & Title ========
     def plot_semantic_version(self) -> str:
@@ -124,42 +125,6 @@ class BasePlot(ABC):
         (and optionally descriptive context). Child plots may override. Default: {}.
         """
         return {}
-
-    # ======== Report Formatting ===========
-    def format_report_value(
-        self,
-        value: float,
-        *,
-        decimals: Optional[int] = None,
-        unit: Optional[str] = None,
-    ) -> str:
-        """
-        Format a numeric value for reporting (findings, subtitles, annotations).
-
-        Uses PlotContext.report_default_decimals and PlotContext.report_unit unless
-        explicitly overridden via `decimals` or `unit`.
-
-        Returns "NA" for None/NaN.
-        """
-        if value is None or (isinstance(value, float) and np.isnan(value)):
-            return "NA"
-
-        ctx_dec = getattr(self.ctx, "report_default_decimals", 2)
-        ctx_unit = getattr(self.ctx, "report_default_unit", None)
-
-        d = ctx_dec if decimals is None else decimals
-        u = ctx_unit if unit is None else unit
-
-        s = f"{value:.{int(d)}f}"
-        return f"{s} {u}" if u else s
-    
-    def format_report_percent(
-        self, p: float, *, decimals: int = 1, scale_0to1: bool = True
-    ) -> str:
-        if p is None or (isinstance(p, float) and np.isnan(p)):
-            return "NA"
-        val = (p * 100.0) if scale_0to1 else p
-        return f"{val:.{int(decimals)}f}%"
 
     # ======== Draw ========
     def draw(

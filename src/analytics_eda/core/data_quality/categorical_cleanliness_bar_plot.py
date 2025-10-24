@@ -230,7 +230,7 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
             return findings
         
         # how many issues are there and how common are they?
-        findings["primary_finding"] = f"{self.format_report_percent(pct_any_issue)} of values show at least one cleanliness issue ({total_issues:,} rows)."
+        findings["primary_finding"] = f"{self.formatter.format_percent(pct_any_issue)} of values show at least one cleanliness issue ({total_issues:,} rows)."
 
         # which issues had the most, how common, and how many?
         bars = desc.get("bars", {})
@@ -245,7 +245,7 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
             v = bars.get(lbl, {})
             pct = float(v.get(denom_key, 0.0))
             cnt = int(v.get("count", 0))
-            parts.append(f"{lbl} ({self.format_report_percent(pct)}, {cnt} rows)")
+            parts.append(f"{lbl} ({self.formatter.format_percent(pct)}, {cnt} rows)")
 
         if len(parts) == 1:
             findings["secondary_finding"] = f"Most frequent issue: {parts[0]}."
@@ -267,7 +267,7 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
             return "No cleanliness issues detected"
 
         # Case 2: some issues found
-        return f"{self.format_report_percent(pct_any_issue)} of {total_nonnull:,} non-null values have cleanliness issues"
+        return f"{self.formatter.format_percent(pct_any_issue)} of {total_nonnull:,} non-null values have cleanliness issues"
 
     def clean_series(self, s: pd.Series) -> tuple[pd.Series, dict]:
         """

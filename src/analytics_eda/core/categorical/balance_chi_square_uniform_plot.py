@@ -201,13 +201,13 @@ class BalanceChiSquareUniformPlot(BasePlot):
             d = int(b.get("delta", 0))
             if fmt == "std_resid":
                 sr = b.get("std_resid", np.nan)
-                return f"{lbl} (±{d:+d}, SR={sr:.2f})"
+                return f"{lbl} (±{d:+d}, SR={self.formatter.format_numeric_value(sr)})"
             elif fmt == "ratio":
                 r = b.get("ratio_oe", np.nan)
-                return f"{lbl} (O/E={r:.2f})"
+                return f"{lbl} (O/E={self.formatter.format_numeric_value(r)})"
             elif fmt == "±count_and_ratio":
                 r = b.get("ratio_oe", np.nan)
-                return f"{lbl} ({d:+d}, O/E={r:.2f})"
+                return f"{lbl} ({d:+d}, O/E={self.formatter.format_numeric_value(r)})"
             else:  # "±count"
                 return f"{lbl} ({d:+d})"
 
@@ -251,7 +251,7 @@ class BalanceChiSquareUniformPlot(BasePlot):
         if n_lt5 > 0:
             warning = (
                 f"Assumption caution: {n_lt5} of {k} categories have expected counts < 5 "
-                f"(minimum expected = {min_exp:.2f}); chi-square results may be unreliable."
+                f"(minimum expected = {self.formatter.format_numeric_value(min_exp)}); chi-square results may be unreliable."
             )
 
         # Test
@@ -294,8 +294,8 @@ class BalanceChiSquareUniformPlot(BasePlot):
 
         findings = {
             "context": f"Chi-square GOF on {k} categories (N = {total:,})",
-            "primary_finding": f"{decision} (p = {p:.3f} vs α = {alpha:.2f}).",
-            "secondary_finding": f"χ²(df = {df}) = {stat:.2f}."
+            "primary_finding": f"{decision} ({self.formatter.format_p_value(p)} vs α = {self.formatter.format_alpha(alpha)}).",
+            "secondary_finding": f"χ²({self.formatter.format_df(df)}) = {self.formatter.format_test_statistic(stat)}."
         }
 
         if warning:
@@ -353,9 +353,9 @@ class BalanceChiSquareUniformPlot(BasePlot):
             if fmt == "std_resid" and np.isfinite(std_r[i]):
                 return f"{std_r[i]:+.2f}"
             elif fmt == "ratio" and np.isfinite(ratio[i]):
-                return f"O/E={ratio[i]:.2f}"
+                return f"O/E={self.formatter.format_numeric_value(ratio[i])}"
             elif fmt == "±count_and_ratio" and np.isfinite(ratio[i]):
-                return f"{int(delta[i]):+d} (O/E={ratio[i]:.2f})"
+                return f"{int(delta[i]):+d} (O/E={self.formatter.format_numeric_value(ratio[i])})"
             else:
                 return f"{int(delta[i]):+d}"
 
@@ -368,5 +368,5 @@ class BalanceChiSquareUniformPlot(BasePlot):
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
         res = inf.get("chi2_gof_null_uniform")
         if res:
-            return f"Uniform GOF: {'Reject' if res['reject'] else 'Fail to reject'} at α={res['alpha']:.2f} (p={res['p_value']:.3f})"
+            return f"Uniform GOF: {'Reject' if res['reject'] else 'Fail to reject'} at α={self.formatter.format_alpha(res['alpha'])} ({self.formatter.format_p_value(res['p_value'])})"
         return ""

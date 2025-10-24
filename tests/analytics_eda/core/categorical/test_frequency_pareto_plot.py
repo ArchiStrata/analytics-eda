@@ -1,4 +1,3 @@
-from dataclasses import field
 import pytest
 import pandas as pd
 
@@ -117,7 +116,7 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
                     "pct_subset": 1.0,
                     "subset_count": 5,
                     "threshold_idx": 1,
-                    "threshold_pct": 80.0,
+                    "threshold_pct": 0.8,
                     "top_labels": [
                         "A"
                     ],
@@ -180,7 +179,7 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
                     "pct_subset": 1.0,
                     "subset_count": 6,
                     "threshold_idx": 1,
-                    "threshold_pct": 80.0,
+                    "threshold_pct": 0.8,
                     "top_labels": [
                         "C"
                     ],
@@ -243,7 +242,7 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
                     "pct_subset": 1.0,
                     "subset_count": 4,
                     "threshold_idx": 2,
-                    "threshold_pct": 80.0,
+                    "threshold_pct": 0.8,
                     "top_labels": [
                         "m"
                     ],
