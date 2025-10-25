@@ -203,7 +203,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         # 1) Bars via the common mixin
         fig, ax = SeriesBarChartMixin.draw(self, s, desc, inf, chart_metadata, fig=fig, ax=ax, palette=palette)
 
-        # 2) Pareto cumulative line (optional)
+        # 2) Pareto cumulative line
         mode   = getattr(self.ctx, "pareto_mode", "dual")
         cum    = self.draw_cache_get("pareto", "cumperc", np.array([]))
         thr_pct = float(self.draw_cache_get("pareto", "threshold_pct", 0.8))
