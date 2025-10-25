@@ -11,7 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Series bar-chart mixin for Analytics-EDA.
 
+Provides context options and shared helpers to build stats, cache draw arrays,
+and render series-based bar charts.
+"""
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -23,6 +27,24 @@ from analytics_eda.core.visualization.base_plot import PlotContext
 
 @dataclass
 class SeriesBarChartContext(PlotContext):
+    """Options that control series bar-chart behavior.
+
+    Attributes
+    ----------
+        show_count_in_bar_label: Append counts to bar-edge labels.
+        show_value_in_bar_label: Show primary metric (percent or count) on bars.
+        bar_height_source: Source for bar height ("values" → percent; "counts").
+        bar_sort_descending: Sort bars by primary metric descending.
+        bar_highlight_top: Highlight top bars.
+        bar_top_n: Number of top bars to highlight.
+        bar_top_include_ties: Include ties when computing top-k.
+        max_display_bars: Cap on number of bars to display (None for no cap).
+        other_label: Label used when aggregating capped bars.
+        other_label_format: Format for aggregated “Other” label.
+        other_min_count: Threshold to pre-aggregate small categories.
+        other_respect_existing: Merge with existing “Other” label if present.
+    """
+
     show_count_in_bar_label: bool = False
     show_value_in_bar_label: bool = True
     bar_height_source: Literal["values", "counts"] = "values"
@@ -53,6 +75,7 @@ class SeriesBarChartMixin:
 
     # Defaults when empty
     def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty descriptive-stats scaffold for bar charts."""
         return {
             "total": 0,
             "total_nonnull": 0,
@@ -70,8 +93,7 @@ class SeriesBarChartMixin:
         extra_params: dict[str, Any] | None = None,
         skip_plot_if_zero: bool = True,
     ) -> dict[str, Any]:
-        """
-        Build reporting-friendly bar statistics and cache draw arrays.
+        """Build reporting-friendly bar statistics and cache draw arrays.
 
         Parameters
         ----------
@@ -282,7 +304,7 @@ class SeriesBarChartMixin:
         top_n = max(1, int(getattr(self.ctx, "bar_top_n", 1)))
         include_ties = bool(getattr(self.ctx, "bar_top_include_ties", True))
 
-        label_to_metric = {lbl: float(m) for lbl, m in zip(labels, primary)}
+        label_to_metric = {lbl: float(m) for lbl, m in zip(labels, primary, strict=True)}
 
         # Exclude "Other" from consideration
         candidates = [(lbl, label_to_metric[lbl]) for lbl in labels if lbl != other_display]
@@ -339,8 +361,9 @@ class SeriesBarChartMixin:
 
     # ---- generic draw --------------------------------------------------------
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
-        """
-        Draw cached bars from draw cache under key 'series' with fields:
+        """Draw cached bars from draw cache.
+
+        Reads draw cache under key 'series' with:
         - labels: List[str]
         - values: List[float]  # typically 0..1 when plotting percents
         - counts: List[int]
@@ -348,8 +371,8 @@ class SeriesBarChartMixin:
         Behavior:
         - bar_height_source="values" -> plot percentages (0..1)
         - bar_height_source="counts" -> plot raw counts
-        - show_value_in_bar_label shows the *primary* metric (the one plotted)
-        - show_count_in_bar_label appends raw counts (if not already primary)
+        - show_value_in_bar_label shows the *primary* metric (the one plotted).
+        - show_count_in_bar_label appends raw counts (if not already primary).
         """
         labels = self.draw_cache_get("series", "labels") or []
         values = self.draw_cache_get("series", "values")
@@ -403,7 +426,7 @@ class SeriesBarChartMixin:
         else:
             counts_iter = counts
 
-        edge_labels = [_label(h, c) for h, c in zip(heights, counts_iter)]
+        edge_labels = [_label(h, c) for h, c in zip(heights, counts_iter, strict=True)]
 
         # Draw labels only if something to show
         if any(edge_labels):
@@ -412,9 +435,10 @@ class SeriesBarChartMixin:
         return fig, ax
 
     def bar_label(self, ax, container, *args, **kwargs):
-        """
-        Call ax.bar_label and automatically register the Text objects so BasePlot
-        can compute headroom. Use this in bar plots instead of ax.bar_label.
+        """Label bars and register the resulting Text artists.
+
+        Calls `ax.bar_label`, then registers the Text objects so BasePlot can
+        compute headroom. Use this in bar plots instead of `ax.bar_label`.
         """
         texts = ax.bar_label(container, *args, **kwargs)
         # BasePlot provides register_annotations

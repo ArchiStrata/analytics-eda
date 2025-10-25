@@ -11,21 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Chart title and metadata builders for Analytics-EDA."""
 
 from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Union
+from typing import Any
 
 import pandas as pd
 
-Desc = Union[str, Sequence[str], None]
+Desc = str | Sequence[str] | None
 
 class ChartMetadataBuilderProtocol:
-    """
-    Builds chart title and chart metadata dict.
+    """Builds chart title and chart metadata dict.
+
     BasePlot will pass callbacks to allow subclass overrides to participate
     (title_kwargs / metadata_overrides / version).
     """
@@ -39,6 +40,7 @@ class ChartMetadataBuilderProtocol:
         role_map: Mapping[str, str] | None = None,
         title_kwargs_cb: Callable[..., dict[str, Any]] | None = None,
     ) -> str:
+        """Return a chart title string built from context/roles/overrides."""
         raise NotImplementedError
 
     def build_metadata(
@@ -52,14 +54,13 @@ class ChartMetadataBuilderProtocol:
         title_kwargs_cb: Callable[..., dict[str, Any]] | None = None,
         metadata_overrides_cb: Callable[..., dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
+        """Return a chart metadata dict (title, labels, source, file, version, …)."""
         raise NotImplementedError
 
 
 @dataclass(frozen=True)
 class DefaultChartMetadataBuilder(ChartMetadataBuilderProtocol):
-    """
-    Default builder that mirrors the current BasePlot logic.
-    """
+    """Default builder mirroring the current BasePlot logic."""
 
     def _to_list(self, x: Desc) -> list[str]:
         if x is None:
@@ -71,7 +72,11 @@ class DefaultChartMetadataBuilder(ChartMetadataBuilderProtocol):
     def _label_from_roles(self, role_map: Mapping[str, str] | None) -> str | None:
         if not role_map:
             return None
-        y = role_map.get("y"); x = role_map.get("x"); hue = role_map.get("hue")
+
+        y = role_map.get("y")
+        x = role_map.get("x")
+        hue = role_map.get("hue")
+
         parts = []
         if y and x:
             parts.append(f"{y} by {x}")
@@ -92,6 +97,12 @@ class DefaultChartMetadataBuilder(ChartMetadataBuilderProtocol):
         role_map: Mapping[str, str] | None = None,
         title_kwargs_cb: Callable[..., dict[str, Any]] | None = None,
     ) -> str:
+        """Compose the final chart title.
+
+        Chooses a base label from ctx/roles/cols/series, applies modifiers
+        from filter/transform/fit/extra descriptions, and renders with
+        `ctx.title_template` plus optional `title_kwargs_cb`.
+        """
         joined_cols = " • ".join(cols) if cols else None
         role_label = self._label_from_roles(role_map)
 
@@ -149,6 +160,11 @@ class DefaultChartMetadataBuilder(ChartMetadataBuilderProtocol):
         title_kwargs_cb: Callable[..., dict[str, Any]] | None = None,
         metadata_overrides_cb: Callable[..., dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
+        """Assemble chart metadata.
+
+        Returns a dict with title/xlabel/ylabel/data_source/file_name/version,
+        merged with any overrides from `metadata_overrides_cb`.
+        """
         title = self.build_title(
             ctx=ctx,
             series=series,

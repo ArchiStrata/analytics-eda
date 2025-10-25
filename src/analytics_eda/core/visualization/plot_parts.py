@@ -11,7 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Composable pieces for building plots.
 
+Defines `PlotParts`, a lightweight container that wires together
+validators, chart metadata builder, and a renderer.
+"""
 from dataclasses import dataclass, field
 
 from analytics_eda.core.visualization.chart_metadata import (
@@ -24,6 +28,16 @@ from analytics_eda.core.visualization.validation import FrameValidator, SeriesVa
 
 @dataclass
 class PlotParts:
+    """Bundle of plot-building components.
+
+    Attributes
+    ----------
+        series_validator: Optional validator for a primary Series.
+        frame_validator: Optional validator for a DataFrame.
+        chart_metadata_builder: Builder that produces chart metadata.
+        renderer: Rendering backend used to draw/save figures.
+    """
+
     series_validator: SeriesValidator | None = None
     frame_validator: FrameValidator | None = None
     chart_metadata_builder: ChartMetadataBuilderProtocol = field(default_factory=DefaultChartMetadataBuilder)

@@ -11,15 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""Plot context and axis-format primitives for Analytics-EDA."""
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
-Desc = Union[str, Sequence[str], None]
+Desc = str | Sequence[str] | None
 
 @dataclass
 class AxisFormat:
+    """Axis tick/label formatting options.
+
+    Set `kind` to control the formatter, with additional fields for
+    decimals, thousands separator, units/currency, datetime format,
+    or a custom callable formatter.
+    """
+
     # High-level style
     kind: Literal["auto", "number", "percent", "currency", "category", "datetime"] = "auto"
 
@@ -40,6 +47,13 @@ class AxisFormat:
 
 @dataclass
 class PlotContext:
+    """Per-plot configuration used by renderers and mixins.
+
+    Includes high-level labels/titles, orientation, saving/showing options,
+    legend toggles, axis formatters, automatic headroom for labels, and
+    default report-formatting preferences.
+    """
+
     name: str | None = None
     filter_desc: Desc = None
     transform_desc: Desc = None

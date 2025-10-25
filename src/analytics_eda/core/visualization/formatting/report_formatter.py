@@ -11,16 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Formatting utilities for reports (values, percents, p-values, df, etc.)."""
+
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 import math
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
 
-DfLike = Union[int, float, tuple[int | float, int | float]]
+DfLike = int | float | tuple[int | float, int | float]
 
 
 class ReportFormatter:
@@ -89,8 +91,8 @@ class ReportFormatter:
         return f"{val:.{int(decimals)}%}"
 
     def max_decimals_in_series(self, s: pd.Series) -> int:
-        """
-        Infer the maximum number of decimal places present in the *raw* numeric values.
+        """Infer the maximum number of decimal places in raw numeric values.
+
         Integers -> 0. Floats are parsed via Decimal(str(...)) to avoid binary fp artifacts.
         """
         def dec_count(v) -> int:
@@ -112,16 +114,16 @@ class ReportFormatter:
         return int(max(dec_count(v) for v in x))
 
     def mean_decimals_from_series(self, s: pd.Series) -> int:
-        """
-        Return the decimal places for displaying the mean, using the rule:
-        show the mean to one more decimal than the most precise raw value.
+        """Return decimals for displaying the mean.
+
+        Rule: show the mean to one more decimal than the most precise raw value.
         Empty series defaults to 1 decimal.
 
         Examples
         --------
-          raw values as integers  -> returns 1
-          raw values to tenths    -> returns 2
-          raw values to hundredth -> returns 3
+        raw values as integers  -> returns 1
+        raw values to tenths    -> returns 2
+        raw values to hundredth -> returns 3
         """
         raw_max = self.max_decimals_in_series(s.dropna())
         # Apply the rounding rule for the mean: display it to one more decimal place than the
@@ -131,6 +133,12 @@ class ReportFormatter:
         return (raw_max + 1) if raw_max is not None else 1
 
     def median_decimals_from_series(self, s: pd.Series, median_value: float | None = None) -> int:
+        """Return decimals for displaying the median.
+
+        Uses the maximum raw precision in `s`. For even-length series where the
+        median is the average of two values (and a `median_value` is provided),
+        increases precision by one if the median is not equal to either middle value.
+        """
         x = s.dropna()
         if x.empty:
             return getattr(self, "report_default_decimals", 2)

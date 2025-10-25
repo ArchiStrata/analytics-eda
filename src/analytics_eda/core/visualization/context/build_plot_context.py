@@ -11,7 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Helpers to build plot contexts.
 
+Provides `build_plot_context`, which constructs or updates a dataclass-based
+plot context from a base instance or dict, applying validated overrides.
+"""
 from dataclasses import fields, is_dataclass, replace
 from typing import Any, TypeVar
 
