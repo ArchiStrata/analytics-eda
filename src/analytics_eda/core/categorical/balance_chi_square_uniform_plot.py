@@ -246,7 +246,7 @@ class BalanceChiSquareUniformPlot(BasePlot):
             }
 
         n_lt5 = int(np.sum(np.asarray(expected) < 5))
-        min_exp = float(np.min(expected)) if len(expected) else float("nan")
+        min_exp = float(np.min(expected)) if len(expected) else None
         warning = None
         if n_lt5 > 0:
             warning = (
@@ -279,11 +279,11 @@ class BalanceChiSquareUniformPlot(BasePlot):
 
         k = int(desc.get("k", 0))
         total = int(desc.get("total", 0))
-        p = float(res.get("p_value", float("nan")))
+        p = float(res.get("p_value", None))
         alpha = float(res.get("alpha", 0.05))
         df = int(res.get("df", max(k - 1, 0)))
         reject = bool(res.get("reject", False))
-        stat = float(res.get("statistic", float("nan")))
+        stat = float(res.get("statistic", None))
         warning = res.get("warning")
 
         decision = (

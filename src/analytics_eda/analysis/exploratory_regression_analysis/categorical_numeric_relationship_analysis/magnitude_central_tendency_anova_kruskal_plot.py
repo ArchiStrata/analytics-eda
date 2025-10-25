@@ -203,8 +203,8 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
 
         if len(arrays) < 2 or any(a.size == 0 for a in arrays):
             return {
-                "anova":   {"statistic": float("nan"), "p_value": float("nan"), "reject": False, "alpha": alpha},
-                "kruskal": {"statistic": float("nan"), "p_value": float("nan"), "reject": False, "alpha": alpha},
+                "anova":   {"statistic": None, "p_value": None, "reject": False, "alpha": alpha},
+                "kruskal": {"statistic": None, "p_value": None, "reject": False, "alpha": alpha},
             }
 
         a_stat, a_p = f_oneway(*arrays)

@@ -89,16 +89,16 @@ class DistributionProbabilityFunctionPlot(BasePlot):
     def default_descriptive(self) -> Dict[str, Any]:
         return {
             "n": 0,
-            "mean": float("nan"),
-            "median": float("nan"),
-            "mode": float("nan"),
-            "variance": float("nan"),
-            "std": float("nan"),
-            "iqr": float("nan"),
-            "skewness": float("nan"),
-            "kurtosis": float("nan"),
-            "min": float("nan"),
-            "max": float("nan"),
+            "mean": None,
+            "median": None,
+            "mode": None,
+            "variance": None,
+            "std": None,
+            "iqr": None,
+            "skewness": None,
+            "kurtosis": None,
+            "min": None,
+            "max": None,
             # payload:
             "x_pmf": [],
             "y_pmf": [],
@@ -111,16 +111,16 @@ class DistributionProbabilityFunctionPlot(BasePlot):
         n = int(s.size)
 
         # Basic stats
-        mean = float(s.mean()) if n else float("nan")
-        median = float(s.median()) if n else float("nan")
-        mode_val = float(s.mode().iloc[0]) if n and not s.mode().empty else float("nan")
-        variance = float(s.var()) if n else float("nan")
-        std = float(s.std()) if n else float("nan")
-        iqr = float(s.quantile(0.75) - s.quantile(0.25)) if n else float("nan")
-        skewness = float(s.skew()) if n else float("nan")
-        kurtosis = float(s.kurtosis()) if n else float("nan")
-        min_val = float(s.min()) if n else float("nan")
-        max_val = float(s.max()) if n else float("nan")
+        mean = float(s.mean()) if n else None
+        median = float(s.median()) if n else None
+        mode_val = float(s.mode().iloc[0]) if n and not s.mode().empty else None
+        variance = float(s.var()) if n else None
+        std = float(s.std()) if n else None
+        iqr = float(s.quantile(0.75) - s.quantile(0.25)) if n else None
+        skewness = float(s.skew()) if n else None
+        kurtosis = float(s.kurtosis()) if n else None
+        min_val = float(s.min()) if n else None
+        max_val = float(s.max()) if n else None
 
         desc: Dict[str, Any] = {
             "n": n,

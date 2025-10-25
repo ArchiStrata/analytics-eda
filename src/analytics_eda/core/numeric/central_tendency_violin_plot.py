@@ -74,16 +74,16 @@ class CentralTendencyViolinPlot(BasePlot):
                 "median_ci_method": self.ctx.median_ci_method,
             },
             "n": 0,
-            "mean": float("nan"),
-            "median": float("nan"),
-            "mean_ci": (float("nan"), float("nan")),
-            "median_ci": (float("nan"), float("nan")),
+            "mean": None,
+            "median": None,
+            "mean_ci": (None, None),
+            "median_ci": (None, None),
         }
 
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
         n = int(s.size)
-        mean = float(s.mean()) if n else float("nan")
-        median = float(s.median()) if n else float("nan")
+        mean = float(s.mean()) if n else None
+        median = float(s.median()) if n else None
 
         # Mean CI
         if n:
@@ -101,7 +101,7 @@ class CentralTendencyViolinPlot(BasePlot):
             else:
                 raise ValueError("mean_ci_method must be 't' or 'bootstrap'")
         else:
-            mean_ci = (float("nan"), float("nan"))
+            mean_ci = (None, None)
 
         # Median CI
         if n and self.ctx.median_ci_method == "bootstrap":
@@ -111,7 +111,7 @@ class CentralTendencyViolinPlot(BasePlot):
             lo, hi = np.percentile(boot_meds, [100 * self.ctx.alpha / 2, 100 * (1 - self.ctx.alpha / 2)])
             median_ci = (float(lo), float(hi))
         elif self.ctx.median_ci_method is None:
-            median_ci = (float("nan"), float("nan"))
+            median_ci = (None, None)
         else:
             # Guard against unexpected value
             raise ValueError("median_ci_method must be 'bootstrap' or None")

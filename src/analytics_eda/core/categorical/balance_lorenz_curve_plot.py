@@ -113,7 +113,7 @@ class BalanceLorenzCurvePlot(BasePlot):
         }
 
     def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
-        if not desc or desc.get("total", 0) == 0 or np.isnan(desc.get("gini_index", float("nan"))):
+        if not desc or desc.get("total", 0) == 0 or np.isnan(desc.get("gini_index", None)):
             return {}
 
         total = desc["total"]
@@ -161,7 +161,7 @@ class BalanceLorenzCurvePlot(BasePlot):
         return fig, ax
 
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
-        if not desc or desc.get("total", 0) == 0 or np.isnan(desc.get("gini_index", float("nan"))):
+        if not desc or desc.get("total", 0) == 0 or np.isnan(desc.get("gini_index", None)):
             return ""
 
         gini = float(desc["gini_index"])

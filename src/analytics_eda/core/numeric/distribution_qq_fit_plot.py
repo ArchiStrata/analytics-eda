@@ -90,15 +90,15 @@ class DistributionQqFitPlot(BasePlot):
 
     def default_descriptive(self) -> Dict[str, Any]:
         return {
-            "intercept": float("nan"),
-            "slope": float("nan"),
-            "r_squared": float("nan"),
-            "median_residual": float("nan"),
-            "iqr_residual": float("nan"),
-            "max_abs_residual": float("nan"),
-            "skewness": float("nan"),
-            "kurtosis": float("nan"),
-            "min": float("nan")
+            "intercept": None,
+            "slope": None,
+            "r_squared": None,
+            "median_residual": None,
+            "iqr_residual": None,
+            "max_abs_residual": None,
+            "skewness": None,
+            "kurtosis": None,
+            "min": None
         }
 
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:

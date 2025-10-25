@@ -44,8 +44,8 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
                 "descriptive_stats": {
                     "n": 0,
-                    "mean": (lambda v: np.isnan(v)),
-                    "median": (lambda v: np.isnan(v)),
+                    "mean": None,
+                    "median": None,
                     "modes": [],
                     "params": {
                         "bins": 0,

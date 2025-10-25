@@ -121,8 +121,8 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
 
         n_groups = len(arrays)
         ns = [int(a.size) for a in arrays]
-        means = [float(np.mean(a)) if a.size else float("nan") for a in arrays]
-        stds = [float(np.std(a, ddof=1)) if a.size > 1 else float("nan") for a in arrays]
+        means = [float(np.mean(a)) if a.size else None for a in arrays]
+        stds = [float(np.std(a, ddof=1)) if a.size > 1 else None for a in arrays]
 
         return {
             "n_groups": n_groups,
@@ -149,8 +149,8 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
 
         if len(arrays) < 2 or any(len(a) == 0 for a in arrays):
             return {
-                "bartlett": {"statistic": float("nan"), "p_value": float("nan"), "reject": False, "alpha": alpha},
-                "levene":   {"statistic": float("nan"), "p_value": float("nan"), "reject": False, "alpha": alpha},
+                "bartlett": {"statistic": None, "p_value": None, "reject": False, "alpha": alpha},
+                "levene":   {"statistic": None, "p_value": None, "reject": False, "alpha": alpha},
             }
 
         # Bartlett (sensitive to non-normality)

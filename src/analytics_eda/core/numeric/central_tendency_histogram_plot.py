@@ -69,14 +69,15 @@ class CentralTendencyHistogramPlot(BasePlot):
         return {
             "params": {
                 "bins": int(bins),
+                "bins_arg": None,
+                "bin_rule": None,
                 "mode_method": None,
                 "min_peak_strength": float(getattr(self.ctx, "min_peak_strength", 0.05)),
                 "max_mode_lines": int(getattr(self.ctx, "max_mode_lines", 3)),
-                "bin_rule": None,  # optional, see next snippet
             },
             "n": 0,
-            "mean": float("nan"),
-            "median": float("nan"),
+            "mean": None,
+            "median": None,
             "modes": [],
         }
 
@@ -121,11 +122,11 @@ class CentralTendencyHistogramPlot(BasePlot):
         bins_arg = (chosen_bins if (isinstance(chosen_bins, (list, tuple, np.ndarray)) and len(chosen_bins) > 0)
                     else (max(int(chosen_bins), 1) if isinstance(chosen_bins, int) else 1))
 
-        mean = float(x.mean()) if n else float("nan")
+        mean = float(x.mean()) if n else None
         mean_round_decimals = self.formatter.mean_decimals_from_series(x)
         mean_formatted = self.formatter.format_numeric_value(mean, decimals=mean_round_decimals)
 
-        median = float(x.median()) if n else float("nan")
+        median = float(x.median()) if n else None
         median_round_decimals = self.formatter.median_decimals_from_series(x, median)
         median_formatted = self.formatter.format_numeric_value(median, decimals=median_round_decimals)
 
@@ -133,7 +134,7 @@ class CentralTendencyHistogramPlot(BasePlot):
         mode_method: Optional[str] = None
         candidate_modes: List[float] = []
         modality: str = "none"          # "unimodal" | "bimodal" | "multimodal" | "none"
-        peak_strength: float = float("nan")  # fraction of observations in the strongest peak
+        peak_strength: float = None  # fraction of observations in the strongest peak
 
         if n == 0:
             pass  # keep defaults
@@ -153,7 +154,7 @@ class CentralTendencyHistogramPlot(BasePlot):
             # Try exact mode first
             raw_modes = x.mode().tolist()
             vc = x.value_counts()
-            peak_strength = float(vc.max()) / n if n else float("nan")
+            peak_strength = float(vc.max()) / n if n else None
 
             if len(raw_modes) == 1:
                 candidate_modes = [float(raw_modes[0])]
@@ -167,7 +168,7 @@ class CentralTendencyHistogramPlot(BasePlot):
                 top_bins = np.where(counts == max_count)[0]
 
                 # Strength based on histogram peak (overrides value-count strength)
-                peak_strength = float(max_count) / n if n else float("nan")
+                peak_strength = float(max_count) / n if n else None
 
                 candidate_modes = [float(0.5 * (edges[i] + edges[i + 1])) for i in top_bins]
                 mode_method = "histogram_bin_centers"
@@ -311,7 +312,7 @@ class CentralTendencyHistogramPlot(BasePlot):
 
             # Modes (presentation rules here)
             candidate_modes = desc.get("modes", []) or []
-            peak_strength = float(desc.get("peak_strength") or float("nan"))
+            peak_strength = float(desc.get("peak_strength") or None)
 
             # Suppress if peak too weak
             if (len(candidate_modes) > 0) and not (np.isnan(peak_strength)) and (peak_strength >= self.ctx.min_peak_strength):

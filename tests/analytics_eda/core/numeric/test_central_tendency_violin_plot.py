@@ -63,10 +63,10 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
                 "descriptive_stats": {
                     "n": 0,
-                    "mean": (lambda v: np.isnan(v)),
-                    "median": (lambda v: np.isnan(v)),
-                    "mean_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isnan(x) for x in v)),
-                    "median_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isnan(x) for x in v)),
+                    "mean": None,
+                    "median": None,
+                    "mean_ci": [None, None],
+                    "median_ci": [None, None],
                     "params": {
                         "mean_ci_method": "t",
                         "median_ci_method": "bootstrap",
@@ -199,10 +199,10 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
                 "descriptive_stats": {
                     "n": 0,
-                    "mean": (lambda v: np.isnan(v)),
-                    "median": (lambda v: np.isnan(v)),
-                    "mean_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isnan(x) for x in v)),
-                    "median_ci": (lambda v: isinstance(v, tuple) and len(v) == 2 and all(np.isnan(x) for x in v)),
+                    "mean": None,
+                    "median": None,
+                    "mean_ci": [None, None],
+                    "median_ci": [None, None],
                     "params": {"mean_ci_method": "t", "median_ci_method": "bootstrap"},
                 },
                 "inferential_stats": {

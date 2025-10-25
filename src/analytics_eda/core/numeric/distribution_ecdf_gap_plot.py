@@ -75,14 +75,14 @@ class DistributionECDFGapPlot(BasePlot):
             "n": 0,
             "n_unique": 0,
             "gaps": [],
-            "max_gap": float("nan"),
-            "median_gap": float("nan"),
-            "pct10_gap": float("nan"),
-            "pct50_gap": float("nan"),
-            "pct90_gap": float("nan"),
+            "max_gap": None,
+            "median_gap": None,
+            "pct10_gap": None,
+            "pct50_gap": None,
+            "pct90_gap": None,
             "n_gaps_above_thr": (0 if self.ctx.threshold is not None else None),
-            "total_gap_prop": float("nan"),
-            "max_gap_loc": float("nan")
+            "total_gap_prop": None,
+            "max_gap_loc": None
         }
 
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
@@ -101,7 +101,7 @@ class DistributionECDFGapPlot(BasePlot):
             pct90_gap = float(np.percentile(gaps, 90))
 
             denom = float(unique_vals[-1] - unique_vals[0])
-            total_gap_prop = float(gaps.sum() / denom) if denom != 0 else float("nan")
+            total_gap_prop = float(gaps.sum() / denom) if denom != 0 else None
 
             # location of max gap midpoint
             max_idx = int(np.argmax(gaps))
@@ -112,7 +112,7 @@ class DistributionECDFGapPlot(BasePlot):
         else:
             # not enough distinct values
             gaps_list = []
-            max_gap = median_gap = pct10_gap = pct50_gap = pct90_gap = total_gap_prop = max_gap_loc = float("nan")
+            max_gap = median_gap = pct10_gap = pct50_gap = pct90_gap = total_gap_prop = max_gap_loc = None
             max_idx = None
             n_gaps_above = 0 if self.ctx.threshold is not None else None
 

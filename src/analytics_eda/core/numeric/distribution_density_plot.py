@@ -78,16 +78,16 @@ class DistributionDensityPlot(BasePlot):
         return {
             "params": {"bins": self.ctx.bins, "bin_method": self.ctx.bin_method},
             "n": 0,
-            "entropy_bits": float("nan"),
-            "skewness": float("nan"),
-            "kurtosis": float("nan"),
+            "entropy_bits": None,
+            "skewness": None,
+            "kurtosis": None,
             "modes_count": 0,
-            "quartile_skew": float("nan"),
-            "pct_10": float("nan"),
-            "pct_25": float("nan"),
-            "pct_50": float("nan"),
-            "pct_75": float("nan"),
-            "pct_90": float("nan")
+            "quartile_skew": None,
+            "pct_10": None,
+            "pct_25": None,
+            "pct_50": None,
+            "pct_75": None,
+            "pct_90": None
         }
 
     def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
@@ -133,7 +133,7 @@ class DistributionDensityPlot(BasePlot):
         # Entropy over histogram (normalize to probabilities)
         hist_counts, _ = np.histogram(s.to_numpy(), bins=chosen_bins)
         probs = hist_counts / hist_counts.sum() if hist_counts.sum() > 0 else np.array([])
-        entropy_bits = float(-np.sum(probs * np.log2(probs + 1e-12))) if probs.size else float("nan")
+        entropy_bits = float(-np.sum(probs * np.log2(probs + 1e-12))) if probs.size else None
 
         return {
             "params": {"bins": chosen_bins, "bin_method": self.ctx.bin_method},

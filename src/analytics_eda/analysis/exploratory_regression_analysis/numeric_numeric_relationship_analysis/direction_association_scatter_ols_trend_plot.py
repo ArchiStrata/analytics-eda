@@ -65,9 +65,9 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
                 # Add descriptive parameters here if the context ever includes any
             },
             "n_obs": 0.0,
-            "slope": float("nan"),
-            "intercept": float("nan"),
-            "slope_sign": float("nan"),
+            "slope": None,
+            "intercept": None,
+            "slope_sign": None,
         }
 
     def default_inferential(self) -> Dict[str, Any]:
@@ -75,12 +75,12 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
         return {
             "params": {"alpha": alpha},
             "slope_t_test": {
-                "statistic": float("nan"),
-                "df": float("nan"),
-                "p_value": float("nan"),
+                "statistic": None,
+                "df": None,
+                "p_value": None,
                 "alpha": alpha,
                 "reject": False,
-                "ci": (float("nan"), float("nan")),
+                "ci": (None, None),
             }
         }
     
@@ -116,9 +116,9 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
                 # echo descriptive params from context here if/when added
             },
             "n_obs": float(n),
-            "slope": float("nan"),
-            "intercept": float("nan"),
-            "slope_sign": float("nan"),
+            "slope": None,
+            "intercept": None,
+            "slope_sign": None,
         }
 
         # Not enough info or zero variance in X

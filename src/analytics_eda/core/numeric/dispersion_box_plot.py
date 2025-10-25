@@ -66,19 +66,19 @@ class DispersionBoxPlot(BasePlot):
         return {
             "params": {"std_outlier_multiplier": float(self.ctx.std_outlier_multiplier)},
             "n": 0,
-            "mean": float("nan"),
-            "std": float("nan"),
-            "var": float("nan"),
-            "min": float("nan"),
-            "max": float("nan"),
-            "range": float("nan"),
-            "mad": float("nan"),
-            "cv": float("nan"),
-            "pct_10": float("nan"),
-            "pct_25": float("nan"),
-            "pct_75": float("nan"),
-            "pct_90": float("nan"),
-            "iqr": float("nan"),
+            "mean": None,
+            "std": None,
+            "var": None,
+            "min": None,
+            "max": None,
+            "range": None,
+            "mad": None,
+            "cv": None,
+            "pct_10": None,
+            "pct_25": None,
+            "pct_75": None,
+            "pct_90": None,
+            "iqr": None,
             "extreme_lower_count": 0,
             "extreme_upper_count": 0,
             "extreme_lower_bound": 0,
@@ -94,7 +94,7 @@ class DispersionBoxPlot(BasePlot):
         max_val = float(s.max())
         range_val = float(max_val - min_val)
         mad = float((s - s.mean()).abs().mean())
-        cv = float(std / mean) if mean != 0 else float("nan")
+        cv = float(std / mean) if mean != 0 else None
         pct_10 = float(s.quantile(0.10))
         pct_25 = float(s.quantile(0.25))
         pct_75 = float(s.quantile(0.75))
