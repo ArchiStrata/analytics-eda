@@ -1,7 +1,7 @@
-import pytest
 import pandas as pd
+import pytest
 
-from analytics_eda.core.categorical import BalanceLorenzCurvePlot, BalanceLorenzCurveContext
+from analytics_eda.core.categorical import BalanceLorenzCurveContext, BalanceLorenzCurvePlot
 
 
 @pytest.mark.parametrize(

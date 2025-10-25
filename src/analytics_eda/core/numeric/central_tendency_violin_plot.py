@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Literal
+from typing import Any, Literal
+
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from scipy import stats
+import seaborn as sns
 
-from ..visualization.base_plot import BasePlot, PlotContext
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import numeric_validator
+
+from ..visualization.base_plot import BasePlot, PlotContext
 
 MeanCIMethod = Literal['t', 'bootstrap']
 MedianCIMethod = Literal['bootstrap', None]
@@ -39,9 +41,9 @@ class CentralTendencyViolinContext(PlotContext):
     bootstrap_samples: int = 1_000
 
     # optional population params for tests
-    popmean: Optional[float] = None
-    popmedian: Optional[float] = None
-    popvariance: Optional[float] = None
+    popmean: float | None = None
+    popmedian: float | None = None
+    popvariance: float | None = None
 
 class CentralTendencyViolinPlot(BasePlot):
     """
@@ -61,13 +63,14 @@ class CentralTendencyViolinPlot(BasePlot):
         "chart_metadata": {...}
       }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=numeric_validator()
         )
         super().__init__(ctx, parts)
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {
             "params": {
                 "mean_ci_method": self.ctx.mean_ci_method,
@@ -80,7 +83,7 @@ class CentralTendencyViolinPlot(BasePlot):
             "median_ci": (None, None),
         }
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         n = int(s.size)
         mean = float(s.mean()) if n else None
         median = float(s.median()) if n else None
@@ -127,8 +130,8 @@ class CentralTendencyViolinPlot(BasePlot):
             "mean_ci": mean_ci,
             "median_ci": median_ci,
         }
-    
-    def default_inferential(self) -> Dict[str, Any]:
+
+    def default_inferential(self) -> dict[str, Any]:
         return {
             "params": {
                 "alpha": self.ctx.alpha,
@@ -139,8 +142,8 @@ class CentralTendencyViolinPlot(BasePlot):
             }
         }
 
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
-        out: Dict[str, Any] = {
+    def compute_inferential(self, s: pd.Series, desc: dict[str, Any]) -> dict[str, Any]:
+        out: dict[str, Any] = {
             "params": {
                 "alpha": self.ctx.alpha,
                 "bootstrap_samples": self.ctx.bootstrap_samples,
@@ -157,7 +160,7 @@ class CentralTendencyViolinPlot(BasePlot):
             # One-Sample Cohen's d
             sd = float(s.std(ddof=1))
             cohens_d = (desc["mean"] - self.ctx.popmean) / sd if sd != 0 else None
-            
+
             # One-Sample t-Test
             t_stat, t_p = stats.ttest_1samp(s, self.ctx.popmean)
             out["popmean"]["cohens_d"] = None if cohens_d is None else float(cohens_d)
@@ -210,9 +213,9 @@ class CentralTendencyViolinPlot(BasePlot):
     def draw(
         self,
         s: pd.Series,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         fig,
         ax,

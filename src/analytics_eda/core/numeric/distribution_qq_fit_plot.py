@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Literal
+from typing import Any, Literal
+
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from scipy import stats
+import seaborn as sns
 
-from ..visualization.base_plot import BasePlot, PlotContext
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import numeric_validator
+
+from ..visualization.base_plot import BasePlot, PlotContext
 
 DistributionName = Literal['norm', 'lognorm', 'gamma', 'expon']
 
@@ -67,13 +69,14 @@ class DistributionQqFitPlot(BasePlot):
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=numeric_validator()
         )
         super().__init__(ctx, parts)
 
-    def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+    def title_kwargs(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
         dist = self.ctx.distribution_name
         return {
             "fit_desc": f"fitted to {dist}",
@@ -82,13 +85,13 @@ class DistributionQqFitPlot(BasePlot):
             "dist": dist,
         }
 
-    def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+    def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
         return {
             "distribution_name": self.ctx.distribution_name,
             "alpha": float(self.ctx.alpha),
         }
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {
             "intercept": None,
             "slope": None,
@@ -101,7 +104,7 @@ class DistributionQqFitPlot(BasePlot):
             "min": None
         }
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         data = s.dropna().astype(float)
         n = int(data.size)
         if n == 0:
@@ -170,8 +173,8 @@ class DistributionQqFitPlot(BasePlot):
             "osr": osr,
             "fitted": fitted,
         }
-    
-    def default_inferential(self) -> Dict[str, Any]:
+
+    def default_inferential(self) -> dict[str, Any]:
         return {
             "params": {
                 "alpha": self.ctx.alpha,
@@ -179,10 +182,10 @@ class DistributionQqFitPlot(BasePlot):
             }
         }
 
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+    def compute_inferential(self, s: pd.Series, desc: dict[str, Any]) -> dict[str, Any]:
         data = s.dropna().astype(float)
         n = int(data.size)
-        res: Dict[str, Any] = {"params": {"alpha": float(self.ctx.alpha), "distribution_name": self.ctx.distribution_name}}
+        res: dict[str, Any] = {"params": {"alpha": float(self.ctx.alpha), "distribution_name": self.ctx.distribution_name}}
         if n == 0:
             return res
 
@@ -216,9 +219,9 @@ class DistributionQqFitPlot(BasePlot):
     def draw(
         self,
         s: pd.Series,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         fig,
         ax,

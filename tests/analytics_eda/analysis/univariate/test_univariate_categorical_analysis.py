@@ -1,8 +1,11 @@
 import pandas as pd
 import pytest
 
-from analytics_eda.analysis.univariate.univariate_categorical_analysis import univariate_categorical_analysis
-    
+from analytics_eda.analysis.univariate.univariate_categorical_analysis import (
+    univariate_categorical_analysis,
+)
+
+
 @pytest.mark.parametrize(
     "make_series, kwargs, expected_report_data",
     [
@@ -132,7 +135,7 @@ def test_univariate_categorical_analysis_report_data_driven(
 ):
     # Arrange
     s = make_series()
-    
+
     # Act
     out = univariate_categorical_analysis(
         s, report_root=str(tmp_path), **kwargs

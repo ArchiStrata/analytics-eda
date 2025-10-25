@@ -13,16 +13,21 @@
 # limitations under the License.
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, Literal
+from typing import Any, Literal
+
 import numpy as np
 import pandas as pd
 
 from analytics_eda.core.visualization.context.plot_context import AxisFormat
-from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import (
+    SeriesBarChartContext,
+    SeriesBarChartMixin,
+)
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import categorical_validator
 
 from ..visualization.base_plot import BasePlot
+
 
 @dataclass
 class FrequencyParetoContext(SeriesBarChartContext):
@@ -61,6 +66,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
     - Draws bars for category shares and a cumulative line.
     - Highlights how many categories are needed to reach a chosen threshold (e.g., 80%).
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=categorical_validator()
@@ -73,7 +79,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         """
         return "1.0.0"
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         counts = s.value_counts()
 
         # Build standard series-bar desc (percent base is pct_of_total for Pareto)
@@ -85,7 +91,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
             "pareto_line_marker": getattr(self.ctx, "pareto_line_marker", "o"),
             "pareto_line_style": getattr(self.ctx, "pareto_line_style", "-"),
         }
-        
+
         desc = self.build_series_bar_desc(
             s,
             counts.to_dict(),
@@ -123,8 +129,8 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
             "threshold_idx": thr_idx,
         })
         return desc
-    
-    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
         total = int(desc.get("total", 0))
         k = int(desc.get("input_categories", 0))
         if total == 0 or k == 0:

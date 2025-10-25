@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable
+from collections.abc import Callable
 
 
 def select_transforms(
@@ -39,7 +39,6 @@ def select_transforms(
     List[str]
         Candidate transforms, in order of evaluation.
     """
-
     # pull out the few values we need
     min_val   = descriptive_stats.get('min')
     skew      = descriptive_stats.get('skewness', 0.0)

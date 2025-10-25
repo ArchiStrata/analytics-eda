@@ -11,19 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pathlib import Path
 import logging
-from typing import Any, Dict, Optional
+from pathlib import Path
+from typing import Any
 import uuid
+
 import pandas as pd
 
 from analytics_eda.core.visualization.context import build_plot_context
 from analytics_eda.core.visualization.validation import categorical_validator
 
 from ...core.categorical import categorical_distribution_analysis
-from ...core.reporting import write_json_report
+from ...core.data_quality import (
+    CategoricalCleanlinessBarContext,
+    CategoricalCleanlinessBarPlot,
+    MissingDataBarContext,
+    MissingDataBarPlot,
+)
 from ...core.numeric import CardinalityBarContext, CardinalityBarPlot
-from ...core.data_quality import CategoricalCleanlinessBarPlot, CategoricalCleanlinessBarContext, MissingDataBarContext, MissingDataBarPlot
+from ...core.reporting import write_json_report
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +37,18 @@ def univariate_categorical_analysis(
     series: pd.Series,
     report_root: str = 'reports/eda/univariate/categorical',
     report_log_id = str(uuid.uuid4()),
-    data_source: Optional[str] = None,
-    filter_desc: Optional[str] = None,
-    plot_frequency_pareto_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_density_overrides: Optional[Dict[str, Any]] = None,
-    plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
-    plot_balance_chi_square_uniform_overrides: Optional[Dict[str, Any]] = None,
-    plot_balance_lorenz_curve_overrides: Optional[Dict[str, Any]] = None,
-    plot_balance_rare_categories_overrides: Optional[Dict[str, Any]] = None,
+    data_source: str | None = None,
+    filter_desc: str | None = None,
+    plot_frequency_pareto_overrides: dict[str, Any] | None = None,
+    plot_distribution_density_overrides: dict[str, Any] | None = None,
+    plot_dispersion_boxplot_overrides: dict[str, Any] | None = None,
+    plot_balance_chi_square_uniform_overrides: dict[str, Any] | None = None,
+    plot_balance_lorenz_curve_overrides: dict[str, Any] | None = None,
+    plot_balance_rare_categories_overrides: dict[str, Any] | None = None,
 
-    plot_missing_data_bar_overrides: Optional[Dict[str, Any]] = None,
-    plot_categorical_cleanliness_bar_overrides: Optional[Dict[str, Any]] = None,
-    plot_cardinality_bar_overrides: Optional[Dict[str, Any]] = None,
+    plot_missing_data_bar_overrides: dict[str, Any] | None = None,
+    plot_categorical_cleanliness_bar_overrides: dict[str, Any] | None = None,
+    plot_cardinality_bar_overrides: dict[str, Any] | None = None,
 ) -> Path:
     """
     Perform a comprehensive univariate analysis of a categorical pandas Series, 
@@ -67,7 +73,8 @@ def univariate_categorical_analysis(
         plot_balance_lorenz_curve_overrides (dict, optional): 
             Per-plot configuration overrides.
 
-    Returns:
+    Returns
+    -------
         dict: {
             'report_file_path': Path to the saved JSON report
         }

@@ -11,16 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from scipy.stats import kruskal
 
-from ..utils.utils import resolve_cat_col, resolve_num_col, grouped_arrays, truncate_labels
 from ....core.visualization.base_plot import BasePlot
 from ....core.visualization.context import PlotContext
-
+from ..utils.utils import grouped_arrays, resolve_cat_col, resolve_num_col, truncate_labels
 
 # ---------------- Context ----------------
 
@@ -29,6 +30,7 @@ class MagnitudeEffectSizeBarContext(PlotContext):
     """
     Context for effect-size bar chart.
     """
+
     title_template: str = "Effect Sizes for {name}{modifiers}"
     xlabel: str = "Effect Size"
     ylabel: str = "Magnitude (0–1)"
@@ -43,7 +45,7 @@ class MagnitudeEffectSizeBarContext(PlotContext):
     thresh_large: float = 0.14
 
     # label handling
-    max_label_len: Optional[int] = 30
+    max_label_len: int | None = 30
 
 
 # -------------- Plot ---------------------
@@ -75,7 +77,7 @@ class MagnitudeEffectSizeBarPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
+        role_map: Mapping[str, str] | None = None,
     ) -> pd.DataFrame:
         """Require categorical (x) and numeric (y); drop rows with NA in either."""
         cat = resolve_cat_col(df, cols, role_map)
@@ -90,8 +92,8 @@ class MagnitudeEffectSizeBarPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
-    ) -> Dict[str, Any]:
+        role_map: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
         """Compute η², ω², ε² from grouped data (graceful NaNs on degenerate cases)."""
         ctx = self.ctx  # type: MagnitudeEffectSizeBarContext
         cat = resolve_cat_col(df, cols, role_map)
@@ -154,12 +156,12 @@ class MagnitudeEffectSizeBarPlot(BasePlot):
     def draw_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str,str]] = None,
+        role_map: Mapping[str, str] | None = None,
         fig=None,
         ax=None,
         palette=None,

@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass, field
-from typing import Dict, Any
+from typing import Any
+
 import pandas as pd
 
 from analytics_eda.core.visualization.context.plot_context import AxisFormat
-from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import SeriesBarChartMixin, SeriesBarChartContext
-
+from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import (
+    SeriesBarChartContext,
+    SeriesBarChartMixin,
+)
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import named_only_validator
+
 from ..visualization.base_plot import BasePlot
 
 
@@ -58,6 +62,7 @@ class MissingDataBarPlot(SeriesBarChartMixin, BasePlot):
         }
       }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=named_only_validator(dropna=False, cast_str=False)
@@ -70,7 +75,7 @@ class MissingDataBarPlot(SeriesBarChartMixin, BasePlot):
         """
         return "1.0.0"
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         counts = s.isna().map({False: "Present", True: "Missing"}).value_counts().to_dict()
         # Ensure stable order presence
         counts = {"Present": counts.get("Present", 0), "Missing": counts.get("Missing", 0)}
@@ -83,8 +88,8 @@ class MissingDataBarPlot(SeriesBarChartMixin, BasePlot):
         )
 
         return desc
-    
-    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
         findings = {
             # how many total values were included in the plot analysis?
             "context": f"{desc['total']:,} values",
@@ -99,7 +104,7 @@ class MissingDataBarPlot(SeriesBarChartMixin, BasePlot):
         pct_missing = desc['bars']['Missing']['pct_of_total']
         total = desc['total']
         findings["primary_finding"] =  f"{self.formatter.format_percent(pct_missing)} of {total:,} values are missing."
-        
+
         if pct_missing == 0:
             findings["secondary_finding"] = "No missing values detected."
         elif pct_missing == 1.0:
@@ -112,7 +117,7 @@ class MissingDataBarPlot(SeriesBarChartMixin, BasePlot):
             findings["secondary_finding"] = "Missing values exceed present values."
 
         return findings
-    
+
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
         if not desc or desc.get("total", 0) == 0:
             return ""

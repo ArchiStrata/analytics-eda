@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import replace, fields, is_dataclass
-from typing import Any, Dict, Optional, Type, TypeVar
+from dataclasses import fields, is_dataclass, replace
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
 def build_plot_context(
-    ctx_cls: Type[T],
-    base: Optional[T | Dict[str, Any]] = None,
-    overrides: Optional[Dict[str, Any]] = None,
+    ctx_cls: type[T],
+    base: T | dict[str, Any] | None = None,
+    overrides: dict[str, Any] | None = None,
 ) -> T:
     """Create or copy a context with validated overrides."""
     overrides = overrides or {}

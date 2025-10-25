@@ -11,17 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence, List
 import math
+from typing import Any
+
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
-
-from ..utils.utils import resolve_cat_col, resolve_num_col, grouped_arrays, truncate_labels, agg_mean
 
 from ....core.visualization.base_plot import BasePlot
 from ....core.visualization.context import PlotContext
+from ..utils.utils import (
+    agg_mean,
+    grouped_arrays,
+    resolve_cat_col,
+    resolve_num_col,
+    truncate_labels,
+)
 
 # ---------------- Context ----------------
 
@@ -32,13 +39,13 @@ class MagnitudeDistributionOverlapDensityContext(PlotContext):
     ylabel: str = "Density"
 
     # plot-specific knobs
-    bw: Optional[float | str] = "scott"   # "scott", "silverman", or a float bandwidth
+    bw: float | str | None = "scott"   # "scott", "silverman", or a float bandwidth
     grid_size: int = 256                  # number of x grid points
     padding: float = 0.05                 # extra range padding as fraction of data range
     facet_cols: int = 3                   # columns when faceting
     alpha: float = 0.7                    # line alpha for overlays
     linewidth: float = 2.0                # line width
-    sort_groups_by: Optional[str] = "median"  # None|"mean"|"median" for facet ordering
+    sort_groups_by: str | None = "median"  # None|"mean"|"median" for facet ordering
 
 # -------------- Plot ---------------------
 
@@ -91,7 +98,7 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Mapping[str, str] | None = None
     ) -> pd.DataFrame:
         """Require categorical (x) and numeric (y); drop rows with NA in either."""
         cat = resolve_cat_col(df, cols, role_map)
@@ -107,8 +114,8 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, Any]:
+        role_map: Mapping[str, str] | None = None
+    ) -> dict[str, Any]:
         """Build shared KDEs and pairwise overlap metrics."""
         ctx = self.ctx
         cat = resolve_cat_col(df, cols, role_map)
@@ -146,14 +153,14 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
         h = self._bandwidth(pooled, method=ctx.bw)
 
         # --- KDE per group on shared grid ---
-        kde_map: Dict[str, np.ndarray] = {}
-        ns: List[int] = []
+        kde_map: dict[str, np.ndarray] = {}
+        ns: list[int] = []
         for lab, arr in zip(labels_raw_str, groups):
             ns.append(arr.size)
             kde_map[lab] = self._kde_gaussian(arr, grid, h)
 
         # --- pairwise overlap metrics ---
-        overlaps: List[Dict[str, Any]] = []
+        overlaps: list[dict[str, Any]] = []
         for i in range(n_groups):
             fi = kde_map[labels_raw_str[i]]
             for j in range(i + 1, n_groups):
@@ -194,22 +201,22 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
     def draw_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str,str]] = None,
+        role_map: Mapping[str, str] | None = None,
         fig=None,
         ax=None,
         palette=None,
     ):
         """Overlay ≤4 groups; facet 5+ groups. All share common x/y limits."""
         ctx = self.ctx  # type: MagnitudeDistributionOverlapDensityContext
-        labels: List[str] = desc["group_labels"]
+        labels: list[str] = desc["group_labels"]
         labels_raw = desc.get("group_labels_raw", labels)
         grid: np.ndarray = desc["grid"]
-        kde: Dict[str, np.ndarray] = desc["kde"]
+        kde: dict[str, np.ndarray] = desc["kde"]
         n_groups: int = desc["n_groups"]
 
         if n_groups == 0:
@@ -268,7 +275,7 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
     # ---------- Helpers ----------
 
     @staticmethod
-    def _bandwidth(x: np.ndarray, method: Optional[float | str]) -> float:
+    def _bandwidth(x: np.ndarray, method: float | str | None) -> float:
         """Scott/Silverman or explicit numeric bandwidth; fall back safely if variance=0."""
         x = np.asarray(x, dtype=float)
         n = max(1, x.size)

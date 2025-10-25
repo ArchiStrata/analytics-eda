@@ -7,6 +7,7 @@ from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_
     MagnitudeEffectSizeBarPlot,
 )
 
+
 # --- helper to synthesize grouped normal data ---
 def _make_normal_groups(specs, n_per_group=200, seed=0):
     """

@@ -13,22 +13,29 @@
 # limitations under the License.
 
 import logging
-from typing import Any, Dict, Optional
-import uuid
 from pathlib import Path
+from typing import Any
+import uuid
+
 import pandas as pd
 
 from analytics_eda.core.visualization.validation import categorical_validator
 
-from .frequency_pareto_plot import FrequencyParetoPlot, FrequencyParetoContext
-from .balance_chi_square_uniform_plot import BalanceChiSquareUniformPlot, BalanceChiSquareUniformContext
-from .balance_lorenz_curve_plot import BalanceLorenzCurvePlot, BalanceLorenzCurveContext
-from .balance_rare_categories_plot import BalanceRareCategoriesPlot, BalanceRareCategoriesContext
-
-from ..numeric import DispersionBoxPlot, DispersionBoxplotContext, DistributionDensityPlot, DistributionDensityContext
-
+from ..numeric import (
+    DispersionBoxPlot,
+    DispersionBoxplotContext,
+    DistributionDensityContext,
+    DistributionDensityPlot,
+)
 from ..reporting import write_json_report
 from ..visualization.context.build_plot_context import build_plot_context
+from .balance_chi_square_uniform_plot import (
+    BalanceChiSquareUniformContext,
+    BalanceChiSquareUniformPlot,
+)
+from .balance_lorenz_curve_plot import BalanceLorenzCurveContext, BalanceLorenzCurvePlot
+from .balance_rare_categories_plot import BalanceRareCategoriesContext, BalanceRareCategoriesPlot
+from .frequency_pareto_plot import FrequencyParetoContext, FrequencyParetoPlot
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +43,14 @@ def categorical_distribution_analysis(
     series: pd.Series,
     report_path: Path,
     report_log_id = str(uuid.uuid4()),
-    data_source: Optional[str] = None,
-    filter_desc: Optional[str] = None,
-    plot_frequency_pareto_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_density_overrides: Optional[Dict[str, Any]] = None,
-    plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
-    plot_balance_chi_square_uniform_overrides: Optional[Dict[str, Any]] = None,
-    plot_balance_lorenz_curve_overrides: Optional[Dict[str, Any]] = None,
-    plot_balance_rare_categories_overrides: Optional[Dict[str, Any]] = None
+    data_source: str | None = None,
+    filter_desc: str | None = None,
+    plot_frequency_pareto_overrides: dict[str, Any] | None = None,
+    plot_distribution_density_overrides: dict[str, Any] | None = None,
+    plot_dispersion_boxplot_overrides: dict[str, Any] | None = None,
+    plot_balance_chi_square_uniform_overrides: dict[str, Any] | None = None,
+    plot_balance_lorenz_curve_overrides: dict[str, Any] | None = None,
+    plot_balance_rare_categories_overrides: dict[str, Any] | None = None
 ) -> dict:
     """
     Perform a comprehensive statistical and visual analysis of a categorical Series,
@@ -125,9 +132,9 @@ def categorical_distribution_analysis(
     # TODO: Categorical time series analysis - Category Drift: Do category definitions or distributions change over time?
 
     # 2. Balance
-    # What it is:  
-    #   Assessment of category balance –  
-    #   counting unique categories, identifying rare “tail” categories (often grouped as ‘Others’),  
+    # What it is:
+    #   Assessment of category balance –
+    #   counting unique categories, identifying rare “tail” categories (often grouped as ‘Others’),
     #   and quantifying how evenly observations are distributed using metrics like entropy and the Gini index.
     # Why it matters: Tells you if you have too many categories to handle, or if one category overwhelms the rest.
 

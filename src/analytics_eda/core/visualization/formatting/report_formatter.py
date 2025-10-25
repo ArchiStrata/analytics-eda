@@ -15,13 +15,12 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 import math
-from typing import Any, Literal, Optional, Tuple, Union
+from typing import Any, Literal, Union
 
 import numpy as np
 import pandas as pd
 
-
-DfLike = Union[int, float, Tuple[Union[int, float], Union[int, float]]]
+DfLike = Union[int, float, tuple[int | float, int | float]]
 
 
 class ReportFormatter:
@@ -34,17 +33,17 @@ class ReportFormatter:
       - ctx.report_default_unit     : str   (default: None)
     """
 
-    def __init__(self, *, ctx: Optional[Any] = None) -> None:
+    def __init__(self, *, ctx: Any | None = None) -> None:
         self.ctx = ctx
 
     # ---------- Generic numeric & percent ----------
 
     def format_numeric_value(
         self,
-        value: Optional[float],
+        value: float | None,
         *,
-        decimals: Optional[int] = None,
-        unit: Optional[str] = None,
+        decimals: int | None = None,
+        unit: str | None = None,
     ) -> str:
         """
         Format a numeric value for reporting.
@@ -72,7 +71,7 @@ class ReportFormatter:
 
     def format_percent(
         self,
-        p: Optional[float],
+        p: float | None,
         *,
         decimals: int = 1,
         scale_0to1: bool = True,
@@ -88,7 +87,7 @@ class ReportFormatter:
 
         val = p if scale_0to1 else (p / 100.0)
         return f"{val:.{int(decimals)}%}"
-    
+
     def max_decimals_in_series(self, s: pd.Series) -> int:
         """
         Infer the maximum number of decimal places present in the *raw* numeric values.
@@ -111,14 +110,15 @@ class ReportFormatter:
         if x.empty:
             return 0
         return int(max(dec_count(v) for v in x))
-    
+
     def mean_decimals_from_series(self, s: pd.Series) -> int:
         """
         Return the decimal places for displaying the mean, using the rule:
         show the mean to one more decimal than the most precise raw value.
         Empty series defaults to 1 decimal.
 
-        Examples:
+        Examples
+        --------
           raw values as integers  -> returns 1
           raw values to tenths    -> returns 2
           raw values to hundredth -> returns 3
@@ -129,7 +129,7 @@ class ReportFormatter:
         # if inputs are to tenths → 2 decimals. We infer the maximum raw precision, then add 1.
         # (Affects formatting only; the underlying mean value is unchanged.)
         return (raw_max + 1) if raw_max is not None else 1
-    
+
     def median_decimals_from_series(self, s: pd.Series, median_value: float | None = None) -> int:
         x = s.dropna()
         if x.empty:
@@ -147,7 +147,7 @@ class ReportFormatter:
 
     def format_alpha(
         self,
-        alpha: Optional[float],
+        alpha: float | None,
         *,
         style: Literal["decimal", "percent"] = "decimal",
         tol: float = 1e-9,
@@ -187,7 +187,7 @@ class ReportFormatter:
 
     def format_p_value(
         self,
-        p: Optional[float],
+        p: float | None,
         *,
         decimals: int = 3,
         sci_threshold: float = 1e-4,
@@ -218,7 +218,7 @@ class ReportFormatter:
 
     def format_test_statistic(
         self,
-        value: Optional[float],
+        value: float | None,
         *,
         decimals: int = 2,
     ) -> str:
@@ -234,7 +234,7 @@ class ReportFormatter:
 
     def format_df(
         self,
-        df: Optional[DfLike],
+        df: DfLike | None,
         *,
         decimals_for_fractional: int = 1,
         infinity_symbol: str = "∞",
@@ -256,7 +256,7 @@ class ReportFormatter:
         def _is_nan(x) -> bool:
             return isinstance(x, float) and math.isnan(x)
 
-        def _fmt_one(x: Union[int, float]) -> str:
+        def _fmt_one(x: int | float) -> str:
             if x is None or _is_nan(x):
                 return "NA"
             if math.isinf(x):

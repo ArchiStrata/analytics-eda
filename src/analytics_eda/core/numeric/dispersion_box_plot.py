@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Any
+
 import pandas as pd
 
-from ..visualization.base_plot import BasePlot, PlotContext
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import numeric_validator
+
+from ..visualization.base_plot import BasePlot, PlotContext
+
 
 @dataclass
 class DispersionBoxplotContext(PlotContext):
@@ -56,13 +59,14 @@ class DispersionBoxPlot(BasePlot):
         "chart_metadata": {"title","ylabel","data_source","file_name"}
       }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=numeric_validator()
         )
         super().__init__(ctx, parts)
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {
             "params": {"std_outlier_multiplier": float(self.ctx.std_outlier_multiplier)},
             "n": 0,
@@ -85,7 +89,7 @@ class DispersionBoxPlot(BasePlot):
             "extreme_upper_bound": 0,
         }
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         n = int(s.size)
         mean = float(s.mean())
         std = float(s.std())
@@ -132,9 +136,9 @@ class DispersionBoxPlot(BasePlot):
     def draw(
         self,
         s: pd.Series,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         fig,
         ax,

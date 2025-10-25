@@ -13,33 +13,34 @@
 # limitations under the License.
 
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
 
 import pandas as pd
 
+from .numeric_distribution_analysis import numeric_distribution_analysis
 from .select_transforms import select_transforms
 from .transform_series import transform_series
-from .numeric_distribution_analysis import numeric_distribution_analysis
+
 
 def evaluate_transforms(
     series: pd.Series,
     is_discrete: bool,
-    descriptive_stats: Dict[str, Any],
-    normality_tests: Dict[str, Any],
+    descriptive_stats: dict[str, Any],
+    normality_tests: dict[str, Any],
     report_path: Path,
     report_log_id: str | None = None,
-    data_source: Optional[str] = None,
-    filter_desc: Optional[str] = None,
+    data_source: str | None = None,
+    filter_desc: str | None = None,
     distribution_names=None,
     plot_central_tendency_histogram_overrides=None,
-    plot_central_tendency_violin_overrides: Optional[Dict[str, Any]] = None,
+    plot_central_tendency_violin_overrides: dict[str, Any] | None = None,
     plot_dispersion_boxplot_overrides=None,
     plot_distribution_ecdf_gap_overrides=None,
     plot_distribution_ecdf_vs_cdf_overrides=None,
     plot_distribution_density_overrides=None,
     plot_distribution_qq_fit_overrides=None,
-    plot_distribution_probability_overrides: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    plot_distribution_probability_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Apply a suite of candidate transforms to a series and run full distribution analysis on each.
 
@@ -64,7 +65,7 @@ def evaluate_transforms(
     """
     # Determine which transforms to try
     candidates = select_transforms(descriptive_stats, normality_tests)
-    transforms: Dict[str, Any] = {}
+    transforms: dict[str, Any] = {}
 
     for transform_name in candidates:
         # Prepare a subdirectory for this transform's plots and outputs

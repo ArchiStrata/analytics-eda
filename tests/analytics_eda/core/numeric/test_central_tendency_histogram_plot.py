@@ -1,8 +1,9 @@
 import numpy as np
-import pytest
 import pandas as pd
+import pytest
 
 from analytics_eda.core.numeric import CentralTendencyHistogramContext, CentralTendencyHistogramPlot
+
 
 @pytest.mark.parametrize(
     "series_factory, expected_exc, match",

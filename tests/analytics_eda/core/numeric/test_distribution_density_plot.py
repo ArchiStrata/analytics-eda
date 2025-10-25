@@ -1,9 +1,11 @@
 import math
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from analytics_eda.core.numeric import DistributionDensityContext, DistributionDensityPlot
+
 
 @pytest.mark.parametrize(
     "series_factory, expected_exc, match",
@@ -27,6 +29,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
 
         plot.run(s)
 
+test_data_series = pd.Series([1,2,2,3,4])
 
 @pytest.mark.parametrize(
     "make_series, kwargs, expect",
@@ -238,7 +241,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 "descriptive_stats": {
                     "n": 5,
                     "quartile_skew": (
-                        lambda v, s=pd.Series([1,2,2,3,4]):
+                        lambda v, s=test_data_series:
                             math.isclose(
                                 v,
                                 (s.quantile(0.75) + s.quantile(0.25) - 2*s.median())
@@ -246,11 +249,11 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                                 rel_tol=1e-12, abs_tol=1e-12
                             )
                     ),
-                    "pct_10": (lambda v, s=pd.Series([1,2,2,3,4]): math.isclose(v, s.quantile(0.10), rel_tol=1e-12, abs_tol=1e-12)),
-                    "pct_25": (lambda v, s=pd.Series([1,2,2,3,4]): math.isclose(v, s.quantile(0.25), rel_tol=1e-12, abs_tol=1e-12)),
-                    "pct_50": (lambda v, s=pd.Series([1,2,2,3,4]): math.isclose(v, s.quantile(0.50), rel_tol=1e-12, abs_tol=1e-12)),
-                    "pct_75": (lambda v, s=pd.Series([1,2,2,3,4]): math.isclose(v, s.quantile(0.75), rel_tol=1e-12, abs_tol=1e-12)),
-                    "pct_90": (lambda v, s=pd.Series([1,2,2,3,4]): math.isclose(v, s.quantile(0.90), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_10": (lambda v, s=test_data_series: math.isclose(v, s.quantile(0.10), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_25": (lambda v, s=test_data_series: math.isclose(v, s.quantile(0.25), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_50": (lambda v, s=test_data_series: math.isclose(v, s.quantile(0.50), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_75": (lambda v, s=test_data_series: math.isclose(v, s.quantile(0.75), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_90": (lambda v, s=test_data_series: math.isclose(v, s.quantile(0.90), rel_tol=1e-12, abs_tol=1e-12)),
                 },
             },
         ),

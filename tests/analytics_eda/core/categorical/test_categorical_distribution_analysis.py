@@ -1,7 +1,10 @@
-import pytest
 import pandas as pd
+import pytest
 
-from analytics_eda.core.categorical.categorical_distribution_analysis import categorical_distribution_analysis
+from analytics_eda.core.categorical.categorical_distribution_analysis import (
+    categorical_distribution_analysis,
+)
+
 
 @pytest.mark.parametrize(
     "make_series, kwargs, expected_report_data",

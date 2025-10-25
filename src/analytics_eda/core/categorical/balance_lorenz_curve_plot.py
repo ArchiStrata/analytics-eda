@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Any
+
 from matplotlib.ticker import MultipleLocator, PercentFormatter
 import numpy as np
 import pandas as pd
@@ -23,6 +24,7 @@ from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import categorical_validator
 
 from ..visualization.base_plot import BasePlot, PlotContext
+
 
 @dataclass
 class BalanceLorenzCurveContext(PlotContext):
@@ -46,6 +48,7 @@ class BalanceLorenzCurvePlot(BasePlot):
           "descriptive_stats": {"total", "k", "gini_index"}
         }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=categorical_validator()
@@ -91,10 +94,10 @@ class BalanceLorenzCurvePlot(BasePlot):
 
     # ---- BasePlot hooks ----
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {"total": 0, "k": 0, "gini_index": None}
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         counts = s.value_counts()
         freq_values = counts.values.astype(float)
         total = int(freq_values.sum())
@@ -112,7 +115,7 @@ class BalanceLorenzCurvePlot(BasePlot):
             "gini_index": float(gini)
         }
 
-    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
         if not desc or desc.get("total", 0) == 0 or np.isnan(desc.get("gini_index", None)):
             return {}
 

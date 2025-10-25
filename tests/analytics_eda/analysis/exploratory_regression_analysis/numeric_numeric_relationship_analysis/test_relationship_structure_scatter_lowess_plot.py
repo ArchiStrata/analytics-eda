@@ -7,6 +7,7 @@ from analytics_eda.analysis.exploratory_regression_analysis.numeric_numeric_rela
     RelationshipStructureScatterLowessPlot,
 )
 
+
 @pytest.mark.parametrize(
     "make_df, x_col, y_col, kwargs, expect",
     [

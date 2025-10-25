@@ -11,15 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
-from ..utils.utils import resolve_cat_col, resolve_num_col, dropna_on, truncate_labels, postprocess_series, agg_sum
-
 from ....core.visualization.base_plot import BasePlot
 from ....core.visualization.context import PlotContext
+from ..utils.utils import (
+    agg_sum,
+    dropna_on,
+    postprocess_series,
+    resolve_cat_col,
+    resolve_num_col,
+    truncate_labels,
+)
 
 # ---------------- Context ----------------
 
@@ -30,12 +38,12 @@ class RelationshipStructureGroupSizeBarContext(PlotContext):
     ylabel: str = "Total"
 
     # plot-specific knobs
-    top_k: Optional[int] = None          # show top-k groups by count (None = all)
-    min_count: Optional[int] = None      # drop groups with count < min_count
+    top_k: int | None = None          # show top-k groups by count (None = all)
+    min_count: int | None = None      # drop groups with count < min_count
     sort_desc: bool = True               # sort by count desc
     annotate: bool = True                # show value labels above bars
     rotate_xticks: int = 45              # rotation for readability; 0 to disable
-    max_label_len: Optional[int] = 30    # truncate long labels; None = no truncation
+    max_label_len: int | None = 30    # truncate long labels; None = no truncation
 
 # -------------- Plot ---------------------
 
@@ -87,7 +95,7 @@ class RelationshipStructureGroupSizeBarPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Mapping[str, str] | None = None
     ) -> pd.DataFrame:
         """
         Ensure categorical (x) and numeric (y) columns exist.
@@ -102,8 +110,8 @@ class RelationshipStructureGroupSizeBarPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, Any]:
+        role_map: Mapping[str, str] | None = None
+    ) -> dict[str, Any]:
         """
         Sum numeric values per category:
             totals = df.groupby(cat, observed=True)[num].sum()
@@ -138,12 +146,12 @@ class RelationshipStructureGroupSizeBarPlot(BasePlot):
     def draw_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str,str]] = None,
+        role_map: Mapping[str, str] | None = None,
         fig=None,
         ax=None,
         palette=None,

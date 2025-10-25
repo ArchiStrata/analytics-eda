@@ -12,15 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Literal
+from typing import Any, Literal
+
 import numpy as np
 import pandas as pd
 
-from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import (
+    SeriesBarChartContext,
+    SeriesBarChartMixin,
+)
 
 from ..visualization.base_plot import BasePlot
 from ..visualization.plot_parts import PlotParts
 from ..visualization.validation import numeric_validator
+
 
 @dataclass
 class CardinalityBarContext(SeriesBarChartContext):
@@ -50,6 +55,7 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
         Computes uniqueness and a discreteness heuristic, ranks value counts, displays the top N
         values (aggregating the tail into “Other”), and reports coverage of the named values.
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=numeric_validator()
@@ -62,7 +68,7 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
         """
         return "1.0.0"
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {
             "params": {
                 "max_unique_fraction": float(self.ctx.max_unique_fraction),
@@ -77,7 +83,7 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
             "bars": {},
         }
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         # 1) Build bars once (mixin handles totals, Other, capping, ratios)
         full_counts = s.value_counts().to_dict()
         desc = self.build_series_bar_desc(
@@ -122,8 +128,8 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
         })
 
         return desc
-    
-    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
         total_nonnull = int(desc.get("total_nonnull", 0))
         nunique = int(desc.get("nunique_native", 0))
         if total_nonnull == 0 or nunique == 0:
@@ -169,7 +175,7 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
                         findings["secondary_finding"] = f"Top values (tie at {pct}): {preview}{more}."
 
         return findings
-    
+
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
         # Empty / invalid
         if not desc or desc.get("total_nonnull", 0) == 0:

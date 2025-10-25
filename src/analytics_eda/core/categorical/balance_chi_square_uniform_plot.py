@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, Any, Literal
+from typing import Any, Literal
+
 import numpy as np
 import pandas as pd
 from scipy.stats import chisquare
@@ -23,6 +24,7 @@ from analytics_eda.core.visualization.validation import categorical_validator
 
 from ..visualization.base_plot import BasePlot, PlotContext
 
+
 @dataclass
 class BalanceChiSquareUniformContext(PlotContext):
     title_template: str = "Chi-Square Goodness-of-Fit: {name}{modifiers}"
@@ -31,7 +33,7 @@ class BalanceChiSquareUniformContext(PlotContext):
     alpha: float = 0.05
     show_subtitle: bool = True
     is_orientation_vertical: bool = False
-    headroom_preserve_symmetry: bool = True 
+    headroom_preserve_symmetry: bool = True
 
     bar_highlight_top: bool = True
     bar_top_n: int = 1
@@ -67,6 +69,7 @@ class BalanceChiSquareUniformPlot(BasePlot):
         "chart_metadata": {...}
       }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=categorical_validator()
@@ -79,10 +82,10 @@ class BalanceChiSquareUniformPlot(BasePlot):
         """
         return "1.0.0"
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {"total": 0, "k": 0}
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         freq = s.value_counts()
         categories = sorted(freq.index.tolist())
         observed = np.asarray([int(freq[c]) for c in categories], dtype=float)
@@ -173,8 +176,8 @@ class BalanceChiSquareUniformPlot(BasePlot):
             "top_labels": top_labels,
         }
         return desc
-    
-    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
         total = int(desc.get("total", 0))
         k = int(desc.get("k", 0))
         if total == 0 or k == 0:
@@ -227,7 +230,7 @@ class BalanceChiSquareUniformPlot(BasePlot):
         }
 
 
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
+    def compute_inferential(self, s: pd.Series, desc: dict[str, Any]) -> dict[str, Any]:
         k = desc.get("k", 0)
         total = desc.get("total", 0)
         if k == 0 or total == 0:
@@ -271,8 +274,8 @@ class BalanceChiSquareUniformPlot(BasePlot):
         if warning:
             res["chi2_gof_null_uniform"]["warning"] = warning
         return res
-    
-    def draft_inferential_findings(self, inf: Dict[str, Any], desc: Dict[str, Any]) -> Dict[str, Any]:
+
+    def draft_inferential_findings(self, inf: dict[str, Any], desc: dict[str, Any]) -> dict[str, Any]:
         res = (inf or {}).get("chi2_gof_null_uniform")
         if not res:
             return {}

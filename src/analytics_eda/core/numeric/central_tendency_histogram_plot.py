@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, List
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import numeric_validator
+
 from ..visualization.base_plot import BasePlot, PlotContext
 from .binning_rules import choose_bins
+
 
 @dataclass
 class CentralTendencyHistogramContext(PlotContext):
@@ -31,7 +34,7 @@ class CentralTendencyHistogramContext(PlotContext):
     enable_legend: bool = True
 
     # plot-specific knob
-    bins: Optional[int] = None  # if None, use choose_bins
+    bins: int | None = None  # if None, use choose_bins
     min_peak_strength: float = 0.05            # suppress modes if weaker than this fraction
     max_mode_lines: int = 3                    # hard cap on how many mode lines to draw
 
@@ -52,6 +55,7 @@ class CentralTendencyHistogramPlot(BasePlot):
         - Returns descriptive statistics (sample size, mean, median, modes, modality, peak strength)
           and chart metadata for reporting and reproducibility.
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=numeric_validator()
@@ -64,7 +68,7 @@ class CentralTendencyHistogramPlot(BasePlot):
         """
         return "1.0.0"
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         bins = self.ctx.bins if self.ctx.bins is not None else 0
         return {
             "params": {
@@ -81,7 +85,7 @@ class CentralTendencyHistogramPlot(BasePlot):
             "modes": [],
         }
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         x = s.dropna()
         n = int(x.size)
 
@@ -131,8 +135,8 @@ class CentralTendencyHistogramPlot(BasePlot):
         median_formatted = self.formatter.format_numeric_value(median, decimals=median_round_decimals)
 
         # Defaults
-        mode_method: Optional[str] = None
-        candidate_modes: List[float] = []
+        mode_method: str | None = None
+        candidate_modes: list[float] = []
         modality: str = "none"          # "unimodal" | "bimodal" | "multimodal" | "none"
         peak_strength: float = None  # fraction of observations in the strongest peak
 
@@ -196,8 +200,8 @@ class CentralTendencyHistogramPlot(BasePlot):
             "modality": modality,
             "peak_strength": peak_strength,
         }
-    
-    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
         n = desc.get("n", 0)
 
         mean = desc.get("mean")
@@ -244,7 +248,7 @@ class CentralTendencyHistogramPlot(BasePlot):
             "primary_finding": primary,
             "secondary_finding": secondary,
         }
-    
+
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
         n = desc.get("n", 0)
 
@@ -287,9 +291,9 @@ class CentralTendencyHistogramPlot(BasePlot):
     def draw(
         self,
         s: pd.Series,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         fig,
         ax,

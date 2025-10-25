@@ -32,7 +32,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest>=7.0",
-  "pytest-cov>=4.0"
+  "pytest-cov>=4.0",
+  "ruff>=0.5.0",
+  "pre-commit>=3.0"
 ]
 
 [project.urls]
@@ -51,3 +53,47 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 # add command-line flags by default
 addopts = "--strict-markers --tb=short --maxfail=1 --cov=src --cov-report=term-missing"
+
+# Configure https://github.com/astral-sh/ruff
+# --- Ruff (linter + formatter) ----------------------------------------------
+[tool.ruff]
+# Treat "src" as the project root (your code lives under src/)
+src = ["src"]
+# Match your project's Python floor
+target-version = "py311"
+line-length = 250
+
+[tool.ruff.format]
+# Use Ruff's built-in formatter (drop-in for Black)
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true
+
+[tool.ruff.lint]
+# Core rule sets: pyflakes/pycodestyle/imports/bugbear/pyupgrade/timezone
+select = ["F", "E", "W", "I", "B", "UP", "DTZ"]
+# Keep this empty unless you want to silence specific rules globally
+ignore = []
+# Allow Ruff to auto-fix safe rules with `--fix`
+fixable = ["ALL"]
+unfixable = []
+
+# Enable pydocstyle (optional, but great for a library). Choose one convention.
+extend-select = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+# Pick your docstring flavor: "google", "numpy", or "pep257"
+convention = "numpy"
+
+[tool.ruff.lint.isort]
+# Ruff reimplements isort; configure it here
+known-first-party = ["analytics_eda"]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: allow asserts and skip docstring requirements
+"tests/**.py" = ["S101", "D"]           # (S101 is 'assert used' if you later enable S)
+# Packages: allow re-export patterns in __init__.py without unused-import noise
+"**/__init__.py" = ["F401"]

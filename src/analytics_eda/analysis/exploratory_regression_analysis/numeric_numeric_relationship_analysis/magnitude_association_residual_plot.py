@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from ..utils.utils import resolve_num_col, dropna_on
 from ....core.visualization.base_plot import BasePlot
 from ....core.visualization.context import PlotContext
-
+from ..utils.utils import dropna_on, resolve_num_col
 
 # ---------------- Context ----------------
 
@@ -64,7 +65,7 @@ class MagnitudeAssociationResidualPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Mapping[str, str] | None = None
     ) -> pd.DataFrame:
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
@@ -72,7 +73,7 @@ class MagnitudeAssociationResidualPlot(BasePlot):
         df = dropna_on(df, y_col)
         return df
 
-    def _ols_fit(self, x: np.ndarray, y: np.ndarray) -> Tuple[float, float]:
+    def _ols_fit(self, x: np.ndarray, y: np.ndarray) -> tuple[float, float]:
         """Return (slope, intercept) from simple OLS via polyfit."""
         slope, intercept = np.polyfit(x, y, 1)
         return float(slope), float(intercept)
@@ -82,8 +83,8 @@ class MagnitudeAssociationResidualPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, float]:
+        role_map: Mapping[str, str] | None = None
+    ) -> dict[str, float]:
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         x = df[x_col].to_numpy()
@@ -91,7 +92,7 @@ class MagnitudeAssociationResidualPlot(BasePlot):
         n = len(x)
 
         # include any descriptive parameters here (none specific now; keep scaffold)
-        out: Dict[str, Any] = {
+        out: dict[str, Any] = {
             "params": {
                 # add future descriptive controls here if introduced
             },
@@ -138,16 +139,16 @@ class MagnitudeAssociationResidualPlot(BasePlot):
     def compute_inferential_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, float],
+        desc: dict[str, float],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, float]:
+        role_map: Mapping[str, str] | None = None
+    ) -> dict[str, float]:
         alpha = float(getattr(self.ctx, "alpha", 0.05))
         n = int(desc.get("n_obs", 0))
         resid = (getattr(self, "_cache", {}) or {}).get("residuals", None)
 
-        out: Dict[str, Any] = {
+        out: dict[str, Any] = {
             "params": {"alpha": alpha}
         }
 
@@ -244,12 +245,12 @@ class MagnitudeAssociationResidualPlot(BasePlot):
     def draw_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str,str]] = None,
+        role_map: Mapping[str, str] | None = None,
         fig=None,
         ax=None,
         palette=None,

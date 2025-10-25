@@ -13,9 +13,10 @@
 # limitations under the License.
 
 
-from typing import Any, Callable, Dict, Tuple
+from collections.abc import Callable
+from typing import Any
 
-DrawFnSeries = Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any], Any, Any, Any], Tuple[Any, Any]]
+DrawFnSeries = Callable[[dict[str, Any], dict[str, Any], dict[str, Any], Any, Any, Any], tuple[Any, Any]]
 # (desc, inf, chart_md, fig, ax, palette) -> (fig, ax)
 
 class RendererProtocol:
@@ -29,9 +30,9 @@ class RendererProtocol:
         self,
         *,
         ctx,
-        chart_md: Dict[str, Any],
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
+        chart_md: dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
         draw_fn: DrawFnSeries,
         subtitle_text: str | None,
         footer_text: str | None,

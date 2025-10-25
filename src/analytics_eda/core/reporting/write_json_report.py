@@ -29,9 +29,11 @@ Dependencies:
 - sanitize_json: A local module that provides a sanitize_json(report) 
   function to clean or transform data before serialization.
 """
-import os
 import json
+import os
+
 from .sanitize_json import sanitize_json
+
 
 def write_json_report(report, report_path: str, encoding: str="utf-8"):
     """

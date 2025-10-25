@@ -4,6 +4,7 @@ import pytest
 
 from analytics_eda.core.numeric import DistributionECDFvsCDFContext, DistributionECDFvsCDFPlot
 
+
 @pytest.mark.parametrize(
     "series_factory, expected_exc, match",
     [

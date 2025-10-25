@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from analytics_eda.core.numeric.evaluate_transforms import evaluate_transforms
-from analytics_eda.core.numeric.select_transforms     import select_transforms
+from analytics_eda.core.numeric.select_transforms import select_transforms
 
 
 def test_evaluate_transforms_invokes_analysis_per_candidate(monkeypatch, tmp_path):
@@ -46,7 +46,7 @@ def test_evaluate_transforms_invokes_analysis_per_candidate(monkeypatch, tmp_pat
     assert len(calls) == len(expected)
 
     # 7) For each candidate, check that:
-    for transform_name, (descriptive_stats, call_path) in zip(expected, calls):
+    for transform_name, (_descriptive_stats, call_path) in zip(expected, calls, strict=True):
         # a) numeric_distribution_analysis was called with the correct subdirectory
         expected_dir = tmp_path / transform_name
         assert call_path == expected_dir

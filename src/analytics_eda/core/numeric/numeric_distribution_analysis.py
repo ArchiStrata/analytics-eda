@@ -11,26 +11,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections.abc import Callable, Sequence
 import logging
-import uuid
 from pathlib import Path
-from typing import Optional, Dict, Any, Callable, Sequence
+from typing import Any
+import uuid
+
 import pandas as pd
-
-from .central_tendency_histogram_plot import CentralTendencyHistogramContext, CentralTendencyHistogramPlot
-from .central_tendency_violin_plot import CentralTendencyViolinContext, CentralTendencyViolinPlot
-from .dispersion_box_plot import DispersionBoxplotContext, DispersionBoxPlot
-from .distribution_ecdf_gap_plot import DistributionECDFGapContext, DistributionECDFGapPlot
-from .distribution_density_plot import DistributionDensityContext, DistributionDensityPlot
-from .distribution_ecdf_vs_cdf_plot import DistributionECDFvsCDFContext, DistributionECDFvsCDFPlot
-from .distribution_qq_fit_plot import DistributionQqFitContext, DistributionQqFitPlot
-from .distribution_probability_function_plot import DistributionProbabilityFunctionContext, DistributionProbabilityFunctionPlot
-
 
 from analytics_eda.core.visualization.validation import numeric_validator
 
 from ..reporting import write_json_report
 from ..visualization.context.build_plot_context import build_plot_context
+from .central_tendency_histogram_plot import (
+    CentralTendencyHistogramContext,
+    CentralTendencyHistogramPlot,
+)
+from .central_tendency_violin_plot import CentralTendencyViolinContext, CentralTendencyViolinPlot
+from .dispersion_box_plot import DispersionBoxPlot, DispersionBoxplotContext
+from .distribution_density_plot import DistributionDensityContext, DistributionDensityPlot
+from .distribution_ecdf_gap_plot import DistributionECDFGapContext, DistributionECDFGapPlot
+from .distribution_ecdf_vs_cdf_plot import DistributionECDFvsCDFContext, DistributionECDFvsCDFPlot
+from .distribution_probability_function_plot import (
+    DistributionProbabilityFunctionContext,
+    DistributionProbabilityFunctionPlot,
+)
+from .distribution_qq_fit_plot import DistributionQqFitContext, DistributionQqFitPlot
 
 logger = logging.getLogger(__name__)
 
@@ -40,23 +46,18 @@ def numeric_distribution_analysis(
     report_path: Path,
     report_log_id: str = str(uuid.uuid4()),
     distribution_names: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon'),
-    evaluate_transforms_fn: Optional[
-        Callable[
-            [pd.Series, dict, dict, Path],
-            dict
-        ]
-    ] = None,
-    data_source: Optional[str] = None,
-    filter_desc: Optional[str] = None,
-    transform_desc: Optional[str] = None,
-    plot_central_tendency_histogram_overrides: Optional[Dict[str, Any]] = None,
-    plot_central_tendency_violin_overrides: Optional[Dict[str, Any]] = None,
-    plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_ecdf_gap_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_ecdf_vs_cdf_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_density_overrides:      Optional[Dict[str, Any]] = None,
-    plot_distribution_qq_fit_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_probability_overrides: Optional[Dict[str, Any]] = None,
+    evaluate_transforms_fn: Callable[[pd.Series, dict, dict, Path], dict] | None = None,
+    data_source: str | None = None,
+    filter_desc: str | None = None,
+    transform_desc: str | None = None,
+    plot_central_tendency_histogram_overrides: dict[str, Any] | None = None,
+    plot_central_tendency_violin_overrides: dict[str, Any] | None = None,
+    plot_dispersion_boxplot_overrides: dict[str, Any] | None = None,
+    plot_distribution_ecdf_gap_overrides: dict[str, Any] | None = None,
+    plot_distribution_ecdf_vs_cdf_overrides: dict[str, Any] | None = None,
+    plot_distribution_density_overrides:      dict[str, Any] | None = None,
+    plot_distribution_qq_fit_overrides: dict[str, Any] | None = None,
+    plot_distribution_probability_overrides: dict[str, Any] | None = None,
 ) -> dict:
     """
     Compute descriptive statistics, assess fit to common distributions, visualize
@@ -193,7 +194,7 @@ def numeric_distribution_analysis(
             "ecdf_vs_cdf": DistributionECDFvsCDFPlot(ecdf_vs_cdf_ctx).run(cleaned_series),
             "qq_fit": DistributionQqFitPlot(qq_ctx).run(cleaned_series),
         }
-    
+
     shape['distribution_fits'] = distribution_fits
 
     # optionally evaluate transforms on the 'norm' residuals

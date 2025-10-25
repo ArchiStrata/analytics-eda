@@ -13,9 +13,12 @@
 # limitations under the License.
 
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence, Union, Callable
+
 from collections import defaultdict
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from typing import Any, Union
+
 import pandas as pd
 
 Desc = Union[str, Sequence[str], None]
@@ -26,14 +29,15 @@ class ChartMetadataBuilderProtocol:
     BasePlot will pass callbacks to allow subclass overrides to participate
     (title_kwargs / metadata_overrides / version).
     """
+
     def build_title(
         self,
         *,
         ctx,
-        series: Optional[pd.Series] = None,
-        cols: Optional[Sequence[str]] = None,
-        role_map: Optional[Mapping[str, str]] = None,
-        title_kwargs_cb: Optional[Callable[..., Dict[str, Any]]] = None,
+        series: pd.Series | None = None,
+        cols: Sequence[str] | None = None,
+        role_map: Mapping[str, str] | None = None,
+        title_kwargs_cb: Callable[..., dict[str, Any]] | None = None,
     ) -> str:
         raise NotImplementedError
 
@@ -42,12 +46,12 @@ class ChartMetadataBuilderProtocol:
         *,
         ctx,
         version_cb: Callable[[], str],
-        series: Optional[pd.Series] = None,
-        cols: Optional[Sequence[str]] = None,
-        role_map: Optional[Mapping[str, str]] = None,
-        title_kwargs_cb: Optional[Callable[..., Dict[str, Any]]] = None,
-        metadata_overrides_cb: Optional[Callable[..., Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
+        series: pd.Series | None = None,
+        cols: Sequence[str] | None = None,
+        role_map: Mapping[str, str] | None = None,
+        title_kwargs_cb: Callable[..., dict[str, Any]] | None = None,
+        metadata_overrides_cb: Callable[..., dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
 
@@ -64,7 +68,7 @@ class DefaultChartMetadataBuilder(ChartMetadataBuilderProtocol):
             return [x] if x else []
         return [str(v) for v in x if v]
 
-    def _label_from_roles(self, role_map: Optional[Mapping[str, str]]) -> Optional[str]:
+    def _label_from_roles(self, role_map: Mapping[str, str] | None) -> str | None:
         if not role_map:
             return None
         y = role_map.get("y"); x = role_map.get("x"); hue = role_map.get("hue")
@@ -83,10 +87,10 @@ class DefaultChartMetadataBuilder(ChartMetadataBuilderProtocol):
         self,
         *,
         ctx,
-        series: Optional[pd.Series] = None,
-        cols: Optional[Sequence[str]] = None,
-        role_map: Optional[Mapping[str, str]] = None,
-        title_kwargs_cb: Optional[Callable[..., Dict[str, Any]]] = None,
+        series: pd.Series | None = None,
+        cols: Sequence[str] | None = None,
+        role_map: Mapping[str, str] | None = None,
+        title_kwargs_cb: Callable[..., dict[str, Any]] | None = None,
     ) -> str:
         joined_cols = " • ".join(cols) if cols else None
         role_label = self._label_from_roles(role_map)
@@ -139,12 +143,12 @@ class DefaultChartMetadataBuilder(ChartMetadataBuilderProtocol):
         *,
         ctx,
         version_cb: Callable[[], str],
-        series: Optional[pd.Series] = None,
-        cols: Optional[Sequence[str]] = None,
-        role_map: Optional[Mapping[str, str]] = None,
-        title_kwargs_cb: Optional[Callable[..., Dict[str, Any]]] = None,
-        metadata_overrides_cb: Optional[Callable[..., Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
+        series: pd.Series | None = None,
+        cols: Sequence[str] | None = None,
+        role_map: Mapping[str, str] | None = None,
+        title_kwargs_cb: Callable[..., dict[str, Any]] | None = None,
+        metadata_overrides_cb: Callable[..., dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         title = self.build_title(
             ctx=ctx,
             series=series,
@@ -165,4 +169,3 @@ class DefaultChartMetadataBuilder(ChartMetadataBuilderProtocol):
         ) or {}
         md.update(overrides)
         return md
-    

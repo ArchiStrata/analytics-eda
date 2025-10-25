@@ -1,4 +1,5 @@
 import numpy as np
+
 from analytics_eda.core.reporting.sanitize_json import sanitize_json
 
 

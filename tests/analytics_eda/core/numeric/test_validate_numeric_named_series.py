@@ -1,6 +1,8 @@
-import pytest
 import pandas as pd
+import pytest
+
 from analytics_eda.core.numeric.validate_numeric_named_series import validate_numeric_named_series
+
 
 @pytest.mark.parametrize(
     "make_input, exc, pattern",

@@ -1,10 +1,14 @@
 import math
+
+import numpy as np
+import pandas as pd
 import pytest
 
-import pandas as pd
-import numpy as np
+from analytics_eda.core.numeric import (
+    DistributionProbabilityFunctionContext,
+    DistributionProbabilityFunctionPlot,
+)
 
-from analytics_eda.core.numeric import DistributionProbabilityFunctionContext, DistributionProbabilityFunctionPlot
 
 @pytest.mark.parametrize(
     "series_factory, expected_exc, match",

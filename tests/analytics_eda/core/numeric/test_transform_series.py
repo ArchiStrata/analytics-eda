@@ -1,9 +1,10 @@
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 from scipy import stats
 
 from analytics_eda.core.numeric.transform_series import transform_series
+
 
 @pytest.mark.parametrize(
     "method, data, expected_func",

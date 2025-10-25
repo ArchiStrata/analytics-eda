@@ -34,7 +34,7 @@ def load_and_validate_report(response: dict, report_dir: Path) -> dict:
 
     # 3. Load & validate JSON
     try:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             full_report = json.load(f)
     except json.JSONDecodeError as e:
         raise AssertionError(f"Report file is not valid JSON: {e}") from e

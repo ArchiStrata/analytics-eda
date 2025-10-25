@@ -1,10 +1,12 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pytest
 
 from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.relationship_structure_group_size_bar_plot import (
-    RelationshipStructureGroupSizeBarContext, RelationshipStructureGroupSizeBarPlot
+    RelationshipStructureGroupSizeBarContext,
+    RelationshipStructureGroupSizeBarPlot,
 )
+
 
 @pytest.mark.parametrize(
     "make_df, cat_col, kwargs, expect",

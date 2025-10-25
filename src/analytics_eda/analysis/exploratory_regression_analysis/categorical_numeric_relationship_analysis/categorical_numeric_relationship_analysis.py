@@ -11,24 +11,42 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pathlib import Path
 import logging
-from typing import Any, Dict, Optional
+from pathlib import Path
+from typing import Any
 import uuid
 
 import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_object_dtype
 
-from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.direction_posthoc_tukey_hsd_plot import DirectionPosthocTukeyHsdContext, DirectionPosthocTukeyHsdPlot
-from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_central_tendency_anova_kruskal_plot import MagnitudeCentralTendencyAnovaKruskalContext, MagnitudeCentralTendencyAnovaKruskalPlot
-from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_distribution_overlap_density_plot import MagnitudeDistributionOverlapDensityContext, MagnitudeDistributionOverlapDensityPlot
-from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_effect_size_bar_plot import MagnitudeEffectSizeBarContext, MagnitudeEffectSizeBarPlot
-from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.relationship_structure_group_size_bar_plot import RelationshipStructureGroupSizeBarContext, RelationshipStructureGroupSizeBarPlot
-from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.relationship_structure_variance_homogeneity_box_plot import RelationshipStructureVarianceHomogeneityBoxPlot, RelationshipStructureVarianceHomogeneityContext
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.direction_posthoc_tukey_hsd_plot import (
+    DirectionPosthocTukeyHsdContext,
+    DirectionPosthocTukeyHsdPlot,
+)
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_central_tendency_anova_kruskal_plot import (
+    MagnitudeCentralTendencyAnovaKruskalContext,
+    MagnitudeCentralTendencyAnovaKruskalPlot,
+)
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_distribution_overlap_density_plot import (
+    MagnitudeDistributionOverlapDensityContext,
+    MagnitudeDistributionOverlapDensityPlot,
+)
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.magnitude_effect_size_bar_plot import (
+    MagnitudeEffectSizeBarContext,
+    MagnitudeEffectSizeBarPlot,
+)
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.relationship_structure_group_size_bar_plot import (
+    RelationshipStructureGroupSizeBarContext,
+    RelationshipStructureGroupSizeBarPlot,
+)
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.relationship_structure_variance_homogeneity_box_plot import (
+    RelationshipStructureVarianceHomogeneityBoxPlot,
+    RelationshipStructureVarianceHomogeneityContext,
+)
 from analytics_eda.core.visualization.context import build_plot_context
 
-from ...univariate import univariate_numeric_analysis
 from ....core.reporting import write_json_report
+from ...univariate import univariate_numeric_analysis
 
 logger = logging.getLogger(__name__)
 
@@ -38,16 +56,16 @@ def categorical_numeric_relationship_analysis(
     categorical_col: str,
     report_root: str = 'reports/eda/bivariate/categorical_numeric_relationship_analysis',
     report_log_id = str(uuid.uuid4()),
-    data_source: Optional[str] = None,
+    data_source: str | None = None,
 
-    plot_relationship_structure_group_size_bar_overrides: Optional[Dict[str, Any]] = None,
-    plot_relationship_structure_variance_homogeneity_box_overrides: Optional[Dict[str, Any]] = None,
-    plot_magnitude_distribution_overlap_density_overrides: Optional[Dict[str, Any]] = None,
-    plot_magnitude_central_tendency_anova_kruskal_overrides: Optional[Dict[str, Any]] = None,
-    plot_magnitude_effect_size_barchart_overrides: Optional[Dict[str, Any]] = None,
-    plot_dir_post_hoc_tukey_hsd_overrides: Optional[Dict[str, Any]] = None,
+    plot_relationship_structure_group_size_bar_overrides: dict[str, Any] | None = None,
+    plot_relationship_structure_variance_homogeneity_box_overrides: dict[str, Any] | None = None,
+    plot_magnitude_distribution_overlap_density_overrides: dict[str, Any] | None = None,
+    plot_magnitude_central_tendency_anova_kruskal_overrides: dict[str, Any] | None = None,
+    plot_magnitude_effect_size_barchart_overrides: dict[str, Any] | None = None,
+    plot_dir_post_hoc_tukey_hsd_overrides: dict[str, Any] | None = None,
     **kwargs
-) -> Dict:
+) -> dict:
     """
     Run univariate numeric analysis on segments defined by a categorical column.
 
@@ -59,7 +77,8 @@ def categorical_numeric_relationship_analysis(
         report_log_id (str): report log id.
         **kwargs: Additional arguments passed to univariate_numeric_analysis (e.g., alpha, iqr_multiplier).
     
-    Returns:
+    Returns
+    -------
      Dict:
         - report_file_path: File path to the saved JSON report as written by `write_json_report`.
     """
@@ -77,7 +96,7 @@ def categorical_numeric_relationship_analysis(
         raise KeyError(f"Categorical column '{categorical_col}' not found.")
     if numeric_col not in df.columns:
         raise KeyError(f"Numeric column '{numeric_col}' not found.")
-    
+
     if not (isinstance(df[categorical_col].dtype, pd.CategoricalDtype) or is_object_dtype(df[categorical_col])):
         raise TypeError(f"Column '{categorical_col}' must be categorical or object.")
     if not is_numeric_dtype(df[numeric_col]):
@@ -139,7 +158,7 @@ def categorical_numeric_relationship_analysis(
         except Exception as e:
             # NOTE: If a category analysis fails we still want to continue with the remaining categories.
             logger.exception(
-                "univariate_numeric_analysis failed", 
+                "univariate_numeric_analysis failed",
                 extra={
                     'category': category,
                     'numeric_col': numeric_col,
@@ -151,9 +170,9 @@ def categorical_numeric_relationship_analysis(
                 'error': str(e),
                 'report_log_id': report_log_id
             }
-    
+
     relationship_structure['numeric_distribution_by_category'] = numeric_distribution_by_category
-    
+
     # Magnitude of Association - How strongly are the two variables related?
     magnitude_of_association = {}
 

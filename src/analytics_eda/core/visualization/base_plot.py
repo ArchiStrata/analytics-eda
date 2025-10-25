@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from abc import ABC
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, Union
 
 import pandas as pd
 
@@ -24,7 +25,7 @@ from analytics_eda.core.visualization.plot_parts import PlotParts
 Desc = Union[str, Sequence[str], None]
 
 class BasePlot(ABC):
-    def __init__(self, ctx: PlotContext, parts: Optional[PlotParts] = None):
+    def __init__(self, ctx: PlotContext, parts: PlotParts | None = None):
         self.ctx = ctx
         self.parts = parts or PlotParts()
         self._subtitle_queue: list[tuple] = []
@@ -47,7 +48,7 @@ class BasePlot(ABC):
         series: pd.Series | None = None,
         cols: Sequence[str] | None = None,
         role_map: Mapping[str, str] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Extra kwargs for build_chart_title:
           - supports keys like extra_desc, fit_desc, filter_desc (override),
@@ -62,7 +63,7 @@ class BasePlot(ABC):
         series: pd.Series | None = None,
         cols: Sequence[str] | None = None,
         role_map: Mapping[str, str] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Extra/override keys to merge into the returned chart_metadata dict.
         Default: {}
@@ -75,7 +76,7 @@ class BasePlot(ABC):
         series: pd.Series | None = None,
         cols: Sequence[str] | None = None,
         role_map: Mapping[str, str] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Delegates to the metadata builder. Subclasses can still override
         metadata_overrides() to tweak values.
@@ -92,16 +93,16 @@ class BasePlot(ABC):
 
     # ======== Descriptive Statistics ========
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {}
-    
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         raise NotImplementedError("Series-based compute descriptive not implemented for this plot.")
 
-    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None) -> Dict[str, Any]:
+    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
         raise NotImplementedError("Frame-based descriptive not implemented for this plot.")
 
-    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
         """
         Return draft, human-readable statements derived from descriptive stats.
         Child plots may override. Default: {}.
@@ -110,16 +111,16 @@ class BasePlot(ABC):
 
     # ======== Inferential Statistics ========
 
-    def default_inferential(self) -> Dict[str, Any]:
-        return {}
-    
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
-        return {}
-    
-    def compute_inferential_frame(self, df: pd.DataFrame, desc: Dict[str, Any], *, cols: Sequence[str], role_map: Optional[Mapping[str,str]] = None) -> Dict[str, Any]:
+    def default_inferential(self) -> dict[str, Any]:
         return {}
 
-    def draft_inferential_findings(self, inf: Dict[str, Any], desc: Dict[str, Any]) -> Dict[str, Any]:
+    def compute_inferential(self, s: pd.Series, desc: dict[str, Any]) -> dict[str, Any]:
+        return {}
+
+    def compute_inferential_frame(self, df: pd.DataFrame, desc: dict[str, Any], *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
+        return {}
+
+    def draft_inferential_findings(self, inf: dict[str, Any], desc: dict[str, Any]) -> dict[str, Any]:
         """
         Return draft, human-readable statements derived from inferential stats
         (and optionally descriptive context). Child plots may override. Default: {}.
@@ -130,9 +131,9 @@ class BasePlot(ABC):
     def draw(
         self,
         s: pd.Series,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         fig,
         ax,
@@ -143,45 +144,45 @@ class BasePlot(ABC):
     def draw_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str,str]] = None,
+        role_map: Mapping[str, str] | None = None,
         fig=None,
         ax=None,
         palette=None,
     ):
         raise NotImplementedError("Frame-based draw not implemented for this plot.")
-    
+
     def subtitle_text(
         self,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
     ) -> str:
         """
         Optional override: return a short subtitle derived from descriptive/inferential
         stats. Return ''/None to suppress.
         """
         return ""
-    
+
     def footer_summary_text(
         self,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
     ) -> str:
         """
         Optional override: return a short footer summary derived from descriptive/inferential stats.
         Return ''/None to suppress.
         """
         return ""
-    
+
     def neutral_grey(self, variant: str = "medium", alpha: float | None = None):
         return self.parts.renderer.neutral_grey(variant, alpha)
-    
+
     def register_annotations(self, ax, texts):
         return self.parts.renderer.register_annotations(ax, texts)
 
@@ -192,7 +193,7 @@ class BasePlot(ABC):
     def draw_cache_get(self, namespace: str, key: str, default: Any = None) -> Any:
         return self._draw_cache.get(namespace, {}).get(key, default)
 
-    def _draw_clear(self, namespace: Optional[str] = None) -> None:
+    def _draw_clear(self, namespace: str | None = None) -> None:
         if namespace is None:
             self._draw_cache.clear()
         else:
@@ -201,11 +202,11 @@ class BasePlot(ABC):
     # ======== Public API with dispatch (Series OR DataFrame) ========
     def run(
         self,
-        data: Union[pd.Series, pd.DataFrame],
+        data: pd.Series | pd.DataFrame,
         *,
-        cols: Optional[Sequence[str]] = None,
-        role_map: Optional[Mapping[str, str]] = None,
-    ) -> Dict[str, Any]:
+        cols: Sequence[str] | None = None,
+        role_map: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
 
         # ---- SERIES PATH (unchanged API) ----
         if isinstance(data, pd.Series):
@@ -228,7 +229,7 @@ class BasePlot(ABC):
 
         if not cols:
             raise ValueError("For DataFrame input, provide cols=[...] with one or more column names.")
-        
+
         # Defensive copy of the full input frame
         df_in = data.copy(deep=True)
         missing = [c for c in cols if c not in df_in.columns]
@@ -254,11 +255,11 @@ class BasePlot(ABC):
         self,
         *,
         is_empty: bool,
-        build_md: Callable[[], Dict[str, Any]],
-        desc_fn: Callable[[], Dict[str, Any]],
-        inf_fn: Callable[[Dict[str, Any]], Dict[str, Any]],
-        draw_fn: Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any], Any, Any, Any], Tuple[Any, Any]],
-    ) -> Dict[str, Any]:
+        build_md: Callable[[], dict[str, Any]],
+        desc_fn: Callable[[], dict[str, Any]],
+        inf_fn: Callable[[dict[str, Any]], dict[str, Any]],
+        draw_fn: Callable[[dict[str, Any], dict[str, Any], dict[str, Any], Any, Any, Any], tuple[Any, Any]],
+    ) -> dict[str, Any]:
         """Shared execution flow for both Series and Frame paths."""
         try:
             chart_md = build_md()
@@ -287,7 +288,7 @@ class BasePlot(ABC):
                     "draft_inferential_findings": self.draft_inferential_findings(inf, desc) or {},
                     "chart_metadata": chart_md,
                 }
-            
+
             chart_md["file_name"] = self.parts.renderer.render(
                 ctx=self.ctx,
                 chart_md=chart_md,
@@ -325,7 +326,7 @@ class BasePlot(ABC):
         df_in: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
+        role_map: Mapping[str, str] | None = None,
     ) -> pd.DataFrame:
         """
         Prefer injected FrameValidator; fall back to existing validate_frame().

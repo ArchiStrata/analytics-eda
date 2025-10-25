@@ -2,6 +2,7 @@ import pytest
 
 from analytics_eda.core.numeric.select_transforms import select_transforms
 
+
 @pytest.mark.parametrize(
     "statistics, normality_tests, expected",
     [

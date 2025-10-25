@@ -1,8 +1,10 @@
-import pytest
-import pandas as pd
-import numpy as np
 import json
 import os
+
+import numpy as np
+import pandas as pd
+import pytest
+
 from analytics_eda.core import explore_data
 
 
@@ -100,7 +102,7 @@ def test_explore_data_all_branches(tmp_path):
     full_report_path = tmp_path / "explore_data_summary.json"
     assert os.path.exists(full_report_path)
 
-    with open(full_report_path, "r", encoding="utf-8") as f:
+    with open(full_report_path, encoding="utf-8") as f:
         data = json.load(f)
 
     assert isinstance(data, dict)

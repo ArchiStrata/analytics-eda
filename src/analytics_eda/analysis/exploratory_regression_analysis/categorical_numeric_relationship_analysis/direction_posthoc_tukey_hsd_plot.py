@@ -11,15 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
-from ..utils.utils import resolve_cat_col, resolve_num_col, truncate_labels
 from ....core.visualization.base_plot import BasePlot
 from ....core.visualization.context import PlotContext
+from ..utils.utils import resolve_cat_col, resolve_num_col, truncate_labels
 
 # ---------------- Context ----------------
 
@@ -30,7 +32,7 @@ class DirectionPosthocTukeyHsdContext(PlotContext):
     ylabel: str = "Comparison"
 
     alpha: float = 0.05
-    max_label_len: Optional[int] = 30
+    max_label_len: int | None = 30
     sort_by: str = "magnitude"   # "magnitude" | "diff" | "none"
     capsize: float = 4.0
     line_alpha_nonsig: float = 0.35
@@ -81,7 +83,7 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Mapping[str, str] | None = None
     ) -> pd.DataFrame:
         """Require categorical (x) and numeric (y); drop rows with NA in either."""
         cat = resolve_cat_col(df, cols, role_map)
@@ -96,8 +98,8 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, Any]:
+        role_map: Mapping[str, str] | None = None
+    ) -> dict[str, Any]:
         """Run Tukey HSD and format pairwise mean-difference results."""
         ctx = self.ctx  # type: DirectionPosthocTukeyHsdContext
         cat = resolve_cat_col(df, cols, role_map)
@@ -123,7 +125,7 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
 
         # statsmodels result provides summary with group1, group2, meandiff, lower, upper, reject
         # Build structured list
-        pairs: List[Dict[str, Any]] = []
+        pairs: list[dict[str, Any]] = []
         # Note: res._results_table.data includes header row; use res.summary() or directly res._multicomp.pairindices
         table = res.summary()
         # rows start at index 1; columns: group1, group2, meandiff, p-adj, lower, upper, reject
@@ -159,23 +161,23 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
     def compute_inferential_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
+        desc: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, Any]:
+        role_map: Mapping[str, str] | None = None
+    ) -> dict[str, Any]:
         """No additional inferential stats; Tukey HSD results are descriptive outputs here."""
         return {}
 
     def draw_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str,str]] = None,
+        role_map: Mapping[str, str] | None = None,
         fig=None,
         ax=None,
         palette=None,
@@ -183,7 +185,7 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
         """Horizontal mean-difference ± CI per pair; reference line at 0; de-emphasize non-significant."""
         ctx = self.ctx  # type: DirectionPosthocTukeyHsdContext
 
-        pairs: List[Dict[str, Any]] = desc["pairs"]
+        pairs: list[dict[str, Any]] = desc["pairs"]
 
         if not pairs:
             ax.axvline(0.0, linewidth=1, linestyle="--", alpha=0.5)

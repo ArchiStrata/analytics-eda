@@ -3,8 +3,10 @@ import pandas as pd
 import pytest
 
 from analytics_eda.analysis.exploratory_regression_analysis.numeric_numeric_relationship_analysis.relationship_structure_scatter_plot import (
-    RelationshipStructureScatterContext, RelationshipStructureScatterPlot
+    RelationshipStructureScatterContext,
+    RelationshipStructureScatterPlot,
 )
+
 
 @pytest.mark.parametrize(
     "make_df, x_col, y_col, kwargs, expect",

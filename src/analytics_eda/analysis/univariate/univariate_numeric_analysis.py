@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pathlib import Path
+from collections.abc import Sequence
 import logging
-from typing import Any, Dict, Optional, Sequence
+from pathlib import Path
+from typing import Any
 import uuid
 
 import pandas as pd
@@ -21,10 +22,14 @@ import pandas as pd
 from analytics_eda.core.visualization.context import build_plot_context
 from analytics_eda.core.visualization.validation import named_only_validator
 
+from ...core.data_quality import (
+    MissingDataBarContext,
+    MissingDataBarPlot,
+    StringCoercionBarContext,
+    StringCoercionBarPlot,
+)
 from ...core.numeric import CardinalityBarContext, CardinalityBarPlot, numeric_distribution_analysis
 from ...core.reporting import write_json_report
-from ...core.data_quality import StringCoercionBarPlot, StringCoercionBarContext, MissingDataBarContext, MissingDataBarPlot
-
 
 logger = logging.getLogger(__name__)
 
@@ -32,21 +37,21 @@ def univariate_numeric_analysis(
     series: pd.Series,
     report_root: str = 'reports/eda/univariate/numeric',
     report_log_id = str(uuid.uuid4()),
-    data_source: Optional[str] = None,
-    filter_desc: Optional[str] = None,
+    data_source: str | None = None,
+    filter_desc: str | None = None,
     distribution_names: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon'),
-    plot_central_tendency_histogram_overrides: Optional[Dict[str, Any]] = None,
-    plot_central_tendency_violin_overrides: Optional[Dict[str, Any]] = None,
-    plot_dispersion_boxplot_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_ecdf_gap_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_ecdf_vs_cdf_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_density_overrides:      Optional[Dict[str, Any]] = None,
-    plot_distribution_qq_fit_overrides: Optional[Dict[str, Any]] = None,
-    plot_distribution_probability_overrides: Optional[Dict[str, Any]] = None,
+    plot_central_tendency_histogram_overrides: dict[str, Any] | None = None,
+    plot_central_tendency_violin_overrides: dict[str, Any] | None = None,
+    plot_dispersion_boxplot_overrides: dict[str, Any] | None = None,
+    plot_distribution_ecdf_gap_overrides: dict[str, Any] | None = None,
+    plot_distribution_ecdf_vs_cdf_overrides: dict[str, Any] | None = None,
+    plot_distribution_density_overrides:      dict[str, Any] | None = None,
+    plot_distribution_qq_fit_overrides: dict[str, Any] | None = None,
+    plot_distribution_probability_overrides: dict[str, Any] | None = None,
 
-    plot_missing_data_bar_overrides: Optional[Dict[str, Any]] = None,
-    plot_string_coercion_bar_overrides: Optional[Dict[str, Any]] = None,
-    plot_cardinality_bar_overrides: Optional[Dict[str, Any]] = None,
+    plot_missing_data_bar_overrides: dict[str, Any] | None = None,
+    plot_string_coercion_bar_overrides: dict[str, Any] | None = None,
+    plot_cardinality_bar_overrides: dict[str, Any] | None = None,
 ) -> Path:
     """
     Perform a comprehensive univariate analysis on a numeric pandas Series and
@@ -74,7 +79,8 @@ def univariate_numeric_analysis(
             during goodness-of-fit analysis.
         *_overrides (dict): Optional keyword overrides for individual plot functions.
 
-    Returns:
+    Returns
+    -------
         Dict[str, Path]: Dictionary containing the path to the generated JSON report.
 
     Report structure:
@@ -128,7 +134,7 @@ def univariate_numeric_analysis(
     )
     string_coercion_plot = StringCoercionBarPlot(string_coercion_ctx)
     data_quality["string_coercion_barchart"] = string_coercion_plot.run(series_copy)
-    
+
     series_copy = pd.to_numeric(series_copy, errors="coerce").dropna()
 
     # Cardinality Analysis
@@ -139,7 +145,7 @@ def univariate_numeric_analysis(
     )
     card_plot = CardinalityBarPlot(card_ctx)
     cardinality_bar_plot_result = card_plot.run(series_copy)
-    
+
     is_discrete = cardinality_bar_plot_result['descriptive_stats']['is_discrete']
 
     cardinality = {

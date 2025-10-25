@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from ..utils.utils import resolve_num_col, dropna_on
 from ....core.visualization.base_plot import BasePlot
 from ....core.visualization.context import PlotContext
-
+from ..utils.utils import dropna_on, resolve_num_col
 
 # ---------------- Context ----------------
 
@@ -59,7 +60,7 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
     """
 
     # ---- Defaults for empty/degenerate inputs ----
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {
             "params": {
                 # Add descriptive parameters here if the context ever includes any
@@ -70,7 +71,7 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
             "slope_sign": None,
         }
 
-    def default_inferential(self) -> Dict[str, Any]:
+    def default_inferential(self) -> dict[str, Any]:
         alpha = float(getattr(self.ctx, "alpha", 0.05))
         return {
             "params": {"alpha": alpha},
@@ -83,14 +84,14 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
                 "ci": (None, None),
             }
         }
-    
+
     # ---------- Frame API ----------
     def validate_frame(
         self,
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
+        role_map: Mapping[str, str] | None = None
     ) -> pd.DataFrame:
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
@@ -103,15 +104,15 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, Any]:
+        role_map: Mapping[str, str] | None = None
+    ) -> dict[str, Any]:
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         x = df[x_col].to_numpy()
         y = df[y_col].to_numpy()
         n = int(len(x))
 
-        out: Dict[str, Any] = {
+        out: dict[str, Any] = {
             "params": {
                 # echo descriptive params from context here if/when added
             },
@@ -139,17 +140,17 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
     def compute_inferential_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
+        desc: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None
-    ) -> Dict[str, Any]:
+        role_map: Mapping[str, str] | None = None
+    ) -> dict[str, Any]:
         alpha = float(getattr(self.ctx, "alpha", 0.05))
         n = int(desc.get("n_obs", 0))
         slope = desc.get("slope", np.nan)
         intercept = desc.get("intercept", 0.0)
 
-        out: Dict[str, Any] = {
+        out: dict[str, Any] = {
             "params": {"alpha": alpha}
         }
 
@@ -222,12 +223,12 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
     def draw_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str,str]] = None,
+        role_map: Mapping[str, str] | None = None,
         fig=None,
         ax=None,
         palette=None,

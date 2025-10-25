@@ -1,9 +1,15 @@
 import math
-import pytest
+
 import numpy as np
 import pandas as pd
+import pytest
 
-from analytics_eda.core.numeric.binning_rules import sturges_bins, scott_bins, freedman_diaconis_bins, doane_bins
+from analytics_eda.core.numeric.binning_rules import (
+    doane_bins,
+    freedman_diaconis_bins,
+    scott_bins,
+    sturges_bins,
+)
 
 
 def test_sturges_bins_various_lengths():

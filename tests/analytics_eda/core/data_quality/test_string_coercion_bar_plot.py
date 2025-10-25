@@ -1,5 +1,5 @@
-import pytest
 import pandas as pd
+import pytest
 
 from analytics_eda.core.data_quality import (
     StringCoercionBarContext,

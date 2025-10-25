@@ -13,11 +13,13 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
+
 import numpy as np
 import pandas as pd
 
 from analytics_eda.core.visualization.base_plot import PlotContext
+
 
 @dataclass
 class SeriesBarChartContext(PlotContext):
@@ -29,12 +31,12 @@ class SeriesBarChartContext(PlotContext):
     bar_top_n: int = 1 # how many top bars to highlight
     bar_top_include_ties: bool = True # include ties
 
-    max_display_bars: Optional[int] = 15       # cap number of bars to display
+    max_display_bars: int | None = 15       # cap number of bars to display
     other_label: str = "Other"                 # label used when aggregating capped bars
     other_label_format: str = "{label} (k={k_agg})"
 
     # optional threshold-based aggregation (pre-cap)
-    other_min_count: Optional[int] = None  # collapse categories with count < other_min_count into "Other"
+    other_min_count: int | None = None  # collapse categories with count < other_min_count into "Other"
     other_respect_existing: bool = True    # if 'Other' already in counts, merge into it instead of creating a second one
 
 
@@ -50,7 +52,7 @@ class SeriesBarChartMixin:
     """
 
     # Defaults when empty
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {
             "total": 0,
             "total_nonnull": 0,
@@ -62,12 +64,12 @@ class SeriesBarChartMixin:
     def build_series_bar_desc(
         self,
         s: pd.Series,
-        counts: Dict[str, int],
+        counts: dict[str, int],
         *,
         denominator_key: Literal["pct_of_nonnull", "pct_of_total"] = "pct_of_nonnull",
-        extra_params: Optional[Dict[str, Any]] = None,
+        extra_params: dict[str, Any] | None = None,
         skip_plot_if_zero: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Build reporting-friendly bar statistics and cache draw arrays.
 
@@ -235,7 +237,7 @@ class SeriesBarChartMixin:
             clipped = items_wo_other[max(0, keep):]
 
         # Assemble bars dict
-        bars: Dict[str, Dict[str, float | int]] = {}
+        bars: dict[str, dict[str, float | int]] = {}
         for k, n, r in top_items:
             bars[k] = {"count": n, denominator_key: float(r)}
 
@@ -246,7 +248,7 @@ class SeriesBarChartMixin:
             other_ratio = float(other_count) / denom if denom > 0 else 0.0
             # k_agg counts how many labels were folded in: clipped tail + raw Other (if present)
             k_agg = threshold_fold_k + len(clipped)
-            
+
             # Format the display label (e.g., "Other (k=3)") if we actually folded something in
             other_display = (other_label_fmt.format(label=other_label_base, k_agg=k_agg)
                             if k_agg > 0 else other_label_base)

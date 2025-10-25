@@ -5,6 +5,7 @@ from analytics_eda.analysis.exploratory_regression_analysis.numeric_numeric_rela
     numeric_numeric_relationship_analysis,
 )
 
+
 @pytest.mark.parametrize(
     "make_df, kwargs, expected_report_data",
     [

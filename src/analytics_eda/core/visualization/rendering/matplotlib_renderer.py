@@ -13,16 +13,22 @@
 # limitations under the License.
 
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
 import os
-from matplotlib.dates import DateFormatter, AutoDateFormatter, AutoDateLocator
+from typing import Any
+
+from matplotlib.dates import AutoDateFormatter, AutoDateLocator, DateFormatter
 import matplotlib.pyplot as plt
-import seaborn as sns
 from matplotlib.ticker import Formatter, FuncFormatter, PercentFormatter, StrMethodFormatter
+import seaborn as sns
 
 from analytics_eda.core.visualization.context.plot_context import AxisFormat
-from analytics_eda.core.visualization.rendering.renderer_protocol import DrawFnSeries, RendererProtocol
+from analytics_eda.core.visualization.rendering.renderer_protocol import (
+    DrawFnSeries,
+    RendererProtocol,
+)
+
 
 @dataclass
 class DefaultMatplotlibRenderer(RendererProtocol):
@@ -39,7 +45,7 @@ class DefaultMatplotlibRenderer(RendererProtocol):
         return fig, ax, palette
 
     # ---------- metadata ----------
-    def _apply_metadata_to_axes(self, ax, chart_metadata: Dict[str, Any]):
+    def _apply_metadata_to_axes(self, ax, chart_metadata: dict[str, Any]):
         if chart_metadata.get("title"):
             ax.title_ref = ax.set_title(chart_metadata["title"], pad=14, fontsize=12, fontweight="bold")
         if chart_metadata.get("xlabel"):
@@ -57,7 +63,7 @@ class DefaultMatplotlibRenderer(RendererProtocol):
     ):
         if not subtitle:
             return
-        
+
         if show_subtitle and subtitle.strip():
             self._subtitle_queue.append((ax, subtitle, fontsize, color, gap_from_axes_pts))
 
@@ -208,7 +214,7 @@ class DefaultMatplotlibRenderer(RendererProtocol):
         h = hex_color.lstrip("#")
         r, g, b = tuple(int(h[i:i+2], 16)/255.0 for i in (0, 2, 4))
         return (r, g, b, float(alpha))
-    
+
     # ---------- axis format -----------
     def _apply_axis_format(self, axis, fmt: AxisFormat):
         # Custom formatter wins
@@ -265,7 +271,7 @@ class DefaultMatplotlibRenderer(RendererProtocol):
             return
 
     # ---------- finalization ----------
-    def _finalize(self, ctx, fig, ax, chart_md: Dict[str, Any]) -> Optional[str]:
+    def _finalize(self, ctx, fig, ax, chart_md: dict[str, Any]) -> str | None:
         """Add source, layout, save/show; return saved file name (or None)."""
         # Ensure all positions are computed
         fig.canvas.draw()
@@ -319,9 +325,9 @@ class DefaultMatplotlibRenderer(RendererProtocol):
         self,
         *,
         ctx,
-        chart_md: Dict[str, Any],
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
+        chart_md: dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
         draw_fn: DrawFnSeries,
         subtitle_text: str | None,
         footer_text: str | None,

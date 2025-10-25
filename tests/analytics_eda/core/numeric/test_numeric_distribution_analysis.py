@@ -1,8 +1,10 @@
-import pytest
 import numpy as np
 import pandas as pd
-from analytics_eda.core.numeric.numeric_distribution_analysis import numeric_distribution_analysis
+import pytest
+
 from analytics_eda.core.numeric.evaluate_transforms import evaluate_transforms
+from analytics_eda.core.numeric.numeric_distribution_analysis import numeric_distribution_analysis
+
 
 @pytest.mark.parametrize(
     "make_input, exc, pattern",

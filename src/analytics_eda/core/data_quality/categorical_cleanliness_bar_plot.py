@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, Iterable
 import re
+from typing import Any
 
 import pandas as pd
 
 from analytics_eda.core.visualization.context.plot_context import AxisFormat
-from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import (
+    SeriesBarChartContext,
+    SeriesBarChartMixin,
+)
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import named_only_validator
 
@@ -43,6 +47,7 @@ class CategoricalCleanlinessBarContext(SeriesBarChartContext):
       whether multiple distinct casings appear in the data. Rows whose token
       casing is not the group's canonical (most frequent) casing are flagged.
     """
+
     title_template: str = "Categorical Cleanliness for {name}{modifiers}"
     xlabel: str = "Percent of non‑null"
     ylabel: str = "Issue Type"
@@ -63,7 +68,7 @@ class CategoricalCleanlinessBarContext(SeriesBarChartContext):
 
     # If provided, values outside this set are "invalid".
     # Matching is done on stripped tokens; case sensitivity is configurable.
-    allowed_categories: Optional[Iterable[str]] = None
+    allowed_categories: Iterable[str] | None = None
     case_sensitive_allowed: bool = False
 
     # Treat empty-string after strip as invalid (common in data-entry exports)
@@ -104,6 +109,7 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
     -----
     - Percentages use the non-null base (`total_nonnull`).
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=named_only_validator(dropna=False, cast_str=False)
@@ -117,7 +123,7 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
         return "1.0.0"
 
     # ---- compute ----
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         total = int(s.size)
         nonnull_mask = ~s.isna()
         total_nonnull = int(nonnull_mask.sum())
@@ -169,7 +175,7 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
             if not self.ctx.case_sensitive_allowed:
                 allowed = {str(a).strip().lower() for a in allowed}
 
-            def _is_allowed(val: Optional[str]) -> bool:
+            def _is_allowed(val: str | None) -> bool:
                 if val is None:
                     return False
                 txt = str(val).strip()
@@ -207,7 +213,7 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
 
         return desc
 
-    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
         total_nonnull = desc["total_nonnull"]
 
         findings = {
@@ -220,15 +226,15 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
         if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
             findings["primary_finding"] = "The series is empty."
             return findings
-        
+
         pct_any_issue = desc["pct_subset"]
         total_issues = desc["subset_count"]
-        
+
         # Nothing to report → all values are clean
         if total_issues == 0:
             findings["primary_finding"] = "No cleanliness issues detected."
             return findings
-        
+
         # how many issues are there and how common are they?
         findings["primary_finding"] = f"{self.formatter.format_percent(pct_any_issue)} of values show at least one cleanliness issue ({total_issues:,} rows)."
 
@@ -253,7 +259,7 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
             findings["secondary_finding"] = "Most frequent issues (tie): " + ", ".join(parts) + "."
 
         return findings
-    
+
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
         if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
             return ""

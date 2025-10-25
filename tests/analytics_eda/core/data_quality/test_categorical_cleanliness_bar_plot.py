@@ -1,10 +1,11 @@
-import pytest
 import pandas as pd
+import pytest
 
 from analytics_eda.core.data_quality import (
     CategoricalCleanlinessBarContext,
     CategoricalCleanlinessBarPlot,
 )
+
 
 @pytest.mark.parametrize(
     "make_series, kwargs, expect",

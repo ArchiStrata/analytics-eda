@@ -11,16 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Literal, Sequence, Callable
+from typing import Any, Literal
+
 import numpy as np
 import pandas as pd
 from scipy import stats
 from scipy.signal import find_peaks
 
-from ..visualization.base_plot import BasePlot, PlotContext
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import numeric_validator
+
+from ..visualization.base_plot import BasePlot, PlotContext
 from .binning_rules import doane_bins, freedman_diaconis_bins, scott_bins, sturges_bins
 
 BinMethod = Literal['sturges', 'scott', 'freedman_diaconis', 'doane']
@@ -32,8 +35,8 @@ class DistributionDensityContext(PlotContext):
     ylabel: str = "Density"
 
     # plot-specific knobs
-    bin_method: Optional[BinMethod] = None
-    bins: Optional[int | Sequence[float]] = None
+    bin_method: BinMethod | None = None
+    bins: int | Sequence[float] | None = None
     hist_alpha: float = 0.4
     bw_adjust: float = 1.0
 
@@ -67,6 +70,7 @@ class DistributionDensityPlot(BasePlot):
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=numeric_validator()
@@ -74,7 +78,7 @@ class DistributionDensityPlot(BasePlot):
         super().__init__(ctx, parts)
 
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {
             "params": {"bins": self.ctx.bins, "bin_method": self.ctx.bin_method},
             "n": 0,
@@ -90,7 +94,7 @@ class DistributionDensityPlot(BasePlot):
             "pct_90": None
         }
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         n = int(s.size)
 
         # Resolve bins: bin_method > ctx.bins > default 30
@@ -159,9 +163,9 @@ class DistributionDensityPlot(BasePlot):
     def draw(
         self,
         s: pd.Series,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         fig,
         ax,

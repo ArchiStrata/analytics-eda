@@ -13,14 +13,18 @@
 # limitations under the License.
 
 from dataclasses import dataclass, field
-from typing import Dict, Any
+from typing import Any
+
 import pandas as pd
 
 from analytics_eda.core.visualization.context.plot_context import AxisFormat
-from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
-
+from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import (
+    SeriesBarChartContext,
+    SeriesBarChartMixin,
+)
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import named_only_validator
+
 from ..visualization.base_plot import BasePlot
 
 
@@ -30,6 +34,7 @@ class StringCoercionBarContext(SeriesBarChartContext):
     Identify and visualize non-numeric (string-like) values in a series by
     attempting numeric coercion and collecting the values that fail to parse.
     """
+
     title_template: str = "Non-Numeric (String) Values in {name}{modifiers}"
     xlabel: str = "Percent of non‑null"
     ylabel: str = "Category"
@@ -71,6 +76,7 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         }
       }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=named_only_validator(dropna=False, cast_str=False)
@@ -84,7 +90,7 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         return "1.0.0"
 
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         # Base tallies
         nonnull_mask = ~s.isna()
 
@@ -114,10 +120,10 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         desc = self.build_series_bar_desc(s, counts_dict, denominator_key="pct_of_nonnull")
 
         desc["params"]["include_na_literal"] = bool(self.ctx.include_na_literal)
-        
+
         return desc
 
-    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
         total_nonnull = desc["total_nonnull"]
 
         findings = {
@@ -130,7 +136,7 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
             findings["primary_finding"] = "The series is empty."
             return findings
-        
+
         total_nonnum = desc.get("subset_count", 0)  # rows that failed numeric coercion (sum of bars)
         pct_nonnum = float(desc.get("pct_subset", 0.0))
 
@@ -147,7 +153,7 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         )
 
         # which issues had the most, how common, and how many?
-        bars: Dict[str, Any] = desc.get("bars", {})
+        bars: dict[str, Any] = desc.get("bars", {})
         denom_key = desc.get("denominator_key", "pct_of_nonnull")
 
         top_labels: list[str] = list(desc.get("top_labels", []))

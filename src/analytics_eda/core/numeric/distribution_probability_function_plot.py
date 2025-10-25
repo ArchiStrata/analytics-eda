@@ -12,24 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Union
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from scipy.stats import gaussian_kde
 
-from ..visualization.base_plot import BasePlot, PlotContext
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import numeric_validator
+
+from ..visualization.base_plot import BasePlot, PlotContext
+
 
 @dataclass
 class DistributionProbabilityFunctionContext(PlotContext):
     title_template: str = "{pf_kind} of {name}{modifiers}"
     xlabel: str = "Value"
-    ylabel: Optional[str] = None  # dynamic default if None
+    ylabel: str | None = None  # dynamic default if None
 
     # plot-specific
     is_discrete: bool = True
-    bw_method: Union[str, float] = "scott"  # used for KDE when continuous
+    bw_method: str | float = "scott"  # used for KDE when continuous
 
 
 class DistributionProbabilityFunctionPlot(BasePlot):
@@ -49,13 +52,14 @@ class DistributionProbabilityFunctionPlot(BasePlot):
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=numeric_validator()
         )
         super().__init__(ctx, parts)
 
-    def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+    def title_kwargs(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
         is_disc = bool(self.ctx.is_discrete)
         pf_kind = "PMF" if is_disc else "PDF estimate"
 
@@ -69,7 +73,7 @@ class DistributionProbabilityFunctionPlot(BasePlot):
             **extras,             # may include extra_desc for modifiers
         }
 
-    def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+    def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
         is_disc = bool(self.ctx.is_discrete)
         # Dynamic default if user didn't set ctx.ylabel
         ylabel = (
@@ -86,7 +90,7 @@ class DistributionProbabilityFunctionPlot(BasePlot):
             meta["bw_method"] = self.ctx.bw_method
         return meta
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {
             "n": 0,
             "mean": None,
@@ -106,7 +110,7 @@ class DistributionProbabilityFunctionPlot(BasePlot):
             "y_pdf": np.array([], dtype=float),
         }
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         # s is validated & NA-dropped by NumericSeriesMixin.validate
         n = int(s.size)
 
@@ -122,7 +126,7 @@ class DistributionProbabilityFunctionPlot(BasePlot):
         min_val = float(s.min()) if n else None
         max_val = float(s.max()) if n else None
 
-        desc: Dict[str, Any] = {
+        desc: dict[str, Any] = {
             "n": n,
             "mean": mean,
             "median": median,
@@ -169,9 +173,9 @@ class DistributionProbabilityFunctionPlot(BasePlot):
     def draw(
         self,
         s: pd.Series,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         fig,
         ax,

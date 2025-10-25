@@ -1,9 +1,10 @@
 import math
-import pytest
+
 import numpy as np
 import pandas as pd
+import pytest
 
-from analytics_eda.core.numeric import DispersionBoxplotContext, DispersionBoxPlot
+from analytics_eda.core.numeric import DispersionBoxPlot, DispersionBoxplotContext
 
 
 @pytest.mark.parametrize(
@@ -28,6 +29,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
 
         plot.run(s)
 
+test_series_1_to_5 = pd.Series([1,2,3,4,5])
 
 @pytest.mark.parametrize(
     "make_series, kwargs, expect",
@@ -99,17 +101,17 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
                 "descriptive_stats": {
                     "n": 5,
-                    "std": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.std(), rel_tol=1e-12, abs_tol=1e-12)),
-                    "var": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.var(), rel_tol=1e-12, abs_tol=1e-12)),
+                    "std": (lambda v, s=test_series_1_to_5: math.isclose(v, s.std(), rel_tol=1e-12, abs_tol=1e-12)),
+                    "var": (lambda v, s=test_series_1_to_5: math.isclose(v, s.var(), rel_tol=1e-12, abs_tol=1e-12)),
                     "min": 1,
                     "max": 5,
                     "range": 4,
-                    "mad": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, (s - s.mean()).abs().mean(), rel_tol=1e-12, abs_tol=1e-12)),
-                    "cv":  (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.std()/s.mean(), rel_tol=1e-12, abs_tol=1e-12)),
-                    "pct_10": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.quantile(0.10), rel_tol=1e-12, abs_tol=1e-12)),
-                    "pct_25": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.quantile(0.25), rel_tol=1e-12, abs_tol=1e-12)),
-                    "pct_75": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.quantile(0.75), rel_tol=1e-12, abs_tol=1e-12)),
-                    "pct_90": (lambda v, s=pd.Series([1,2,3,4,5]): math.isclose(v, s.quantile(0.90), rel_tol=1e-12, abs_tol=1e-12)),
+                    "mad": (lambda v, s=test_series_1_to_5: math.isclose(v, (s - s.mean()).abs().mean(), rel_tol=1e-12, abs_tol=1e-12)),
+                    "cv":  (lambda v, s=test_series_1_to_5: math.isclose(v, s.std()/s.mean(), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_10": (lambda v, s=test_series_1_to_5: math.isclose(v, s.quantile(0.10), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_25": (lambda v, s=test_series_1_to_5: math.isclose(v, s.quantile(0.25), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_75": (lambda v, s=test_series_1_to_5: math.isclose(v, s.quantile(0.75), rel_tol=1e-12, abs_tol=1e-12)),
+                    "pct_90": (lambda v, s=test_series_1_to_5: math.isclose(v, s.quantile(0.90), rel_tol=1e-12, abs_tol=1e-12)),
                 },
             },
         ),

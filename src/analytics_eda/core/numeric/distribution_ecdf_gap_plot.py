@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
-from ..visualization.base_plot import BasePlot, PlotContext
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import numeric_validator
+
+from ..visualization.base_plot import BasePlot, PlotContext
+
 
 @dataclass
 class DistributionECDFGapContext(PlotContext):
@@ -28,7 +31,7 @@ class DistributionECDFGapContext(PlotContext):
     enable_legend: bool = True
 
     # plot-specific knobs
-    threshold: Optional[float] = None
+    threshold: float | None = None
 
 class DistributionECDFGapPlot(BasePlot):
     """
@@ -63,13 +66,14 @@ class DistributionECDFGapPlot(BasePlot):
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=numeric_validator()
         )
         super().__init__(ctx, parts)
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {
             "params": {"threshold": self.ctx.threshold},
             "n": 0,
@@ -85,7 +89,7 @@ class DistributionECDFGapPlot(BasePlot):
             "max_gap_loc": None
         }
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         clean = s.sort_values()
         n = int(clean.size)
         unique_vals = clean.unique()
@@ -137,9 +141,9 @@ class DistributionECDFGapPlot(BasePlot):
     def draw(
         self,
         s: pd.Series,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         fig,
         ax,

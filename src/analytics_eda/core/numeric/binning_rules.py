@@ -13,7 +13,7 @@
 # limitations under the License.
 import logging
 import math
-from typing import Tuple
+
 import numpy as np
 import pandas as pd
 
@@ -21,12 +21,13 @@ from analytics_eda.core.visualization.validation.validation import numeric_valid
 
 logger = logging.getLogger(__name__)
 
-def choose_bins(series: pd.Series) -> Tuple[int, str]:
+def choose_bins(series: pd.Series) -> tuple[int, str]:
     """
     Choose a robust histogram bin count based on data size, shape, and skew.
     Prioritizes Doane, Scott, or Freedman–Diaconis with safe fallbacks.
 
-    Returns:
+    Returns
+    -------
         (k, rule_name): 
             k = int, number of bins selected
             rule_name = str, name of the rule or heuristic applied
@@ -91,10 +92,12 @@ def sturges_bins(series: pd.Series) -> int:
     Args:
         series (pd.Series): Numeric data. NAs will be dropped.
 
-    Returns:
+    Returns
+    -------
         int: Number of bins, k = ceil(log2(n_obs) + 1).
 
-    Raises:
+    Raises
+    ------
         ValueError: If n_obs < 1.
     """
     # 1. Validate input
@@ -118,10 +121,12 @@ def scott_bins(series: pd.Series) -> int:
     Args:
         series (pd.Series): Numeric data. NAs will be dropped.
 
-    Returns:
+    Returns
+    -------
         int: Number of bins according to Scott's Rule.
 
-    Raises:
+    Raises
+    ------
         TypeError: If `series` is not a pandas Series or not numeric.
         ValueError: If `series` has fewer than 2 non-NA observations or zero variance.
     """
@@ -158,10 +163,12 @@ def freedman_diaconis_bins(series: pd.Series) -> int:
     Args:
         series (pd.Series): Numeric data with NAs already dropped.
 
-    Returns:
+    Returns
+    -------
         int: Number of bins according to Freedman–Diaconis.
 
-    Raises:
+    Raises
+    ------
         TypeError: If `series` is not a pandas Series or not numeric.
         ValueError: If `series` has fewer than 2 values or IQR is zero.
     """
@@ -200,10 +207,12 @@ def doane_bins(series: pd.Series) -> int:
     Args:
         series (pd.Series): Numeric data with NAs already dropped.
 
-    Returns:
+    Returns
+    -------
         int: Number of bins according to Doane’s Rule.
 
-    Raises:
+    Raises
+    ------
         TypeError: If `series` is not a pandas Series or not numeric.
         ValueError: If `series` has fewer than three values or zero variance affecting skewness.
     """

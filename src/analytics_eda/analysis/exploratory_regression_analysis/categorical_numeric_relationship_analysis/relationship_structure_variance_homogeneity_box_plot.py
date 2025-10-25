@@ -11,18 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from scipy.stats import bartlett, levene
 
-from ..utils.utils import (
-    resolve_cat_col, resolve_num_col, grouped_arrays, truncate_labels
-)
 from ....core.visualization.base_plot import BasePlot
 from ....core.visualization.context import PlotContext
-
+from ..utils.utils import grouped_arrays, resolve_cat_col, resolve_num_col, truncate_labels
 
 # ---------------- Context ----------------
 
@@ -34,7 +33,7 @@ class RelationshipStructureVarianceHomogeneityContext(PlotContext):
 
     # drawing knobs
     rotate_xticks: int = 45
-    max_label_len: Optional[int] = 30
+    max_label_len: int | None = 30
 
     # violin / box / errorbar styling
     violin_alpha: float = 0.35
@@ -92,7 +91,7 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
+        role_map: Mapping[str, str] | None = None,
     ) -> pd.DataFrame:
         """Require categorical (x) and numeric (y); drop rows with NA in either."""
         cat = resolve_cat_col(df, cols, role_map)
@@ -107,8 +106,8 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
-    ) -> Dict[str, Any]:
+        role_map: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
         """Compute per‑group arrays and basic stats used for plotting."""
         ctx = self.ctx  # type: RelationshipStructureVarianceHomogeneityContext
         cat = resolve_cat_col(df, cols, role_map)
@@ -138,13 +137,13 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
     def compute_inferential_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
+        desc: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
-    ) -> Dict[str, Any]:
+        role_map: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
         """Bartlett & Levene across groups (skip gracefully if < 2 groups or tiny n)."""
-        arrays: List[np.ndarray] = desc.get("_arrays", [])
+        arrays: list[np.ndarray] = desc.get("_arrays", [])
         alpha = getattr(self.ctx, "alpha", 0.05)  # reuse context alpha if present; else 0.05
 
         if len(arrays) < 2 or any(len(a) == 0 for a in arrays):
@@ -166,12 +165,12 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
     def draw_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str,str]] = None,
+        role_map: Mapping[str, str] | None = None,
         fig=None,
         ax=None,
         palette=None,
@@ -180,7 +179,7 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
         ctx = self.ctx  # type: RelationshipStructureVarianceHomogeneityContext
 
         labels = desc["group_labels"]
-        arrays: List[np.ndarray] = desc["_arrays"]
+        arrays: list[np.ndarray] = desc["_arrays"]
         means, stds = desc["means"], desc["stds"]
         n_groups = desc["n_groups"]
 

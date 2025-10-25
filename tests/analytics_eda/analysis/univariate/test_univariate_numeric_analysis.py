@@ -1,8 +1,11 @@
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
 
-from analytics_eda.analysis.univariate.univariate_numeric_analysis import univariate_numeric_analysis
+from analytics_eda.analysis.univariate.univariate_numeric_analysis import (
+    univariate_numeric_analysis,
+)
+
 
 @pytest.mark.parametrize(
     "make_series, kwargs, expected_report_data",

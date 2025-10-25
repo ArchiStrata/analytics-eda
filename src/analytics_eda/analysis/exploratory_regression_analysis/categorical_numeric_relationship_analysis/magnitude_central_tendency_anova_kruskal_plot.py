@@ -11,22 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Sequence
 import math
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from scipy.stats import f_oneway, kruskal
 
-from ..utils.utils import (
-    resolve_cat_col,
-    resolve_num_col,
-    grouped_arrays,
-    truncate_labels,
-)
 from ....core.visualization.base_plot import BasePlot
 from ....core.visualization.context import PlotContext
-
+from ..utils.utils import (
+    grouped_arrays,
+    resolve_cat_col,
+    resolve_num_col,
+    truncate_labels,
+)
 
 # ---------------- Context ----------------
 
@@ -41,7 +42,7 @@ class MagnitudeCentralTendencyAnovaKruskalContext(PlotContext):
     box_width: float = 0.6
     showfliers: bool = False
     rotate_xticks: int = 45
-    max_label_len: Optional[int] = 30
+    max_label_len: int | None = 30
 
     # which center & CI to emphasize on the chart
     #   "anova"   -> draw means with 95% CI (mean ± 1.96 * s/sqrt(n))
@@ -51,7 +52,7 @@ class MagnitudeCentralTendencyAnovaKruskalContext(PlotContext):
     # bootstrap for median CIs
     bootstrap_iters: int = 2000
     bootstrap_ci: float = 0.95
-    random_state: Optional[int] = None
+    random_state: int | None = None
 
     # annotate global test in subtitle if significant
     alpha: float = 0.05
@@ -111,7 +112,7 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
+        role_map: Mapping[str, str] | None = None,
     ) -> pd.DataFrame:
         """Require categorical (x) and numeric (y); drop rows with NA in either."""
         cat = resolve_cat_col(df, cols, role_map)
@@ -126,8 +127,8 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
         df: pd.DataFrame,
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
-    ) -> Dict[str, Any]:
+        role_map: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
         """Compute per-group arrays and center/CI summaries."""
         ctx = self.ctx  # type: MagnitudeCentralTendencyAnovaKruskalContext
         cat = resolve_cat_col(df, cols, role_map)
@@ -192,13 +193,13 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
     def compute_inferential_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
+        desc: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str, str]] = None,
-    ) -> Dict[str, Any]:
+        role_map: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
         """Global ANOVA & Kruskal–Wallis (gracefully handle <2 groups)."""
-        arrays: List[np.ndarray] = desc.get("_arrays", [])
+        arrays: list[np.ndarray] = desc.get("_arrays", [])
         alpha = getattr(self.ctx, "alpha", 0.05)
 
         if len(arrays) < 2 or any(a.size == 0 for a in arrays):
@@ -218,12 +219,12 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
     def draw_frame(
         self,
         df: pd.DataFrame,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         cols: Sequence[str],
-        role_map: Optional[Mapping[str,str]] = None,
+        role_map: Mapping[str, str] | None = None,
         fig=None,
         ax=None,
         palette=None,
@@ -232,7 +233,7 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
         ctx = self.ctx  # type: MagnitudeCentralTendencyAnovaKruskalContext
 
         labels = desc["group_labels"]
-        arrays: List[np.ndarray] = desc["_arrays"]
+        arrays: list[np.ndarray] = desc["_arrays"]
         n_groups = desc["n_groups"]
 
         if n_groups == 0:

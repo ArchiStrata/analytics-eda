@@ -12,31 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pathlib import Path
 import logging
-from typing import Any, Dict, Optional
+from pathlib import Path
+from typing import Any
 import uuid
 
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 
 from analytics_eda.core.visualization.context import build_plot_context
-from ....core.reporting import write_json_report
 
-from .relationship_structure_scatter_plot import (
-    RelationshipStructureScatterContext, RelationshipStructureScatterPlot
-)
-from .relationship_structure_scatter_lowess_plot import (
-    RelationshipStructureScatterLowessContext, RelationshipStructureScatterLowessPlot
-)
-from .magnitude_association_scatter_ols_plot import (
-    MagnitudeAssociationScatterOLSContext, MagnitudeAssociationScatterOLSPlot
+from ....core.reporting import write_json_report
+from .direction_association_scatter_ols_trend_plot import (
+    DirectionAssociationScatterOLSTrendContext,
+    DirectionAssociationScatterOLSTrendPlot,
 )
 from .magnitude_association_residual_plot import (
-    MagnitudeAssociationResidualContext, MagnitudeAssociationResidualPlot
+    MagnitudeAssociationResidualContext,
+    MagnitudeAssociationResidualPlot,
 )
-from .direction_association_scatter_ols_trend_plot import (
-    DirectionAssociationScatterOLSTrendContext, DirectionAssociationScatterOLSTrendPlot
+from .magnitude_association_scatter_ols_plot import (
+    MagnitudeAssociationScatterOLSContext,
+    MagnitudeAssociationScatterOLSPlot,
+)
+from .relationship_structure_scatter_lowess_plot import (
+    RelationshipStructureScatterLowessContext,
+    RelationshipStructureScatterLowessPlot,
+)
+from .relationship_structure_scatter_plot import (
+    RelationshipStructureScatterContext,
+    RelationshipStructureScatterPlot,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,20 +53,21 @@ def numeric_numeric_relationship_analysis(
     y_col: str,
     report_root: str = "reports/eda/bivariate/numeric_numeric_relationship_analysis",
     report_log_id: str = str(uuid.uuid4()),
-    data_source: Optional[str] = None,
+    data_source: str | None = None,
 
     # per‑plot override dicts
-    plot_relationship_structure_scatter_overrides: Optional[Dict[str, Any]] = None,
-    plot_relationship_structure_scatter_lowess_overrides: Optional[Dict[str, Any]] = None,
-    plot_magnitude_scatter_ols_overrides: Optional[Dict[str, Any]] = None,
-    plot_magnitude_residual_overrides: Optional[Dict[str, Any]] = None,
-    plot_direction_scatter_ols_trend_overrides: Optional[Dict[str, Any]] = None,
-) -> Dict:
+    plot_relationship_structure_scatter_overrides: dict[str, Any] | None = None,
+    plot_relationship_structure_scatter_lowess_overrides: dict[str, Any] | None = None,
+    plot_magnitude_scatter_ols_overrides: dict[str, Any] | None = None,
+    plot_magnitude_residual_overrides: dict[str, Any] | None = None,
+    plot_direction_scatter_ols_trend_overrides: dict[str, Any] | None = None,
+) -> dict:
     """
     Run numeric↔numeric relationship analysis (structure, magnitude, direction) and
     write a JSON report bundling plot payloads.
 
-    Returns:
+    Returns
+    -------
         Dict with 'report_file_path' to the saved JSON report.
     """
     logger.info(
@@ -89,7 +95,7 @@ def numeric_numeric_relationship_analysis(
     # =========================
     # Relationship Structure
     # =========================
-    relationship_structure: Dict[str, Any] = {}
+    relationship_structure: dict[str, Any] = {}
 
     rs_scatter_ctx = build_plot_context(
         RelationshipStructureScatterContext,
@@ -114,7 +120,7 @@ def numeric_numeric_relationship_analysis(
     # =========================
     # Magnitude of Association
     # =========================
-    magnitude_of_association: Dict[str, Any] = {}
+    magnitude_of_association: dict[str, Any] = {}
 
     mag_scatter_ols_ctx = build_plot_context(
         MagnitudeAssociationScatterOLSContext,
@@ -139,7 +145,7 @@ def numeric_numeric_relationship_analysis(
     # =========================
     # Direction of Association
     # =========================
-    direction_of_association: Dict[str, Any] = {}
+    direction_of_association: dict[str, Any] = {}
 
     dir_trend_ctx = build_plot_context(
         DirectionAssociationScatterOLSTrendContext,

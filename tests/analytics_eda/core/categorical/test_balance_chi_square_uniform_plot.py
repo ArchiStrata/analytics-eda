@@ -1,7 +1,11 @@
-import pytest
 import pandas as pd
+import pytest
 
-from analytics_eda.core.categorical import BalanceChiSquareUniformPlot, BalanceChiSquareUniformContext
+from analytics_eda.core.categorical import (
+    BalanceChiSquareUniformContext,
+    BalanceChiSquareUniformPlot,
+)
+
 
 @pytest.mark.parametrize(
     "series_factory, expected_exc, match",

@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Tuple, Literal
+from typing import Any, Literal
+
 import numpy as np
 import pandas as pd
 from scipy import stats
 
-from ..visualization.base_plot import BasePlot, PlotContext
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import numeric_validator
+
+from ..visualization.base_plot import BasePlot, PlotContext
 
 DistName = Literal['norm', 'lognorm', 'gamma', 'expon']
 
@@ -66,28 +68,29 @@ class DistributionECDFvsCDFPlot(BasePlot):
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
       }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=numeric_validator()
         )
         super().__init__(ctx, parts)
 
-    ALLOWED: Tuple[DistName, ...] = ('norm', 'lognorm', 'gamma', 'expon')
+    ALLOWED: tuple[DistName, ...] = ('norm', 'lognorm', 'gamma', 'expon')
 
-    def title_kwargs(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+    def title_kwargs(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
         dist = self.ctx.distribution_name
         return {
             "fit_desc": f"fitted to {dist}",
             "dist": dist,
         }
 
-    def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> Dict[str, Any]:
+    def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
         return {
             "distribution_name": self.ctx.distribution_name,
             "alpha": float(self.ctx.alpha),
         }
 
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         return {
             "n": 0,
             "params": {
@@ -96,10 +99,10 @@ class DistributionECDFvsCDFPlot(BasePlot):
             },
         }
 
-    def default_inferential(self) -> Dict[str, Any]:
+    def default_inferential(self) -> dict[str, Any]:
         return {"params": {"alpha": float(self.ctx.alpha)}}
 
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         if self.ctx.distribution_name not in self.ALLOWED:
             raise ValueError(f"distribution_name must be one of {self.ALLOWED}")
 
@@ -108,13 +111,13 @@ class DistributionECDFvsCDFPlot(BasePlot):
 
         # support checks (mirror legacy behavior)
         mn = float(data.min()) if n else float('inf')
-        err: Optional[str] = None
+        err: str | None = None
         if self.ctx.distribution_name in ('lognorm', 'gamma') and n > 0 and mn <= 0:
             err = 'requires positive data'
         if self.ctx.distribution_name == 'expon' and n > 0 and mn < 0:
             err = 'requires non-negative data'
 
-        desc: Dict[str, Any] = {
+        desc: dict[str, Any] = {
             "n": n,
             "params": {"distribution_name": self.ctx.distribution_name},
         }
@@ -152,8 +155,8 @@ class DistributionECDFvsCDFPlot(BasePlot):
         desc.update({"x": x, "ecdf": ecdf, "cdf_theo": cdf_theo, "ks_D": ks_D})
         return desc
 
-    def compute_inferential(self, s: pd.Series, desc: Dict[str, Any]) -> Dict[str, Any]:
-        out: Dict[str, Any] = {"params": {"alpha": float(self.ctx.alpha)}}
+    def compute_inferential(self, s: pd.Series, desc: dict[str, Any]) -> dict[str, Any]:
+        out: dict[str, Any] = {"params": {"alpha": float(self.ctx.alpha)}}
 
         # empty or error → only params
         if desc.get("n", 0) == 0 or "error" in desc:
@@ -204,9 +207,9 @@ class DistributionECDFvsCDFPlot(BasePlot):
     def draw(
         self,
         s: pd.Series,
-        desc: Dict[str, Any],
-        inf: Dict[str, Any],
-        chart_metadata: Dict[str, Any],
+        desc: dict[str, Any],
+        inf: dict[str, Any],
+        chart_metadata: dict[str, Any],
         *,
         fig,
         ax,

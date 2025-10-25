@@ -7,6 +7,8 @@ from analytics_eda.analysis.exploratory_regression_analysis.numeric_numeric_rela
     MagnitudeAssociationResidualPlot,
 )
 
+test_rand = np.random.default_rng(0)
+
 
 @pytest.mark.parametrize(
     "make_df, x_col, y_col, kwargs, expect",
@@ -51,7 +53,7 @@ from analytics_eda.analysis.exploratory_regression_analysis.numeric_numeric_rela
         ),
         # 2) Noisy linear: y = 2x + noise → mean ~0, std > 0, non-zero range
         (
-            lambda: (lambda n=20, rng=np.random.default_rng(0):
+            lambda: (lambda n=20, rng=test_rand:
                      pd.DataFrame({
                          "xnum": np.linspace(0, 10, n, dtype=float),
                          "ynum": 2.0*np.linspace(0, 10, n, dtype=float) + rng.normal(0, 1.0, n),

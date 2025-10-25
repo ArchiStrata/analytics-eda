@@ -1,5 +1,5 @@
 import json
-import pytest
+
 from analytics_eda.core.reporting.write_json_report import write_json_report
 
 

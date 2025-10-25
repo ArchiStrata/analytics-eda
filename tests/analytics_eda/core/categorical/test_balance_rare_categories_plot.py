@@ -1,7 +1,7 @@
-import pytest
 import pandas as pd
+import pytest
 
-from analytics_eda.core.categorical import BalanceRareCategoriesPlot, BalanceRareCategoriesContext
+from analytics_eda.core.categorical import BalanceRareCategoriesContext, BalanceRareCategoriesPlot
 
 
 @pytest.mark.parametrize(

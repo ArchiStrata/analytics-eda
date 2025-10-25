@@ -1,6 +1,6 @@
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 
 from analytics_eda.core.data_quality import MissingDataBarContext, MissingDataBarPlot
 
@@ -243,6 +243,6 @@ def test_missing_data_bar_plot_data_driven(make_series, kwargs, expect, tmp_path
     plot = MissingDataBarPlot(ctx)
 
     payload = plot.run(s)
-    
+
     # Reuse shared helper to assert only the fields specified in `expect`
     assert_plot_metadata(payload, expect, tmp_path)

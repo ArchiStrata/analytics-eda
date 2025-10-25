@@ -1,8 +1,9 @@
-import pytest
 import pandas as pd
+import pytest
 
-from analytics_eda.core.categorical import FrequencyParetoPlot, FrequencyParetoContext
+from analytics_eda.core.categorical import FrequencyParetoContext, FrequencyParetoPlot
 from analytics_eda.core.visualization.context.plot_context import AxisFormat
+
 
 @pytest.mark.parametrize(
     "series_factory, expected_exc, match",
@@ -63,12 +64,12 @@ def test_validate_categorical_named_series_errors(series_factory, expected_exc, 
             (lambda vals=["A", "A", "A", "B", "C"]:
                 pd.Series(vals, name="cats", dtype="object")),
             {
-                "is_orientation_vertical": True, 
-                "xlabel": "Category", 
-                "x_format": AxisFormat(kind="category"), 
-                "ylabel": "Share of total", 
-                "y_format": AxisFormat(kind="percent", decimals=1, percent_scale_0to1=True), 
-                "other_min_count": 2, 
+                "is_orientation_vertical": True,
+                "xlabel": "Category",
+                "x_format": AxisFormat(kind="category"),
+                "ylabel": "Share of total",
+                "y_format": AxisFormat(kind="percent", decimals=1, percent_scale_0to1=True),
+                "other_min_count": 2,
                 "file_name": "grouping_to_others.png"
             },
             {

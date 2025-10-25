@@ -13,12 +13,16 @@
 # limitations under the License.
 
 from dataclasses import dataclass, field
-from typing import Dict, Any
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
 from analytics_eda.core.visualization.context.plot_context import AxisFormat
-from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import SeriesBarChartContext, SeriesBarChartMixin
+from analytics_eda.core.visualization.plot_mixins.series_bar_chart_mixin import (
+    SeriesBarChartContext,
+    SeriesBarChartMixin,
+)
 from analytics_eda.core.visualization.plot_parts import PlotParts
 from analytics_eda.core.visualization.validation import categorical_validator
 
@@ -34,6 +38,7 @@ class BalanceRareCategoriesContext(SeriesBarChartContext):
         - If <1: interpreted as a proportion threshold of total count (e.g., 0.01 = 1%)
         - If >=1: interpreted as an absolute count threshold (e.g., 5 observations)
     """
+
     title_template: str = "Rare Categories of {name}{modifiers}"
     xlabel: str = "Percent of total"
     ylabel: str = "Category"
@@ -75,6 +80,7 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
         },
       }
     """
+
     def __init__(self, ctx):
         parts = PlotParts(
             series_validator=categorical_validator()
@@ -88,7 +94,7 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
         return "1.0.0"
 
     # ---- defaults when empty/degenerate ----
-    def default_descriptive(self) -> Dict[str, Any]:
+    def default_descriptive(self) -> dict[str, Any]:
         desc = super().default_descriptive()
 
         desc["params"] = {
@@ -100,7 +106,7 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
         return desc
 
     # ---- computations ----
-    def compute_descriptive(self, s: pd.Series) -> Dict[str, Any]:
+    def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         # frequency table (drop NAs for category analysis)
         counts_all = s.dropna().value_counts()
         total = int(counts_all.sum())
@@ -139,8 +145,8 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
         )
 
         return bars_desc
-    
-    def draft_descriptive_findings(self, desc: Dict[str, Any]) -> Dict[str, Any]:
+
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
         if not desc or desc.get("total", 0) == 0:
             return {}
 

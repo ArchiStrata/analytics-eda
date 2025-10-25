@@ -1,11 +1,14 @@
+from collections.abc import Mapping, Sequence
 import json
-from typing import Mapping, Sequence
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
-
 import pytest
-from tests.analytics_eda.utils_internal.load_and_validate_report import load_and_validate_report as _load_and_validate_report
+
+from tests.analytics_eda.utils_internal.load_and_validate_report import (
+    load_and_validate_report as _load_and_validate_report,
+)
 
 
 @pytest.fixture
@@ -104,7 +107,7 @@ def assert_plot_metadata():
     def _assert_sequence(actual_seq, expected_seq, path_label: str):
         assert isinstance(actual_seq, (list, tuple)), f"{path_label} should be a sequence"
         assert len(actual_seq) == len(expected_seq), f"{path_label} length mismatch"
-        for i, (ai, ei) in enumerate(zip(actual_seq, expected_seq)):
+        for i, (ai, ei) in enumerate(zip(actual_seq, expected_seq, strict=True)):
             item_label = f"{path_label}[{i}]"
             if isinstance(ei, dict):
                 assert isinstance(ai, dict), f"{item_label} should be a dict"
@@ -175,7 +178,7 @@ def assert_plot_metadata():
             assert saved.stat().st_size > 0, "Saved file is empty"
             with open(saved, "rb") as f:
                 assert f.read(8) == b"\x89PNG\r\n\x1a\n", "Saved file is not a PNG"
-        
+
         except AssertionError as e:
             # On failure, dump subset actually compared and the error message
             if dump:
@@ -224,7 +227,7 @@ def assert_report_data(load_and_validate_report, assert_plot_metadata):
     def _assert_sequence(actual_seq, expected_seq, tmp_path: Path, path_label: str):
         assert isinstance(actual_seq, (list, tuple)), f"{path_label} should be a sequence"
         assert len(actual_seq) == len(expected_seq), f"{path_label} length mismatch"
-        for i, (ai, ei) in enumerate(zip(actual_seq, expected_seq)):
+        for i, (ai, ei) in enumerate(zip(actual_seq, expected_seq, strict=True)):
             item_label = f"{path_label}[{i}]"
             if isinstance(ei, dict):
                 assert isinstance(ai, dict), f"{item_label} should be a dict"

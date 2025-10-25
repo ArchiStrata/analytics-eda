@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
+
 from ..core.reporting import write_json_report
+
 
 def explore_data(
         df: pd.DataFrame,

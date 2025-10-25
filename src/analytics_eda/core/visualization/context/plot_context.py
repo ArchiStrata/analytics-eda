@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Literal, Optional, Sequence, Tuple, Union
-
+from typing import Any, Literal, Union
 
 Desc = Union[str, Sequence[str], None]
 
@@ -24,42 +24,42 @@ class AxisFormat:
     kind: Literal["auto", "number", "percent", "currency", "category", "datetime"] = "auto"
 
     # Number/percent/currency options
-    decimals: Optional[int] = None         # e.g., 0, 1, 2; None = don't force
+    decimals: int | None = None         # e.g., 0, 1, 2; None = don't force
     thousands_sep: bool = True             # 12,345 vs 12345
-    unit_suffix: Optional[str] = None      # e.g., "ms", "kg" (appended after value)
-    currency_code: Optional[str] = None    # e.g., "USD" (used if kind == "currency")
+    unit_suffix: str | None = None      # e.g., "ms", "kg" (appended after value)
+    currency_code: str | None = None    # e.g., "USD" (used if kind == "currency")
 
     # Percent options
     percent_scale_0to1: bool = True        # True if data are proportions (0..1)
 
     # Datetime options
-    datetime_format: Optional[str] = None  # e.g., "%Y-%m-%d"
+    datetime_format: str | None = None  # e.g., "%Y-%m-%d"
 
     # Escape hatch: custom formatter
-    formatter: Optional[Callable[[float], str]] = None
+    formatter: Callable[[float], str] | None = None
 
 @dataclass
 class PlotContext:
-    name: Optional[str] = None
+    name: str | None = None
     filter_desc: Desc = None
     transform_desc: Desc = None
     fit_desc: Desc = None
     extra_desc: Desc = None
-    title_fmt: Optional[Dict[str, Any]] = None
+    title_fmt: dict[str, Any] | None = None
     title_template: str = "{name}{modifiers}"
     show_subtitle: bool = False   # auto-draw a subtitle if provided by the plot
 
     is_orientation_vertical: bool = True   # True = vertical bars/values on Y; False = horizontal
     xlabel: str = ""
     ylabel: str = ""
-    data_source: Optional[str] = None
+    data_source: str | None = None
 
     show_footer_summary: bool = False
 
-    figsize: Tuple[int, int] = (14, 9)
+    figsize: tuple[int, int] = (14, 9)
     dpi: int = 200
-    save_path: Optional[str] = None
-    file_name: Optional[str] = None
+    save_path: str | None = None
+    file_name: str | None = None
     show: bool = False
 
     enable_legend: bool = False # draw a legend when True
@@ -78,4 +78,4 @@ class PlotContext:
 
     # Report Formatting
     report_default_decimals: int = 2
-    report_default_unit: Optional[str] = None
+    report_default_unit: str | None = None
