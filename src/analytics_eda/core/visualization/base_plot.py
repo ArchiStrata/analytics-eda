@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from abc import ABC
+"""Base plotting scaffold for Analytics-EDA."""
+from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, Union
+from typing import Any
 
 import pandas as pd
 
@@ -22,9 +22,11 @@ from analytics_eda.core.visualization.context.plot_context import PlotContext
 from analytics_eda.core.visualization.formatting.report_formatter import ReportFormatter
 from analytics_eda.core.visualization.plot_parts import PlotParts
 
-Desc = Union[str, Sequence[str], None]
+Desc = str | Sequence[str] | None
 
 class BasePlot(ABC):
+    """Abstract base class for plots: computes stats and renders figures."""
+
     def __init__(self, ctx: PlotContext, parts: PlotParts | None = None):
         self.ctx = ctx
         self.parts = parts or PlotParts()
@@ -49,11 +51,11 @@ class BasePlot(ABC):
         cols: Sequence[str] | None = None,
         role_map: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
-        """
-        Extra kwargs for build_chart_title:
-          - supports keys like extra_desc, fit_desc, filter_desc (override),
-            or additional placeholders used by title_template (e.g., top_k=10)
-        Default: {}
+        """Return extra kwargs for title construction.
+
+        Supports keys like `extra_desc`, `fit_desc`, `filter_desc` (override),
+        or additional placeholders used by `title_template` (e.g., `top_k=10`).
+        Default: {}.
         """
         return {}
 
@@ -64,9 +66,9 @@ class BasePlot(ABC):
         cols: Sequence[str] | None = None,
         role_map: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
-        """
-        Extra/override keys to merge into the returned chart_metadata dict.
-        Default: {}
+        """Return extra/override keys to merge into chart metadata.
+
+        Default: {}.
         """
         return {}
 
@@ -77,9 +79,9 @@ class BasePlot(ABC):
         cols: Sequence[str] | None = None,
         role_map: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
-        """
-        Delegates to the metadata builder. Subclasses can still override
-        metadata_overrides() to tweak values.
+        """Build chart metadata via the metadata builder.
+
+        Subclasses may still override `metadata_overrides()` to tweak values.
         """
         return self.parts.chart_metadata_builder.build_metadata(
             ctx=self.ctx,
@@ -93,18 +95,22 @@ class BasePlot(ABC):
 
     # ======== Descriptive Statistics ========
 
+    @abstractmethod
     def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty/default descriptive-stats structure."""
         return {}
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute descriptive statistics for a Series."""
         raise NotImplementedError("Series-based compute descriptive not implemented for this plot.")
 
     def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
+        """Compute descriptive statistics for a DataFrame."""
         raise NotImplementedError("Frame-based descriptive not implemented for this plot.")
 
     def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
-        """
-        Return draft, human-readable statements derived from descriptive stats.
+        """Return draft human-readable statements derived from descriptive stats.
+
         Child plots may override. Default: {}.
         """
         return {}
@@ -112,18 +118,21 @@ class BasePlot(ABC):
     # ======== Inferential Statistics ========
 
     def default_inferential(self) -> dict[str, Any]:
+        """Return an empty/default inferential-stats structure."""
         return {}
 
     def compute_inferential(self, s: pd.Series, desc: dict[str, Any]) -> dict[str, Any]:
+        """Compute inferential statistics from a Series and its descriptive stats."""
         return {}
 
     def compute_inferential_frame(self, df: pd.DataFrame, desc: dict[str, Any], *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
+        """Compute inferential statistics from a DataFrame and its descriptive stats."""
         return {}
 
     def draft_inferential_findings(self, inf: dict[str, Any], desc: dict[str, Any]) -> dict[str, Any]:
-        """
-        Return draft, human-readable statements derived from inferential stats
-        (and optionally descriptive context). Child plots may override. Default: {}.
+        """Return draft human-readable statements derived from inferential stats.
+
+        Child plots may override. Default: {}.
         """
         return {}
 
@@ -139,6 +148,7 @@ class BasePlot(ABC):
         ax,
         palette,
     ):
+        """Draw a Series-based plot onto (fig, ax) and return them."""
         raise NotImplementedError("Series-based draw not implemented for this plot.")
 
     def draw_frame(
@@ -154,6 +164,7 @@ class BasePlot(ABC):
         ax=None,
         palette=None,
     ):
+        """Draw a DataFrame-based plot onto (fig, ax) and return them."""
         raise NotImplementedError("Frame-based draw not implemented for this plot.")
 
     def subtitle_text(
@@ -162,9 +173,9 @@ class BasePlot(ABC):
         inf: dict[str, Any],
         chart_metadata: dict[str, Any],
     ) -> str:
-        """
-        Optional override: return a short subtitle derived from descriptive/inferential
-        stats. Return ''/None to suppress.
+        """Return a short subtitle derived from descriptive/inferential stats.
+
+        Return ''/None to suppress.
         """
         return ""
 
@@ -174,23 +185,27 @@ class BasePlot(ABC):
         inf: dict[str, Any],
         chart_metadata: dict[str, Any],
     ) -> str:
-        """
-        Optional override: return a short footer summary derived from descriptive/inferential stats.
+        """Return a short footer summary derived from descriptive/inferential stats.
+
         Return ''/None to suppress.
         """
         return ""
 
     def neutral_grey(self, variant: str = "medium", alpha: float | None = None):
+        """Return a neutral grey color from the renderer."""
         return self.parts.renderer.neutral_grey(variant, alpha)
 
     def register_annotations(self, ax, texts):
+        """Register Text artists on `ax` for headroom calculation."""
         return self.parts.renderer.register_annotations(ax, texts)
 
     # --- draw cache API ---
     def draw_cache_set(self, namespace: str, key: str, value: Any) -> None:
+        """Store a value in the per-run draw cache."""
         self._draw_cache.setdefault(namespace, {})[key] = value
 
     def draw_cache_get(self, namespace: str, key: str, default: Any = None) -> Any:
+        """Retrieve a value from the per-run draw cache."""
         return self._draw_cache.get(namespace, {}).get(key, default)
 
     def _draw_clear(self, namespace: str | None = None) -> None:
@@ -207,7 +222,7 @@ class BasePlot(ABC):
         cols: Sequence[str] | None = None,
         role_map: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
-
+        """Execute the plot pipeline on a Series or DataFrame and return results."""
         # ---- SERIES PATH (unchanged API) ----
         if isinstance(data, pd.Series):
             s_in = data.copy(deep=True)
@@ -312,9 +327,9 @@ class BasePlot(ABC):
 
     # ----------------- unified validation dispatchers -----------------
     def _validate_series(self, s_in: pd.Series) -> pd.Series:
-        """
-        Prefer injected SeriesValidator; fall back to existing validate().
-        This is the only call site the rest of BasePlot uses.
+        """Prefer injected SeriesValidator; fall back to `validate()`.
+
+        This is the only call-site the rest of BasePlot uses.
         """
         if self.parts.series_validator is not None:
             return self.parts.series_validator.validate(s_in)
@@ -328,9 +343,9 @@ class BasePlot(ABC):
         cols: Sequence[str],
         role_map: Mapping[str, str] | None = None,
     ) -> pd.DataFrame:
-        """
-        Prefer injected FrameValidator; fall back to existing validate_frame().
-        This is the only call site the rest of BasePlot uses.
+        """Prefer injected FrameValidator; fall back to `validate_frame()`.
+
+        This is the only call-site the rest of BasePlot uses.
         """
         if self.parts.frame_validator is not None:
             return self.parts.frame_validator.validate(df_in, cols=cols, role_map=role_map)
