@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Default Matplotlib renderer for Analytics-EDA visualizations."""
 
 from __future__ import annotations
 
@@ -32,8 +33,8 @@ from analytics_eda.core.visualization.rendering.renderer_protocol import (
 
 @dataclass
 class DefaultMatplotlibRenderer(RendererProtocol):
-    """
-    Default matplotlib/seaborn-based renderer.
+    """Matplotlib/seaborn renderer.
+
     Mirrors existing BasePlot draw-time behavior.
     """
 
@@ -55,6 +56,7 @@ class DefaultMatplotlibRenderer(RendererProtocol):
 
     # ---------- subtitle queue ----------
     def __post_init__(self):
+        """Initialize internal queues after dataclass construction."""
         self._subtitle_queue: list[tuple] = []
         self._headroom_texts: dict = {}
 
@@ -69,8 +71,8 @@ class DefaultMatplotlibRenderer(RendererProtocol):
 
     # ---------- annotation/headroom ----------
     def register_annotations(self, ax, texts):
-        """
-        Register one or many matplotlib.text.Text objects for headroom measurement.
+        """Register text artists for headroom measurement.
+
         Safe to call with a single Text, a list/tuple of Texts, or nested lists.
         """
         if texts is None:
@@ -97,9 +99,9 @@ class DefaultMatplotlibRenderer(RendererProtocol):
         return texts if texts else [t for t in ax.texts if t.get_visible()]
 
     def _measure_overhang_in_data(self, ax):
-        """
-        Return (left_oh, right_oh, bottom_oh, top_oh) overhang in DATA units
-        caused by registered text extending beyond current x/y limits.
+        """Compute text overhang in data units.
+
+        Returns (left_oh, right_oh, bottom_oh, top_oh) from registered text.
         """
         fig = ax.figure
         # ensure layout is finalized for accurate text extents
@@ -118,17 +120,21 @@ class DefaultMatplotlibRenderer(RendererProtocol):
             left, right   = min(x0, x1), max(x0, x1)
             bottom, top   = min(y0, y1), max(y0, y1)
 
-            if left   < lo_x: left_oh   = max(left_oh,   lo_x - left)
-            if right  > hi_x: right_oh  = max(right_oh,  right - hi_x)
-            if bottom < lo_y: bottom_oh = max(bottom_oh, lo_y - bottom)
-            if top    > hi_y: top_oh    = max(top_oh,    top - hi_y)
+            if left   < lo_x:
+                left_oh   = max(left_oh,   lo_x - left)
+            if right  > hi_x:
+                right_oh  = max(right_oh,  right - hi_x)
+            if bottom < lo_y:
+                bottom_oh = max(bottom_oh, lo_y - bottom)
+            if top    > hi_y:
+                top_oh    = max(top_oh,    top - hi_y)
 
         return left_oh, right_oh, bottom_oh, top_oh
 
     def _ensure_headroom(self, ctx, ax, *, label_offset=0.02, extra_pad=0.04, max_extra=0.20):
-        """
-        Text-aware headroom that expands along the 'value' axis by default.
-        Preserves symmetry if requested (either globally or plot-level).
+        """Apply text-aware headroom to the value axis.
+
+        Expands limits using measured text overhang; preserves symmetry if requested.
         """
         if not getattr(ctx, "auto_headroom", True):
             return
@@ -171,8 +177,8 @@ class DefaultMatplotlibRenderer(RendererProtocol):
 
     # ---------- legend ----------
     def _apply_legend(self, ax, enable: bool):
-        """
-        Show or hide the legend based on ctx.enable_legend.
+        """Show or hide the legend based on ctx.enable_legend.
+
         If False, remove an existing legend (if any).
         """
         if enable:
@@ -332,6 +338,10 @@ class DefaultMatplotlibRenderer(RendererProtocol):
         subtitle_text: str | None,
         footer_text: str | None,
     ) -> str | None:
+        """Render the chart and optionally save it.
+
+        Returns the saved filename if persisted, otherwise `None`.
+        """
         fig = None
         try:
             fig, ax, palette = self._new_figure_and_palette(ctx)
