@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Bar chart summarizing categorical label cleanliness issues."""
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -32,8 +33,9 @@ from ..visualization.base_plot import BasePlot
 
 @dataclass
 class CategoricalCleanlinessBarContext(SeriesBarChartContext):
-    """
-    Categorical cleanliness summary: counts (with percentages) of rows exhibiting:
+    """Categorical cleanliness summary.
+
+    Counts (with percentages) of rows exhibiting:
       - Leading/trailing whitespace
       - Mixed casing (inconsistent capitalization across the same token)
       - Non-standard characters (fails a configurable regex)
@@ -117,13 +119,16 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
         super().__init__(ctx, parts)
 
     def plot_semantic_version(self) -> str:
-        """
-        Return the semantic version of this plot implementation.
-        """
+        """Return the semantic version of this plot implementation."""
         return "1.0.0"
 
     # ---- compute ----
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute per-issue counts and percent-of-nonnull bars.
+
+        Builds the bars payload (whitespace, mixed casing, non-standard chars,
+        invalid category), caches draw arrays, and returns the descriptive dict.
+        """
         total = int(s.size)
         nonnull_mask = ~s.isna()
         total_nonnull = int(nonnull_mask.sum())
@@ -214,6 +219,11 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
         return desc
 
     def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
+        """Return a short narrative of cleanliness issues.
+
+        Summarizes the overall rate and highlights the most frequent issue(s),
+        handling ties where applicable.
+        """
         total_nonnull = desc["total_nonnull"]
 
         findings = {
@@ -261,6 +271,7 @@ class CategoricalCleanlinessBarPlot(SeriesBarChartMixin, BasePlot):
         return findings
 
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        """Return a concise subtitle summarizing the overall issue rate."""
         if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
             return ""
 

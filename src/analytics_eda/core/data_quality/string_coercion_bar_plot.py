@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Bar chart of values that fail numeric coercion in a Series."""
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -30,9 +31,9 @@ from ..visualization.base_plot import BasePlot
 
 @dataclass
 class StringCoercionBarContext(SeriesBarChartContext):
-    """
-    Identify and visualize non-numeric (string-like) values in a series by
-    attempting numeric coercion and collecting the values that fail to parse.
+    """Identify and visualize non-numeric (string-like) values.
+
+    Attempts numeric coercion and collects the values that fail to parse.
     """
 
     title_template: str = "Non-Numeric (String) Values in {name}{modifiers}"
@@ -84,13 +85,16 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         super().__init__(ctx, parts)
 
     def plot_semantic_version(self) -> str:
-        """
-        Return the semantic version of this plot implementation.
-        """
+        """Return the semantic version of this plot implementation."""
         return "1.0.0"
 
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute counts/percentages of values that fail numeric coercion.
+
+        Builds and caches bar data (labels, values, counts) and returns a
+        `desc` dict including totals, bar payload, and top labels.
+        """
         # Base tallies
         nonnull_mask = ~s.isna()
 
@@ -124,6 +128,11 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         return desc
 
     def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
+        """Return draft narrative about non-numeric values.
+
+        Summarizes overall non-numeric rate and highlights the most frequent
+        offending tokens (tie-aware).
+        """
         total_nonnull = desc["total_nonnull"]
 
         findings = {
@@ -177,6 +186,10 @@ class StringCoercionBarPlot(SeriesBarChartMixin, BasePlot):
         return findings
 
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        """Return a short subtitle summarizing the non-numeric rate.
+
+        Returns an empty string when there is nothing to report.
+        """
         if not desc or desc.get("total_nonnull", 0) == 0:
             return ""
 

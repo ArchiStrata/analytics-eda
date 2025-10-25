@@ -1,3 +1,8 @@
+"""Data-quality visualizations for Analytics-EDA.
+
+Includes plots that surface missingness, coercion failures, and categorical
+cleanliness issues.
+"""
 from .categorical_cleanliness_bar_plot import (
     CategoricalCleanlinessBarContext,
     CategoricalCleanlinessBarPlot,
