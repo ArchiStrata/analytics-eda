@@ -301,25 +301,40 @@ class CentralTendencyHistogramPlot(BasePlot):
         sns.histplot(s, bins=bins_arg, ax=ax, color=self.neutral_grey(variant="light"))
 
         if desc["n"] > 0:
-            mean = desc.get("mean")
-            mean_formatted = desc.get("mean_formatted")
-
+            mean  = desc.get("mean")
+            mtxt  = desc.get("mean_formatted")
             median = desc.get("median")
-            median_formatted = desc.get("median_formatted")
+            mdtxt  = desc.get("median_formatted")
 
-            ax.axvline(mean, label=f"Mean = {mean_formatted}", color=palette[1])
-            ax.axvline(median, label=f"Median = {median_formatted}", color=palette[2])
+            # Colorblind-friendly fallbacks
+            mean_color   = palette[0]
+            median_color = palette[1]
+            mode_color   = palette[2]
 
-            # Modes (presentation rules here)
+            # Distinct styles + slightly thicker lines + on top of bars
+            ax.axvline(
+                mean, color=mean_color, linestyle="--", linewidth=2.0, zorder=3,
+                label=f"Mean = {mtxt}"
+            )
+            ax.axvline(
+                median, color=median_color, linestyle="-.", linewidth=2.0, zorder=3,
+                label=f"Median = {mdtxt}"
+            )
+
+            # Modes (guard + cap). Use dotted style; vary shade if multiple.
             candidate_modes = desc.get("modes", []) or []
-            peak_strength = float(desc.get("peak_strength") or None)
+            peak_strength = desc.get("peak_strength")
+            peak_strength = float(peak_strength) if peak_strength is not None else np.nan
 
-            # Suppress if peak too weak
-            if (len(candidate_modes) > 0) and not (np.isnan(peak_strength)) and (peak_strength >= self.ctx.min_peak_strength):
-                # Cap number of lines
+            if candidate_modes and not np.isnan(peak_strength) and (peak_strength >= self.ctx.min_peak_strength):
                 to_draw = candidate_modes[: int(self.ctx.max_mode_lines)]
                 for i, center in enumerate(to_draw, start=1):
                     label = "Mode" if len(to_draw) == 1 else f"Mode {i}"
-                    ax.axvline(center, label=f"{label} ≈ {self.formatter.format_numeric_value(center)}", color=palette[2 + i])
+                    # Slight variation in alpha for multiple modes to avoid color collisions
+                    ax.axvline(
+                        center,
+                        color=mode_color, linestyle=":", linewidth=1.8, alpha=0.9 - 0.1*(i-1),
+                        zorder=3, label=f"{label} ≈ {self.formatter.format_numeric_value(center)}"
+                    )
 
         return fig, ax
