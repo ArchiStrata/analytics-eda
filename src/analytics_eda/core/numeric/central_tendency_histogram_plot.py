@@ -298,7 +298,7 @@ class CentralTendencyHistogramPlot(BasePlot):
 
         bins_arg = desc["params"]["bins_arg"]
 
-        sns.histplot(s, bins=bins_arg, ax=ax)
+        sns.histplot(s, bins=bins_arg, ax=ax, color=self.neutral_grey(variant="light"))
 
         if desc["n"] > 0:
             mean = desc.get("mean")
@@ -307,8 +307,8 @@ class CentralTendencyHistogramPlot(BasePlot):
             median = desc.get("median")
             median_formatted = desc.get("median_formatted")
 
-            ax.axvline(mean, linestyle="--", label=f"Mean = {mean_formatted}")
-            ax.axvline(median, linestyle="-.", label=f"Median = {median_formatted}")
+            ax.axvline(mean, label=f"Mean = {mean_formatted}", color=palette[1])
+            ax.axvline(median, label=f"Median = {median_formatted}", color=palette[2])
 
             # Modes (presentation rules here)
             candidate_modes = desc.get("modes", []) or []
@@ -320,6 +320,6 @@ class CentralTendencyHistogramPlot(BasePlot):
                 to_draw = candidate_modes[: int(self.ctx.max_mode_lines)]
                 for i, center in enumerate(to_draw, start=1):
                     label = "Mode" if len(to_draw) == 1 else f"Mode {i}"
-                    ax.axvline(center, linestyle=":", linewidth=1, label=f"{label} ≈ {self.formatter.format_numeric_value(center)}")
+                    ax.axvline(center, label=f"{label} ≈ {self.formatter.format_numeric_value(center)}", color=palette[2 + i])
 
         return fig, ax
