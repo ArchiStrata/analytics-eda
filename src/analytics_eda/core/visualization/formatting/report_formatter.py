@@ -13,8 +13,12 @@
 # limitations under the License.
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 import math
 from typing import Any, Literal, Optional, Tuple, Union
+
+import numpy as np
+import pandas as pd
 
 
 DfLike = Union[int, float, Tuple[Union[int, float], Union[int, float]]]
@@ -84,6 +88,60 @@ class ReportFormatter:
 
         val = p if scale_0to1 else (p / 100.0)
         return f"{val:.{int(decimals)}%}"
+    
+    def max_decimals_in_series(self, s: pd.Series) -> int:
+        """
+        Infer the maximum number of decimal places present in the *raw* numeric values.
+        Integers -> 0. Floats are parsed via Decimal(str(...)) to avoid binary fp artifacts.
+        """
+        def dec_count(v) -> int:
+            # ints (including numpy ints)
+            if isinstance(v, (int, np.integer)):
+                return 0
+            # floats or numerics coerced to string
+            try:
+                d = Decimal(str(v)).normalize()
+                exp = d.as_tuple().exponent
+                # exponent is negative for decimal places; e.g., 1.230 -> exponent -3
+                return max(-exp, 0)
+            except (InvalidOperation, ValueError, TypeError):
+                return 0
+
+        x = s.dropna()
+        if x.empty:
+            return 0
+        return int(max(dec_count(v) for v in x))
+    
+    def mean_decimals_from_series(self, s: pd.Series) -> int:
+        """
+        Return the decimal places for displaying the mean, using the rule:
+        show the mean to one more decimal than the most precise raw value.
+        Empty series defaults to 1 decimal.
+
+        Examples:
+          raw values as integers  -> returns 1
+          raw values to tenths    -> returns 2
+          raw values to hundredth -> returns 3
+        """
+        raw_max = self.max_decimals_in_series(s.dropna())
+        # Apply the rounding rule for the mean: display it to one more decimal place than the
+        # most precise raw data value. For example, if inputs are whole numbers → 1 decimal;
+        # if inputs are to tenths → 2 decimals. We infer the maximum raw precision, then add 1.
+        # (Affects formatting only; the underlying mean value is unchanged.)
+        return (raw_max + 1) if raw_max is not None else 1
+    
+    def median_decimals_from_series(self, s: pd.Series, median_value: float | None = None) -> int:
+        x = s.dropna()
+        if x.empty:
+            return getattr(self, "report_default_decimals", 2)
+        raw_max = self.max_decimals_in_series(x)
+        n = len(x)
+        if n % 2 == 0 and median_value is not None:
+            xs = np.sort(np.asarray(x, dtype=float))
+            m1, m2 = xs[n//2 - 1], xs[n//2]
+            if not (np.isclose(median_value, m1) or np.isclose(median_value, m2)):
+                return raw_max + 1
+        return raw_max
 
     # ---------- Alpha & p-values ----------
 

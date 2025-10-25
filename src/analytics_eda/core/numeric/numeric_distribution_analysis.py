@@ -127,6 +127,11 @@ def numeric_distribution_analysis(
     central_tendency["violin"] = CentralTendencyViolinPlot(violin_ctx).run(cleaned_series)
 
     # TODO: Central Tendency time series analysis
+    # * Trend Direction
+    # * Peaks & Troughs
+    # * Volatility / Stability
+    # * Seasonal Patterns / Cycles
+    # * Change Magnitude
 
     # Dispersion
     dispersion = {}
