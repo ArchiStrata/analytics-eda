@@ -11,22 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-json_report_writer.py
+"""json_report_writer.py.
 
 This module provides functionality to sanitize and write JSON reports
 to disk in a structured and reliable manner. It ensures that the target
-directory exists, the report content is cleaned using a local 
-`sanitize_json` utility, and the output is written with UTF-8 encoding 
+directory exists, the report content is cleaned using a local
+`sanitize_json` utility, and the output is written with UTF-8 encoding
 and consistent formatting.
 
 Functions:
 - write_json_report(report, report_path, encoding='utf-8'):
-    Sanitizes a report dictionary and writes it as a formatted JSON 
+    Sanitizes a report dictionary and writes it as a formatted JSON
     file to the specified path.
 
 Dependencies:
-- sanitize_json: A local module that provides a sanitize_json(report) 
+- sanitize_json: A local module that provides a sanitize_json(report)
   function to clean or transform data before serialization.
 """
 import json
@@ -43,7 +42,7 @@ def write_json_report(report, report_path: str, encoding: str="utf-8"):
         report (dict): The report data to be sanitized and written.
         report_path (str): Destination file path for the JSON report.
         encoding (str): Encoding used when writing the file. Default is "utf-8".
-    
+
     Returns: clean_report
     """
     clean_report = sanitize_json(report)

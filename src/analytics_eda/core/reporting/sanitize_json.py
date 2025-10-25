@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-sanitize_json.py
+sanitize_json.py.
 
-Provides a utility function to recursively sanitize Python data 
+Provides a utility function to recursively sanitize Python data
 structures for JSON serialization.
 
 This module ensures compatibility with JSON encoding by:
 - Replacing NaN float values with `None`
-- Converting NumPy scalar types (integers, floats, booleans) 
+- Converting NumPy scalar types (integers, floats, booleans)
   to their native Python equivalents
 
-Useful for preparing data that includes NumPy types or invalid 
+Useful for preparing data that includes NumPy types or invalid
 JSON values (e.g., NaN) before serialization.
 
 Functions:
@@ -34,8 +34,9 @@ import numpy as np
 
 
 def sanitize_json(o):
-    """
-    Recursively walk through o and convert:
+    """Recursively sanitize data for JSON serialization.
+
+    Converts:
       - NaN floats to None
       - NumPy scalars to native Python scalars
     """
