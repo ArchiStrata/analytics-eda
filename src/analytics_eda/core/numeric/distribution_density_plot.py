@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Histogram + KDE density plot with shape metrics (modes, skew, tails)."""
+
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -30,6 +32,8 @@ BinMethod = Literal['sturges', 'scott', 'freedman_diaconis', 'doane']
 
 @dataclass
 class DistributionDensityContext(PlotContext):
+    """Context for the density plot (labels, binning, alpha, bandwidth)."""
+
     title_template: str = "Distribution Density of {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "Density"
@@ -46,7 +50,7 @@ class DistributionDensityPlot(BasePlot):
     Generate a histogram overlaid with a KDE to communicate the shape of a numeric distribution.
 
     Why:
-        Understanding a distribution’s shape—its skewness, tail‐weight, and number of peaks—reveals 
+        Understanding a distribution’s shape—its skewness, tail‐weight, and number of peaks—reveals
         subpopulations, asymmetries, and heavy tails that a simple histogram or boxplot may obscure.
 
     What:
@@ -79,6 +83,7 @@ class DistributionDensityPlot(BasePlot):
 
 
     def default_descriptive(self) -> dict[str, Any]:
+        """Return default descriptive payload and placeholders for drawing."""
         return {
             "params": {"bins": self.ctx.bins, "bin_method": self.ctx.bin_method},
             "n": 0,
@@ -95,6 +100,7 @@ class DistributionDensityPlot(BasePlot):
         }
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute shape stats, resolve bins, estimate KDE, and find modes."""
         n = int(s.size)
 
         # Resolve bins: bin_method > ctx.bins > default 30
@@ -171,7 +177,7 @@ class DistributionDensityPlot(BasePlot):
         ax,
         palette,
     ):
-
+        """Render histogram, KDE, tail shading, quartile lines, modes, and legend."""
         # Histogram (density)
         ax.hist(
             s.to_numpy(),
@@ -205,7 +211,7 @@ class DistributionDensityPlot(BasePlot):
         if desc["modes_count"] > 0:
             ax.scatter(desc["mode_x"], desc["mode_y"], color="green", marker="o",
                        label=f"{desc['modes_count']} mode(s)")
-            for x_loc, y_loc in zip(desc["mode_x"], desc["mode_y"]):
+            for x_loc, y_loc in zip(desc["mode_x"], desc["mode_y"], strict=True):
                 ax.text(x_loc, y_loc, f"{x_loc:.2f}",
                         ha="left", va="bottom", fontsize="x-small", color="green")
 
@@ -231,9 +237,9 @@ class DistributionDensityPlot(BasePlot):
             "Bottom 10%", "Top 10%",
             f"{desc['modes_count']} mode(s)",
         ]
-        ordered = [(h, l) for key in order for h, l in zip(handles, labels) if l == key]
+        ordered = [(h, lbl) for key in order for h, lbl in zip(handles, labels, strict=True) if lbl == key]
         if ordered:
-            h_ord, l_ord = zip(*ordered)
+            h_ord, l_ord = zip(*ordered, strict=True)
             ax.legend(h_ord, l_ord)
         else:
             ax.legend(handles, labels)

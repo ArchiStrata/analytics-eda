@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Box/violin dispersion plot with outlier bands and summary statistics."""
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -24,6 +26,8 @@ from ..visualization.base_plot import BasePlot, PlotContext
 
 @dataclass
 class DispersionBoxplotContext(PlotContext):
+    """Context options for the dispersion (box/violin) plot."""
+
     title_template: str = "Dispersion of {name}{modifiers} (IQR & Outliers)"
     ylabel: str = "Value"
 
@@ -32,13 +36,11 @@ class DispersionBoxplotContext(PlotContext):
 
 class DispersionBoxPlot(BasePlot):
     """
-    Generate a boxplot (with violin silhouette) that effectively communicates
-    the dispersion of a numeric variable, flagging extreme values and returning
-    key statistics.
+    Generate a boxplot (with violin silhouette) that communicates dispersion and flags extreme values.
 
     Why:
-        Understanding the spread of a dataset is essential for identifying variability, outliers, and patterns 
-        that aren't evident from central tendency alone. This function helps analysts and data storytellers 
+        Understanding the spread of a dataset is essential for identifying variability, outliers, and patterns
+        that aren't evident from central tendency alone. This function helps analysts and data storytellers
         visually and numerically communicate how values are distributed and dispersed in a dataset.
 
     What:
@@ -67,6 +69,7 @@ class DispersionBoxPlot(BasePlot):
         super().__init__(ctx, parts)
 
     def default_descriptive(self) -> dict[str, Any]:
+        """Return default descriptive payload and placeholders for drawing."""
         return {
             "params": {"std_outlier_multiplier": float(self.ctx.std_outlier_multiplier)},
             "n": 0,
@@ -90,6 +93,7 @@ class DispersionBoxPlot(BasePlot):
         }
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute dispersion metrics, outlier bands, and values used for drawing."""
         n = int(s.size)
         mean = float(s.mean())
         std = float(s.std())
@@ -144,7 +148,7 @@ class DispersionBoxPlot(BasePlot):
         ax,
         palette,
     ):
-
+        """Render violin silhouette, boxplot, outlier bands/points, lines, legend, and stats box."""
         # 1) Thin violin silhouette behind box
         parts = ax.violinplot(
             s.to_numpy(),

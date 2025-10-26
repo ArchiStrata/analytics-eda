@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Probability function plot for numeric series.
+
+Provides a PMF for discrete data or a KDE-based PDF estimate for continuous data,
+along with basic summary statistics.
+"""
 from dataclasses import dataclass
 from typing import Any
 
@@ -26,6 +31,17 @@ from ..visualization.base_plot import BasePlot, PlotContext
 
 @dataclass
 class DistributionProbabilityFunctionContext(PlotContext):
+    """Configuration for probability function plots (PMF or PDF).
+
+    Attributes
+    ----------
+        title_template: Title string supporting `{pf_kind}` and `{modifiers}`.
+        xlabel: X-axis label.
+        ylabel: Y-axis label; when None a sensible default is chosen.
+        is_discrete: If True, plot a PMF; otherwise estimate a PDF via KDE.
+        bw_method: Bandwidth for KDE when `is_discrete` is False.
+    """
+
     title_template: str = "{pf_kind} of {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str | None = None  # dynamic default if None
@@ -60,6 +76,11 @@ class DistributionProbabilityFunctionPlot(BasePlot):
         super().__init__(ctx, parts)
 
     def title_kwargs(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
+        """Return placeholders used by the title template.
+
+        Sets `pf_kind` to "PMF" for discrete data or "PDF estimate" for continuous
+        data, and may include `extra_desc` with the KDE bandwidth.
+        """
         is_disc = bool(self.ctx.is_discrete)
         pf_kind = "PMF" if is_disc else "PDF estimate"
 
@@ -74,6 +95,11 @@ class DistributionProbabilityFunctionPlot(BasePlot):
         }
 
     def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
+        """Return metadata overrides derived from context.
+
+        Chooses a dynamic default for `ylabel` when not provided and includes flags
+        such as `is_discrete` and (for continuous data) `bw_method`.
+        """
         is_disc = bool(self.ctx.is_discrete)
         # Dynamic default if user didn't set ctx.ylabel
         ylabel = (
@@ -91,6 +117,7 @@ class DistributionProbabilityFunctionPlot(BasePlot):
         return meta
 
     def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty descriptive payload with default shapes."""
         return {
             "n": 0,
             "mean": None,
@@ -111,6 +138,11 @@ class DistributionProbabilityFunctionPlot(BasePlot):
         }
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute summary statistics and PMF/PDF payload.
+
+        For discrete data, returns `x_pmf`/`y_pmf`. For continuous data, evaluates a
+        KDE on a grid and returns `x_pdf`/`y_pdf`.
+        """
         # s is validated & NA-dropped by NumericSeriesMixin.validate
         n = int(s.size)
 
@@ -181,6 +213,7 @@ class DistributionProbabilityFunctionPlot(BasePlot):
         ax,
         palette,
     ):
+        """Render the PMF (bars) or PDF (line) from the computed payload."""
         if self.ctx.is_discrete:
             ax.bar(desc["x_pmf"], desc["y_pmf"], edgecolor="black")
         else:

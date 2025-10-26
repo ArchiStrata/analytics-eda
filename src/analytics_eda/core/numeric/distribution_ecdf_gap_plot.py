@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""ECDF gap analysis plot and summary statistics."""
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -25,6 +27,8 @@ from ..visualization.base_plot import BasePlot, PlotContext
 
 @dataclass
 class DistributionECDFGapContext(PlotContext):
+    """Context for ECDF gap analysis plots (labels, legend, threshold)."""
+
     title_template: str = "ECDF Gap Analysis of {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "ECDF"
@@ -38,7 +42,7 @@ class DistributionECDFGapPlot(BasePlot):
     Generate an Empirical Cumulative Distribution Function (ECDF) plot that highlights and quantifies gaps in a numeric distribution.
 
     Why:
-        Gaps—intervals with no observations—reveal holes in your data range.  
+        Gaps—intervals with no observations—reveal holes in your data range.
         Understanding their size, frequency, and location is critical for sampling
         strategies, imputation decisions, and recognizing subpopulation boundaries.
 
@@ -74,6 +78,7 @@ class DistributionECDFGapPlot(BasePlot):
         super().__init__(ctx, parts)
 
     def default_descriptive(self) -> dict[str, Any]:
+        """Return default descriptive payload including params and placeholders."""
         return {
             "params": {"threshold": self.ctx.threshold},
             "n": 0,
@@ -90,6 +95,7 @@ class DistributionECDFGapPlot(BasePlot):
         }
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute gap metrics from the sorted unique values and prepare payload."""
         clean = s.sort_values()
         n = int(clean.size)
         unique_vals = clean.unique()
@@ -149,7 +155,7 @@ class DistributionECDFGapPlot(BasePlot):
         ax,
         palette,
     ):
-
+        """Render ECDF, annotate the largest gap, and show a stats textbox."""
         # ECDF from full cleaned series (not just uniques)
         clean = s.dropna().sort_values()
         n = desc["n"]

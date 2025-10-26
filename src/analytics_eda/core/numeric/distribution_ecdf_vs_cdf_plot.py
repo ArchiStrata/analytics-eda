@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""ECDF vs. fitted CDF plot with goodness-of-fit tests."""
+
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -27,6 +29,12 @@ DistName = Literal['norm', 'lognorm', 'gamma', 'expon']
 
 @dataclass
 class DistributionECDFvsCDFContext(PlotContext):
+    """Context for ECDF vs. theoretical CDF plots.
+
+    Includes labels, legend flag, and test/fit parameters such as the target
+    distribution name and alpha level.
+    """
+
     title_template: str = "ECDF vs. Theoretical CDF of {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "CDF"
@@ -78,6 +86,7 @@ class DistributionECDFvsCDFPlot(BasePlot):
     ALLOWED: tuple[DistName, ...] = ('norm', 'lognorm', 'gamma', 'expon')
 
     def title_kwargs(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
+        """Return placeholders used by the title template (e.g., fit description)."""
         dist = self.ctx.distribution_name
         return {
             "fit_desc": f"fitted to {dist}",
@@ -85,12 +94,14 @@ class DistributionECDFvsCDFPlot(BasePlot):
         }
 
     def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
+        """Return metadata overrides derived from context (name, alpha)."""
         return {
             "distribution_name": self.ctx.distribution_name,
             "alpha": float(self.ctx.alpha),
         }
 
     def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty descriptive payload with default params."""
         return {
             "n": 0,
             "params": {
@@ -100,9 +111,11 @@ class DistributionECDFvsCDFPlot(BasePlot):
         }
 
     def default_inferential(self) -> dict[str, Any]:
+        """Return default inferential payload containing alpha."""
         return {"params": {"alpha": float(self.ctx.alpha)}}
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute ECDF, fitted CDF, params, and KS gap; handle domain errors."""
         if self.ctx.distribution_name not in self.ALLOWED:
             raise ValueError(f"distribution_name must be one of {self.ALLOWED}")
 
@@ -156,6 +169,7 @@ class DistributionECDFvsCDFPlot(BasePlot):
         return desc
 
     def compute_inferential(self, s: pd.Series, desc: dict[str, Any]) -> dict[str, Any]:
+        """Run KS, AD (when applicable), and CvM tests using fitted parameters."""
         out: dict[str, Any] = {"params": {"alpha": float(self.ctx.alpha)}}
 
         # empty or error → only params
@@ -215,7 +229,7 @@ class DistributionECDFvsCDFPlot(BasePlot):
         ax,
         palette,
     ):
-
+        """Render ECDF, theoretical CDF, KS gap marker, and a stats textbox."""
         # In error case: draw a minimal frame with error note (no lines)
         if "error" in desc:
             ax.text(
