@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""End-to-end categorical distribution analysis with plots and a JSON report."""
 
 import logging
 from pathlib import Path
@@ -42,7 +43,7 @@ logger = logging.getLogger(__name__)
 def categorical_distribution_analysis(
     series: pd.Series,
     report_path: Path,
-    report_log_id = str(uuid.uuid4()),
+    report_log_id: str | None = None,
     data_source: str | None = None,
     filter_desc: str | None = None,
     plot_frequency_pareto_overrides: dict[str, Any] | None = None,
@@ -53,9 +54,7 @@ def categorical_distribution_analysis(
     plot_balance_rare_categories_overrides: dict[str, Any] | None = None
 ) -> dict:
     """
-    Perform a comprehensive statistical and visual analysis of a categorical Series,
-    generating both frequency-based and balance-based metrics and visualizations,
-    and compile them into a structured JSON report.
+    Perform a comprehensive statistical and visual analysis of a categorical Series.
 
     This function is designed to help identify dominant categories, rare "tail" categories,
     and the overall distribution fairness of categorical data. It produces a combination of
@@ -96,6 +95,10 @@ def categorical_distribution_analysis(
     dict
         Dictionary with the relative path to the generated JSON report.
     """
+    # Generate a stable log id if none was provided.
+    if report_log_id is None:
+        report_log_id = str(uuid.uuid4())
+
     # validate input
     cleaned_series = categorical_validator().validate(series)
 

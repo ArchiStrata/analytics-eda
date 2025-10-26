@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Pareto (80/20) chart for categorical frequencies in a Series."""
 
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -31,6 +32,8 @@ from ..visualization.base_plot import BasePlot
 
 @dataclass
 class FrequencyParetoContext(SeriesBarChartContext):
+    """Context options controlling the frequency Pareto chart."""
+
     title_template: str = "Pareto Chart of {name}{modifiers}"
     xlabel: str = "Share of total"
     ylabel: str = "Category"
@@ -74,12 +77,15 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         super().__init__(ctx, parts)
 
     def plot_semantic_version(self) -> str:
-        """
-        Return the semantic version of this plot implementation.
-        """
+        """Return the semantic version of this plot implementation."""
         return "1.0.0"
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute counts, shares, cumulative shares, and threshold summary.
+
+        Builds the bar payload (percent of total), caches arrays for the Pareto
+        line, and returns a `desc` dict with Pareto-specific fields.
+        """
         counts = s.value_counts()
 
         # Build standard series-bar desc (percent base is pct_of_total for Pareto)
@@ -131,6 +137,11 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         return desc
 
     def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
+        """Return a concise narrative highlighting the Pareto concentration.
+
+        Summarizes how many categories reach the threshold (e.g., 80%) and
+        calls out the top category/ies (tie-aware).
+        """
         total = int(desc.get("total", 0))
         k = int(desc.get("input_categories", 0))
         if total == 0 or k == 0:
@@ -206,6 +217,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         return findings
 
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
+        """Render bars (via mixin) and the Pareto cumulative line."""
         # 1) Bars via the common mixin
         fig, ax = SeriesBarChartMixin.draw(self, s, desc, inf, chart_metadata, fig=fig, ax=ax, palette=palette)
 
@@ -266,10 +278,7 @@ class FrequencyParetoPlot(SeriesBarChartMixin, BasePlot):
         return fig, ax
 
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
-        """
-        Return a concise, presentation-friendly subtitle based on
-        draft_descriptive_findings. Keeps focus on the core Pareto story.
-        """
+        """Return a concise subtitle based on the Pareto summary."""
         if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
             return ""
 

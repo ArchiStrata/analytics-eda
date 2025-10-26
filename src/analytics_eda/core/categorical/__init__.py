@@ -1,3 +1,5 @@
+"""Categorical analysis plots and helpers."""
+
 from .balance_chi_square_uniform_plot import (
     BalanceChiSquareUniformContext,
     BalanceChiSquareUniformPlot,

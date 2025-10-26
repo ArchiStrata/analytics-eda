@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Lorenz-curve plot for categorical imbalance with Gini summary."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -28,6 +29,8 @@ from ..visualization.base_plot import BasePlot, PlotContext
 
 @dataclass
 class BalanceLorenzCurveContext(PlotContext):
+    """Context options for the Lorenz-curve categorical imbalance plot."""
+
     title_template: str = "Lorenz Curve of {name}{modifiers}"
     xlabel: str = "Cumulative % of categories"
     ylabel: str = "Cumulative % of values"
@@ -56,16 +59,15 @@ class BalanceLorenzCurvePlot(BasePlot):
         super().__init__(ctx, parts)
 
     def plot_semantic_version(self) -> str:
-        """
-        Return the semantic version of this plot implementation.
-        """
+        """Return the semantic version of this plot implementation."""
         return "1.0.0"
 
     # ---- internal helpers (moved here) ----
     @staticmethod
     def _lorenz_curve_from_counts(counts: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
-        Lorenz curve for nonnegative weights (e.g., category frequencies).
+        Compute the Lorenz curve for nonnegative weights.
+
         Returns (x, y): cumulative share of categories (x) vs cumulative share of values (y).
         """
         if counts.size == 0 or np.sum(counts) == 0:
@@ -86,8 +88,9 @@ class BalanceLorenzCurvePlot(BasePlot):
     @staticmethod
     def _gini_from_lorenz(x: np.ndarray, y: np.ndarray) -> float:
         """
-        Gini = 1 - 2 * area under Lorenz curve.
-        Assumes x spans [0,1] and y starts at 0 and ends at 1.
+        Compute Gini as 1 - 2 × area under the Lorenz curve.
+
+        Assumes x spans [0, 1] and y starts at 0 and ends at 1.
         """
         area = np.trapezoid(y, x)
         return float(1.0 - 2.0 * area)
@@ -95,9 +98,11 @@ class BalanceLorenzCurvePlot(BasePlot):
     # ---- BasePlot hooks ----
 
     def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty descriptive payload with total/k and Gini placeholders."""
         return {"total": 0, "k": 0, "gini_index": None}
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute counts, Lorenz curve, and Gini index from the series."""
         counts = s.value_counts()
         freq_values = counts.values.astype(float)
         total = int(freq_values.sum())
@@ -116,6 +121,7 @@ class BalanceLorenzCurvePlot(BasePlot):
         }
 
     def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
+        """Produce a short, human-readable summary interpreting the Gini index."""
         if not desc or desc.get("total", 0) == 0 or np.isnan(desc.get("gini_index", None)):
             return {}
 
@@ -139,7 +145,7 @@ class BalanceLorenzCurvePlot(BasePlot):
         return findings
 
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
-
+        """Render the equality line and Lorenz curve with shaded area between them."""
         # Lorenz curve
         x_lorenz = self.draw_cache_get("lorenz_curve", "x_lorenz")
         y_lorenz = self.draw_cache_get("lorenz_curve", "y_lorenz")
@@ -164,6 +170,7 @@ class BalanceLorenzCurvePlot(BasePlot):
         return fig, ax
 
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        """Build a concise subtitle summarizing Gini, category count, and N."""
         if not desc or desc.get("total", 0) == 0 or np.isnan(desc.get("gini_index", None)):
             return ""
 

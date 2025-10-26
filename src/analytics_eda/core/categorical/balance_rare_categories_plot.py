@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Identify and visualize low-frequency categories and summarize their impact."""
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -61,14 +62,14 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
     Highlights and visualizes low-frequency categories in a categorical distribution.
 
     Why:
-        In many categorical datasets, a small number of categories account for most 
-        of the observations, while some categories occur rarely. Identifying these 
-        rare categories is useful for data cleaning, grouping, or rebalancing 
+        In many categorical datasets, a small number of categories account for most
+        of the observations, while some categories occur rarely. Identifying these
+        rare categories is useful for data cleaning, grouping, or rebalancing
         decisions, and can help detect anomalies or data quality issues.
 
     What:
-        Filters categories whose counts fall below a configurable lower-frequency 
-        threshold (either as a proportion of total count or as an absolute count) 
+        Filters categories whose counts fall below a configurable lower-frequency
+        threshold (either as a proportion of total count or as an absolute count)
         and plots them in a horizontal bar chart for easy inspection.
 
     Returns (BasePlot.run schema):
@@ -88,13 +89,12 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
         super().__init__(ctx, parts)
 
     def plot_semantic_version(self) -> str:
-        """
-        Return the semantic version of this plot implementation.
-        """
+        """Return the semantic version of this plot implementation."""
         return "1.0.0"
 
     # ---- defaults when empty/degenerate ----
     def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty descriptive payload with threshold defaults filled in."""
         desc = super().default_descriptive()
 
         desc["params"] = {
@@ -107,6 +107,12 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
 
     # ---- computations ----
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute rare-category bars given a proportion/absolute cutoff.
+
+        Drops NA values, determines the cutoff from `ctx.extreme_lower_bound`
+        (proportion if <1, otherwise absolute count), keeps categories at or below
+        the cutoff, and builds the bar payload (percent of non-null base).
+        """
         # frequency table (drop NAs for category analysis)
         counts_all = s.dropna().value_counts()
         total = int(counts_all.sum())
@@ -147,6 +153,7 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
         return bars_desc
 
     def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
+        """Generate a short, human-readable summary about rare categories."""
         if not desc or desc.get("total", 0) == 0:
             return {}
 
@@ -182,6 +189,7 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
 
     # ---- drawing ----
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        """Build a concise subtitle summarizing rare-category count and magnitude."""
         # No data → no subtitle
         if not desc or desc.get("total", 0) == 0 or desc.get("total_nonnull", 0) == 0:
             return ""

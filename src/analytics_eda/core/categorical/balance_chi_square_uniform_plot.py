@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Chi-square goodness-of-fit plot against a uniform distribution."""
 
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -27,6 +28,8 @@ from ..visualization.base_plot import BasePlot, PlotContext
 
 @dataclass
 class BalanceChiSquareUniformContext(PlotContext):
+    """Context options for the chi-square uniform balance plot."""
+
     title_template: str = "Chi-Square Goodness-of-Fit: {name}{modifiers}"
     xlabel: str = "Observed − Expected (count)"
     ylabel: str = "Category"
@@ -77,15 +80,15 @@ class BalanceChiSquareUniformPlot(BasePlot):
         super().__init__(ctx, parts)
 
     def plot_semantic_version(self) -> str:
-        """
-        Return the semantic version of this plot implementation.
-        """
+        """Return the semantic version of this plot implementation."""
         return "1.0.0"
 
     def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty descriptive payload with total and category count."""
         return {"total": 0, "k": 0}
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute observed/expected counts, deltas, sorting, cache arrays, and top labels."""
         freq = s.value_counts()
         categories = sorted(freq.index.tolist())
         observed = np.asarray([int(freq[c]) for c in categories], dtype=float)
@@ -141,7 +144,7 @@ class BalanceChiSquareUniformPlot(BasePlot):
         top_n = max(1, int(getattr(self.ctx, "bar_top_n", 1)))
         include_ties = bool(getattr(self.ctx, "bar_top_include_ties", True))
 
-        pairs = list(zip(labels, scores))
+        pairs = list(zip(labels, scores, strict=True))
         pairs.sort(key=lambda kv: (-kv[1], kv[0]))  # stable
         if pairs:
             cutoff = pairs[min(top_n, len(pairs)) - 1][1]
@@ -171,13 +174,14 @@ class BalanceChiSquareUniformPlot(BasePlot):
                     "std_resid": float(sr) if np.isfinite(sr) else np.nan,
                     "ratio_oe": float(r) if np.isfinite(r) else np.nan,
                 }
-                for lbl, o, e, d, dp, sr, r in zip(labels, observed_o, expected_o, delta_o, dpexp_o, std_resid_o, ratio_o)
+                for lbl, o, e, d, dp, sr, r in zip(labels, observed_o, expected_o, delta_o, dpexp_o, std_resid_o, ratio_o, strict=True)
             },
             "top_labels": top_labels,
         }
         return desc
 
     def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
+        """Summarize the largest deviations from uniform (human-readable)."""
         total = int(desc.get("total", 0))
         k = int(desc.get("k", 0))
         if total == 0 or k == 0:
@@ -231,6 +235,7 @@ class BalanceChiSquareUniformPlot(BasePlot):
 
 
     def compute_inferential(self, s: pd.Series, desc: dict[str, Any]) -> dict[str, Any]:
+        """Run chi-square GOF vs. uniform, return statistic, df, p-value, alpha, and decision."""
         k = desc.get("k", 0)
         total = desc.get("total", 0)
         if k == 0 or total == 0:
@@ -276,6 +281,7 @@ class BalanceChiSquareUniformPlot(BasePlot):
         return res
 
     def draft_inferential_findings(self, inf: dict[str, Any], desc: dict[str, Any]) -> dict[str, Any]:
+        """Render a readable decision string from the chi-square test result."""
         res = (inf or {}).get("chi2_gof_null_uniform")
         if not res:
             return {}
@@ -311,6 +317,7 @@ class BalanceChiSquareUniformPlot(BasePlot):
         return findings
 
     def draw(self, s, desc, inf, chart_metadata, *, fig, ax, palette):
+        """Render signed deltas as a horizontal bar chart with optional coloring and labels."""
         labels = self.draw_cache_get("chi2_uniform", "labels", [])
         delta  = self.draw_cache_get("chi2_uniform", "delta", np.array([]))
         std_r  = self.draw_cache_get("chi2_uniform", "std_resid", np.array([]))
@@ -369,6 +376,7 @@ class BalanceChiSquareUniformPlot(BasePlot):
         return fig, ax
 
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        """Build a concise subtitle summarizing the GOF decision and p-value."""
         res = inf.get("chi2_gof_null_uniform")
         if res:
             return f"Uniform GOF: {'Reject' if res['reject'] else 'Fail to reject'} at α={self.formatter.format_alpha(res['alpha'])} ({self.formatter.format_p_value(res['p_value'])})"
