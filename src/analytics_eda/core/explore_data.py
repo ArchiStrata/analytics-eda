@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""High-level helpers to summarize a DataFrame and write a JSON report."""
+
 import os
 
 import pandas as pd
@@ -24,7 +26,7 @@ def explore_data(
         report_path: str = None,
         file_name: str = "explore_data_summary.json") -> dict:
     """
-    Performs a structured exploratory summary of the given DataFrame and saves it to a JSON file.
+    Create a structured exploratory summary of a DataFrame and save it to a JSON file.
 
     Sections:
     - Overview:

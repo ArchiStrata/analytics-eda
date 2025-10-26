@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Violin plot of a numeric series with mean/median CIs and optional one-sample tests."""
+
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -29,6 +31,8 @@ MedianCIMethod = Literal['bootstrap', None]
 
 @dataclass
 class CentralTendencyViolinContext(PlotContext):
+    """Context for the central-tendency violin plot (labels, CI/test options, and styling)."""
+
     title_template: str = "Distribution of {name}{modifiers}: Central Tendency (Violin)"
     xlabel: str = "Value"
     ylabel: str = "Density"
@@ -71,6 +75,7 @@ class CentralTendencyViolinPlot(BasePlot):
         super().__init__(ctx, parts)
 
     def default_descriptive(self) -> dict[str, Any]:
+        """Return default descriptive stats for empty or invalid input."""
         return {
             "params": {
                 "mean_ci_method": self.ctx.mean_ci_method,
@@ -84,6 +89,7 @@ class CentralTendencyViolinPlot(BasePlot):
         }
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute mean/median and their CIs plus payload for drawing."""
         n = int(s.size)
         mean = float(s.mean()) if n else None
         median = float(s.median()) if n else None
@@ -132,6 +138,7 @@ class CentralTendencyViolinPlot(BasePlot):
         }
 
     def default_inferential(self) -> dict[str, Any]:
+        """Return default inferential params (alpha, samples, population values)."""
         return {
             "params": {
                 "alpha": self.ctx.alpha,
@@ -143,6 +150,7 @@ class CentralTendencyViolinPlot(BasePlot):
         }
 
     def compute_inferential(self, s: pd.Series, desc: dict[str, Any]) -> dict[str, Any]:
+        """Run optional one-sample tests for mean and/or median."""
         out: dict[str, Any] = {
             "params": {
                 "alpha": self.ctx.alpha,
@@ -221,13 +229,16 @@ class CentralTendencyViolinPlot(BasePlot):
         ax,
         palette,
     ):
+        """Render the violin, CI overlays, reference lines, and stats textbox."""
         mean_col, med_col = palette[0], palette[1]
 
         # Horizontal violin
         sns.violinplot(x=s, orient="h", inner=None, color="lightgray", ax=ax)
 
         # Overlay mean and its CI
-        mean = desc["mean"]; mean_lo, mean_hi = desc["mean_ci"]
+        mean = desc["mean"]
+        mean_lo, mean_hi = desc["mean_ci"]
+
         if desc["n"] > 0 and np.isfinite(mean):
             if np.isfinite(mean_lo) and np.isfinite(mean_hi):
                 ax.errorbar(
@@ -240,7 +251,8 @@ class CentralTendencyViolinPlot(BasePlot):
 
         # Overlay median and its CI (if requested)
         if desc["n"] > 0 and self.ctx.median_ci_method == "bootstrap":
-            med = desc["median"]; med_lo, med_hi = desc["median_ci"]
+            med = desc["median"]
+            med_lo, med_hi = desc["median_ci"]
             if np.isfinite(med):
                 if np.isfinite(med_lo) and np.isfinite(med_hi):
                     ax.errorbar(
@@ -256,7 +268,8 @@ class CentralTendencyViolinPlot(BasePlot):
 
         # Compact stats summary textbox (when tests were run)
         stats_lines = []
-        pm = inf.get("popmean"); pmed = inf.get("popmedian")
+        pm = inf.get("popmean")
+        pmed = inf.get("popmedian")
         if pm is not None:
             parts = []
             if "cohens_d" in pm and pm["cohens_d"] is not None:
@@ -267,7 +280,8 @@ class CentralTendencyViolinPlot(BasePlot):
             if "z_test" in pm:
                 parts.append(f"z={pm['z_test']['statistic']:.2f}, p={pm['z_test']['p_value']:.3f}"
                              f" {'(reject)' if pm['z_test']['reject'] else '(ns)'}")
-            if parts: stats_lines.append("Mean vs pop: " + "; ".join(parts))
+            if parts:
+                stats_lines.append("Mean vs pop: " + "; ".join(parts))
         if pmed is not None:
             parts = []
             if "wilcoxon" in pmed:
@@ -277,7 +291,8 @@ class CentralTendencyViolinPlot(BasePlot):
                 st = pmed["sign_test"]
                 parts.append(f"Sign: +={st['num_positive']}, -={st['num_negative']}, p={st['p_value']:.3f}"
                              f" {'(reject)' if st['reject'] else '(ns)'}")
-            if parts: stats_lines.append("Median vs pop: " + "; ".join(parts))
+            if parts:
+                stats_lines.append("Median vs pop: " + "; ".join(parts))
         if stats_lines:
             ax.text(0.01, 0.95, "\n".join(stats_lines), transform=ax.transAxes,
                     fontsize="small", va="top",

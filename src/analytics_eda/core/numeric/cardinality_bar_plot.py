@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Bar chart showing numeric cardinality and discreteness, with top-N coverage."""
+
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -29,6 +31,8 @@ from ..visualization.validation import numeric_validator
 
 @dataclass
 class CardinalityBarContext(SeriesBarChartContext):
+    """Context/config for the cardinality bar plot (axes, sorting, thresholds)."""
+
     title_template: str = "Cardinality Check — Discrete vs. Continuous for {name}{modifiers}"
     xlabel: str = "Number of Records"
     ylabel: str = "Values (Top N)"
@@ -63,12 +67,11 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
         super().__init__(ctx, parts)
 
     def plot_semantic_version(self) -> str:
-        """
-        Return the semantic version of this plot implementation.
-        """
+        """Return the semantic version of this plot implementation."""
         return "1.0.0"
 
     def default_descriptive(self) -> dict[str, Any]:
+        """Return default placeholders for counts, uniqueness, and bars payload."""
         return {
             "params": {
                 "max_unique_fraction": float(self.ctx.max_unique_fraction),
@@ -84,6 +87,7 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
         }
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute value counts, uniqueness ratio, discreteness flag, and top-N coverage."""
         # 1) Build bars once (mixin handles totals, Other, capping, ratios)
         full_counts = s.value_counts().to_dict()
         desc = self.build_series_bar_desc(
@@ -130,6 +134,7 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
         return desc
 
     def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
+        """Draft readable findings about discreteness, uniqueness, leaders, and coverage."""
         total_nonnull = int(desc.get("total_nonnull", 0))
         nunique = int(desc.get("nunique_native", 0))
         if total_nonnull == 0 or nunique == 0:
@@ -177,6 +182,7 @@ class CardinalityBarPlot(SeriesBarChartMixin, BasePlot):
         return findings
 
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        """Build a short subtitle summarizing discreteness, N, unique ratio, and coverage."""
         # Empty / invalid
         if not desc or desc.get("total_nonnull", 0) == 0:
             return ""

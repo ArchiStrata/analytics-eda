@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Histogram emphasizing central tendency (mean/median/mode) with concise findings."""
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,6 +29,8 @@ from .binning_rules import choose_bins
 
 @dataclass
 class CentralTendencyHistogramContext(PlotContext):
+    """Context for the central-tendency histogram (labels, bins, and display options)."""
+
     title_template: str = "Distribution of {name}{modifiers}: Central Tendency"
     xlabel: str = "Value"
     ylabel: str = "Count"
@@ -63,12 +67,11 @@ class CentralTendencyHistogramPlot(BasePlot):
         super().__init__(ctx, parts)
 
     def plot_semantic_version(self) -> str:
-        """
-        Return the semantic version of this plot implementation.
-        """
+        """Return the semantic version of this plot implementation."""
         return "1.0.0"
 
     def default_descriptive(self) -> dict[str, Any]:
+        """Return default descriptive stats and parameter placeholders."""
         bins = self.ctx.bins if self.ctx.bins is not None else 0
         return {
             "params": {
@@ -86,6 +89,7 @@ class CentralTendencyHistogramPlot(BasePlot):
         }
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute bins, mean/median, mode candidates, modality, and peak strength."""
         x = s.dropna()
         n = int(x.size)
 
@@ -202,6 +206,7 @@ class CentralTendencyHistogramPlot(BasePlot):
         }
 
     def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
+        """Draft plain-English findings about modality and mean-vs-median skew."""
         n = desc.get("n", 0)
 
         mean = desc.get("mean")
@@ -250,6 +255,7 @@ class CentralTendencyHistogramPlot(BasePlot):
         }
 
     def subtitle_text(self, desc, inf, chart_metadata) -> str:
+        """Build a short subtitle summarizing sample size, modality, and skew."""
         n = desc.get("n", 0)
 
         mean = desc.get("mean")
@@ -299,7 +305,7 @@ class CentralTendencyHistogramPlot(BasePlot):
         ax,
         palette,
     ):
-
+        """Render the histogram and overlay mean, median, and mode line(s)."""
         bins_arg = desc["params"]["bins_arg"]
 
         sns.histplot(s, bins=bins_arg, ax=ax, color=self.neutral_grey(variant="light"))

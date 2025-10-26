@@ -1,3 +1,5 @@
+"""Numeric EDA components: plots, rules, and helpers for univariate analysis."""
+
 from .cardinality_bar_plot import CardinalityBarContext, CardinalityBarPlot
 from .central_tendency_histogram_plot import (
     CentralTendencyHistogramContext,

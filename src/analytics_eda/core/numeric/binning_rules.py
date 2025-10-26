@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Heuristics and rules (Sturges, Scott, Freedman–Diaconis, Doane) for histogram bin counts."""
+
 import logging
 import math
 
@@ -24,11 +26,12 @@ logger = logging.getLogger(__name__)
 def choose_bins(series: pd.Series) -> tuple[int, str]:
     """
     Choose a robust histogram bin count based on data size, shape, and skew.
+
     Prioritizes Doane, Scott, or Freedman–Diaconis with safe fallbacks.
 
     Returns
     -------
-        (k, rule_name): 
+        (k, rule_name):
             k = int, number of bins selected
             rule_name = str, name of the rule or heuristic applied
     """
