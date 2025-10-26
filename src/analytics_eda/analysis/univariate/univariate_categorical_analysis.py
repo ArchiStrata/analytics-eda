@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Run EDA for a single categorical variable and emit plots plus a JSON report."""
+
 import logging
 from pathlib import Path
 from typing import Any
@@ -36,7 +38,7 @@ logger = logging.getLogger(__name__)
 def univariate_categorical_analysis(
     series: pd.Series,
     report_root: str = 'reports/eda/univariate/categorical',
-    report_log_id = str(uuid.uuid4()),
+    report_log_id: str | None = None,
     data_source: str | None = None,
     filter_desc: str | None = None,
     plot_frequency_pareto_overrides: dict[str, Any] | None = None,
@@ -51,16 +53,14 @@ def univariate_categorical_analysis(
     plot_cardinality_bar_overrides: dict[str, Any] | None = None,
 ) -> Path:
     """
-    Perform a comprehensive univariate analysis of a categorical pandas Series, 
-    profiling its quality, cardinality, and distribution, and saving results as plots 
-    and a structured JSON report.
+    Perform a comprehensive univariate analysis of a categorical pandas Series and save a JSON report.
 
     This analysis is designed for exploratory data analysis (EDA) and includes:
         • Missing data profiling — counts, percentages, and a visual barchart.
         • Cardinality assessment — number of distinct categories and frequency distribution.
         • Distribution analysis — frequency/Pareto plots, statistical tests, and balance metrics.
 
-    All outputs are saved to the specified report directory, with key results aggregated 
+    All outputs are saved to the specified report directory, with key results aggregated
     into a single JSON file for integration into automated reporting pipelines.
 
     Args:
@@ -68,16 +68,15 @@ def univariate_categorical_analysis(
         report_root (str, optional): Base directory for saving plots and the report.
         report_log_id (str, optional): Unique identifier for logging/report tracking.
         data_source (str, optional): Optional label for the dataset's origin.
-        plot_frequency_pareto_overrides, plot_distribution_density_overrides, 
-        plot_dispersion_boxplot_overrides, plot_balance_chi_square_uniform_overrides, plot_balance_rare_categories_overrides,
-        plot_balance_lorenz_curve_overrides (dict, optional): 
+        plot_frequency_pareto_overrides, plot_distribution_density_overrides,
+        plot_dispersion_boxplot_overrides, plot_balance_chi_square_uniform_overrides,
+        plot_balance_rare_categories_overrides, plot_balance_lorenz_curve_overrides (dict, optional):
             Per-plot configuration overrides.
 
     Returns
     -------
-        dict: {
-            'report_file_path': Path to the saved JSON report
-        }
+    dict
+        {'report_file_path': Path to the saved JSON report}
 
     JSON report structure:
         {
@@ -89,6 +88,9 @@ def univariate_categorical_analysis(
             }
         }
     """
+    if report_log_id is None:
+        report_log_id = str(uuid.uuid4())
+
     # 1. Validation (Named, Typed)
     series_copy = categorical_validator(dropna=False, cast_str=False).validate(series)
 

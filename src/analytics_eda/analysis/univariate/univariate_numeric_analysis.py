@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Univariate numeric analysis: data quality, cardinality, and distribution reporting."""
+
 from collections.abc import Sequence
 import logging
 from pathlib import Path
@@ -36,7 +38,7 @@ logger = logging.getLogger(__name__)
 def univariate_numeric_analysis(
     series: pd.Series,
     report_root: str = 'reports/eda/univariate/numeric',
-    report_log_id = str(uuid.uuid4()),
+    report_log_id: str | None = None,
     data_source: str | None = None,
     filter_desc: str | None = None,
     distribution_names: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon'),
@@ -54,28 +56,26 @@ def univariate_numeric_analysis(
     plot_cardinality_bar_overrides: dict[str, Any] | None = None,
 ) -> Path:
     """
-    Perform a comprehensive univariate analysis on a numeric pandas Series and
-    generate a structured JSON report containing missing data, cardinality, and 
-    distribution insights.
+    Perform a comprehensive univariate analysis of a numeric pandas Series and write a JSON report.
 
     This function validates the input series, computes descriptive statistics,
     conducts normality and distribution tests, generates relevant visualizations,
-    and aggregates the results into a single, machine-readable report. The output 
-    can be used for exploratory data analysis (EDA), data quality assessment, or 
+    and aggregates the results into a single, machine-readable report. The output
+    can be used for exploratory data analysis (EDA), data quality assessment, or
     as part of automated profiling workflows.
 
     Analysis includes:
         1. Missing data profiling (counts, percentages, bar chart).
         2. Cardinality profiling (category counts, discrete/continuous flag, bar chart).
-        3. Distribution profiling (descriptive stats, normality tests, histogram, 
-        violin plot, ECDF, Q–Q plot, and other relevant charts).
+        3. Distribution profiling (descriptive stats, normality tests, histogram,
+           violin plot, ECDF, Q–Q plot, and other relevant charts).
 
     Args:
         series (pd.Series): Numeric series to analyze.
         report_root (str): Directory where report files will be saved.
         report_log_id (str): Identifier for logging and traceability.
         data_source (Optional[str]): Metadata describing the data source.
-        distribution_names (Sequence[str]): Statistical distributions to fit 
+        distribution_names (Sequence[str]): Statistical distributions to fit
             during goodness-of-fit analysis.
         *_overrides (dict): Optional keyword overrides for individual plot functions.
 
@@ -93,6 +93,9 @@ def univariate_numeric_analysis(
             }
         }
     """
+    if report_log_id is None:
+        report_log_id = str(uuid.uuid4())
+
     # 1. Validation (Named, Typed)
     series_copy = named_only_validator(dropna=False, cast_str=False).validate(series)
 

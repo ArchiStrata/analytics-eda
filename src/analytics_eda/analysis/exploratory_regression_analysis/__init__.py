@@ -1,3 +1,10 @@
+"""
+Exploratory regression analysis.
+
+This package includes helpers for regression EDA—target distribution checks,
+feature relationships, multicollinearity diagnostics, baseline fits, residual
+analysis, and visual summaries—to inform model choice and preprocessing.
+"""
 
 # TODO: exploratory_regression_analysis
 
