@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""End-to-end univariate numeric distribution analysis: stats, fits, plots, and optional transform evaluation."""
+
 from collections.abc import Callable, Sequence
 import logging
 from pathlib import Path
@@ -59,12 +61,10 @@ def numeric_distribution_analysis(
     plot_distribution_qq_fit_overrides: dict[str, Any] | None = None,
     plot_distribution_probability_overrides: dict[str, Any] | None = None,
 ) -> dict:
-    """
-    Compute descriptive statistics, assess fit to common distributions, visualize
-    distribution shape, and (optionally) evaluate variance-stabilizing transforms.
+    """Compute univariate stats, fit common distributions, plot shape, and (optionally) evaluate transforms.
 
     Why:
-        Provides a one-stop univariate EDA: 
+        Provides a one-stop univariate EDA:
         - central tendency and dispersion,
         - shape & tail characteristics,
         - formal goodness-of-fit to theoretical distributions,

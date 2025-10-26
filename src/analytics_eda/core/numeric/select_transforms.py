@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Select candidate numeric transforms from descriptive stats and normality tests."""
 
 from collections.abc import Callable
 
@@ -19,7 +20,8 @@ def select_transforms(
     descriptive_stats: dict,
     normality_tests: dict | None = None
 ) -> list[str]:
-    """
+    """Select candidate power-type transforms based on stats and normality tests.
+
     From descriptive stats and formal normality test results, choose which
     power‐type transforms are valid to try.
 

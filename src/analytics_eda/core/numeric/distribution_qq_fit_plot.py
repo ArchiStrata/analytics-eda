@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Q–Q fit plot with diagnostics for a chosen theoretical distribution."""
+
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -28,6 +30,8 @@ DistributionName = Literal['norm', 'lognorm', 'gamma', 'expon']
 
 @dataclass
 class DistributionQqFitContext(PlotContext):
+    """Context options for the Q–Q fit plot (labels, legend, and distribution)."""
+
     title_template: str = "Q–Q Plot Fit Assessment of {name}{modifiers}"
     xlabel: str = "Theoretical Quantiles"
     ylabel: str = "Sample Quantiles"
@@ -38,9 +42,7 @@ class DistributionQqFitContext(PlotContext):
     alpha: float = 0.05
 
 class DistributionQqFitPlot(BasePlot):
-    """
-    Generate a Q–Q plot that effectively communicates how closely a numeric variable
-    follows a distribution type, with quantitative diagnostics.
+    """Generate a Q–Q plot assessing fit to a specified distribution.
 
     Why:
         Assess how well a numeric variable matches a theoretical distribution
@@ -54,20 +56,14 @@ class DistributionQqFitPlot(BasePlot):
         - Residual diagnostics: median residual, IQR of residuals, maximum absolute residual.
         - Shape metrics: sample skewness and excess kurtosis.
         - If `distribution_name == 'norm'`, conducts:
-            • Shapiro–Wilk (n < 50)  
-            • D’Agostino–Pearson omnibus (n ≥ 20)  
-            • Jarque–Bera (n > 2000)  
+            • Shapiro–Wilk (n < 50)
+            • D’Agostino–Pearson omnibus (n ≥ 20)
+            • Jarque–Bera (n > 2000)
             • Overall reject flag if any test rejects H0.
 
-    Returns BasePlot.run() schema:
-      {
-        "descriptive_stats": {
-          "intercept","slope","r_squared","median_residual","iqr_residual",
-          "max_abs_residual","skewness","kurtosis","min"
-        },
-        "inferential_stats": { ... tests & params ... },
-        "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
-      }
+    Returns
+    -------
+        BasePlot.run() schema with descriptive/inferential stats and chart metadata.
     """
 
     def __init__(self, ctx):
@@ -77,6 +73,7 @@ class DistributionQqFitPlot(BasePlot):
         super().__init__(ctx, parts)
 
     def title_kwargs(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
+        """Provide template kwargs for the title (e.g., distribution name and extras)."""
         dist = self.ctx.distribution_name
         return {
             "fit_desc": f"fitted to {dist}",
@@ -86,12 +83,14 @@ class DistributionQqFitPlot(BasePlot):
         }
 
     def metadata_overrides(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
+        """Inject extra fields into the returned chart metadata (e.g., alpha, dist name)."""
         return {
             "distribution_name": self.ctx.distribution_name,
             "alpha": float(self.ctx.alpha),
         }
 
     def default_descriptive(self) -> dict[str, Any]:
+        """Return the empty/none defaults for descriptive statistics."""
         return {
             "intercept": None,
             "slope": None,
@@ -105,6 +104,7 @@ class DistributionQqFitPlot(BasePlot):
         }
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
+        """Compute Q–Q line fit, residual summaries, shape stats, and payload arrays."""
         data = s.dropna().astype(float)
         n = int(data.size)
         if n == 0:
@@ -175,6 +175,7 @@ class DistributionQqFitPlot(BasePlot):
         }
 
     def default_inferential(self) -> dict[str, Any]:
+        """Return default inferential payload with parameters (alpha, distribution)."""
         return {
             "params": {
                 "alpha": self.ctx.alpha,
@@ -183,6 +184,7 @@ class DistributionQqFitPlot(BasePlot):
         }
 
     def compute_inferential(self, s: pd.Series, desc: dict[str, Any]) -> dict[str, Any]:
+        """Run normality tests when `distribution_name == 'norm'` and build results."""
         data = s.dropna().astype(float)
         n = int(data.size)
         res: dict[str, Any] = {"params": {"alpha": float(self.ctx.alpha), "distribution_name": self.ctx.distribution_name}}
@@ -227,7 +229,7 @@ class DistributionQqFitPlot(BasePlot):
         ax,
         palette,
     ):
-
+        """Render the Q–Q scatter, fit line, and a compact stats textbox."""
         # If domain error (e.g., lognorm with nonpositive), just render title/labels and note error
         if "error" in desc:
             ax.text(
@@ -237,7 +239,9 @@ class DistributionQqFitPlot(BasePlot):
             )
             return fig, ax
 
-        osm = desc["osm"]; osr = desc["osr"]; fitted = desc["fitted"]
+        osm = desc["osm"]
+        osr = desc["osr"]
+        fitted = desc["fitted"]
 
         # points + fit line
         sns.scatterplot(x=osm, y=osr, ax=ax, s=20, edgecolor="k", alpha=0.6, label="Quantiles")
