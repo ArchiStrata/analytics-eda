@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Numeric-by-categorical variance homogeneity visualization and tests.
+
+Provides per-group violins + boxplots and runs Bartlett/Levene to assess
+homoscedasticity across categories.
+"""
+
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -25,8 +31,11 @@ from ..utils.utils import grouped_arrays, resolve_cat_col, resolve_num_col, trun
 
 # ---------------- Context ----------------
 
+
 @dataclass
 class RelationshipStructureVarianceHomogeneityContext(PlotContext):
+    """Context/config for the variance-homogeneity (group violins + box) plot."""
+
     title_template: str = "Variance Homogeneity for {name}{modifiers}"
     xlabel: str = "Group"
     ylabel: str = "Value"
@@ -42,15 +51,17 @@ class RelationshipStructureVarianceHomogeneityContext(PlotContext):
     errorbar_capsize: float = 4.0
 
     # behavior
-    overlay_errorbars_threshold: int = 4   # ≤ this → add mean±SD error bars
+    overlay_errorbars_threshold: int = 4  # ≤ this → add mean±SD error bars
 
 
 # -------------- Plot ---------------------
 
+
 class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
-    """
-    Test and visualize whether group variances are comparable (homoscedasticity) in a
-    numeric-by-categorical setting.
+    """Visualize and test variance homogeneity across groups.
+
+    Test and visualize whether group variances are comparable (homoscedasticity)
+    in a numeric-by-categorical setting.
 
     Why
     ---
@@ -83,6 +94,10 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
       "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
     }
     """
+
+    def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty/default descriptive-stats structure."""
+        return {}
 
     # ---------- Frame API ----------
 
@@ -149,7 +164,7 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
         if len(arrays) < 2 or any(len(a) == 0 for a in arrays):
             return {
                 "bartlett": {"statistic": None, "p_value": None, "reject": False, "alpha": alpha},
-                "levene":   {"statistic": None, "p_value": None, "reject": False, "alpha": alpha},
+                "levene": {"statistic": None, "p_value": None, "reject": False, "alpha": alpha},
             }
 
         # Bartlett (sensitive to non-normality)
@@ -159,7 +174,7 @@ class RelationshipStructureVarianceHomogeneityBoxPlot(BasePlot):
 
         return {
             "bartlett": {"statistic": float(b_stat), "p_value": float(b_p), "reject": bool(b_p < alpha), "alpha": alpha},
-            "levene":   {"statistic": float(l_stat), "p_value": float(l_p), "reject": bool(l_p < alpha), "alpha": alpha},
+            "levene": {"statistic": float(l_stat), "p_value": float(l_p), "reject": bool(l_p < alpha), "alpha": alpha},
         }
 
     def draw_frame(

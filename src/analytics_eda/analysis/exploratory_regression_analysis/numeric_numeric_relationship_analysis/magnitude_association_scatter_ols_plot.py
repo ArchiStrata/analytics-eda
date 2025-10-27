@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# --- add at the very top of the file (fixes D100) ---
+"""Scatter plot with OLS line to quantify association magnitude between two numeric variables.
+
+Computes Pearson r, optional Spearman ρ, R²/adjusted R², draws the OLS fit, and
+returns descriptive and inferential statistics alongside chart metadata.
+"""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -26,23 +32,27 @@ from ..utils.utils import dropna_on, resolve_num_col
 
 # ---------------- Context ----------------
 
+
 @dataclass
 class MagnitudeAssociationScatterOLSContext(PlotContext):
+    """Configuration for the magnitude-of-association (scatter + OLS) plot."""
+
     title_template: str = "Scatter + OLS: {ylabel} vs {xlabel}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
 
-    alpha: float = 0.05                # for confidence intervals
-    include_spearman: bool = True      # optional monotonic effect size
+    alpha: float = 0.05  # for confidence intervals
+    include_spearman: bool = True  # optional monotonic effect size
 
 
 # -------------- Plot ---------------------
 
+
 class MagnitudeAssociationScatterOLSPlot(BasePlot):
-    """
-    Quantifies the *strength* of a numeric–numeric relationship with a scatter plot
-    and an OLS regression line by pairing the visual fit (OLS line) with effect-size descriptors (r, R²) to convey
-    how strongly X relates to Y—separate from structure (LOESS) or direction-only narratives.
+    """Quantify the strength of a numeric–numeric relationship with scatter + OLS.
+
+    Pairs the visual fit (OLS line) with effect-size descriptors (r, R²) to convey how
+    strongly X relates to Y—separate from structure (LOWESS) or direction-only narratives.
 
     Why
     ---
@@ -58,27 +68,21 @@ class MagnitudeAssociationScatterOLSPlot(BasePlot):
     - Output: payload with descriptive_stats, inferential_stats, and chart_metadata.
     """
 
+    def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty/default descriptive-stats structure."""
+        return {}
+
     # ---------- Frame API ----------
-    def validate_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> pd.DataFrame:
+    def validate_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> pd.DataFrame:
+        """Validate that X and Y exist and drop rows with NA in either column."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         df = dropna_on(df, x_col)
         df = dropna_on(df, y_col)
         return df
 
-    def compute_descriptive_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, float]:
+    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, float]:
+        """Compute OLS slope/intercept, Pearson r, R²/adj-R², and optional Spearman ρ."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         x = df[x_col].to_numpy()
@@ -123,14 +127,8 @@ class MagnitudeAssociationScatterOLSPlot(BasePlot):
 
         return out
 
-    def compute_inferential_frame(
-        self,
-        df: pd.DataFrame,
-        desc: dict[str, float],
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, float]:
+    def compute_inferential_frame(self, df: pd.DataFrame, desc: dict[str, float], *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, float]:
+        """Compute inference for correlation (two-sided p, CI for r and R² via Fisher z)."""
         n = int(desc.get("n_obs", 0))
         r = desc.get("pearson_r", np.nan)
         alpha = float(getattr(self.ctx, "alpha", 0.05))
@@ -163,7 +161,7 @@ class MagnitudeAssociationScatterOLSPlot(BasePlot):
             r = float(np.sign(r))  # snap to exactly ±1
             out["pearson_correlation"] = {
                 "statistic": r,
-                "p_value": float(p_val),    # SciPy returns 0.0 here
+                "p_value": float(p_val),  # SciPy returns 0.0 here
                 "reject": bool(p_val < alpha),
                 "ci_r": (r, r),
                 "ci_r2": (1.0, 1.0),
@@ -202,6 +200,7 @@ class MagnitudeAssociationScatterOLSPlot(BasePlot):
         ax=None,
         palette=None,
     ):
+        """Render scatter points and the fitted OLS line (if available)."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         x = df[x_col].to_numpy()

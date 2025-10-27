@@ -1,3 +1,9 @@
+"""Categorical↔Numeric relationship analysis.
+
+Plots and report builders for group sizes, variance checks, effect sizes,
+distribution overlap, and Tukey HSD post-hoc comparisons.
+"""
+
 from .categorical_numeric_relationship_analysis import categorical_numeric_relationship_analysis
 from .direction_posthoc_tukey_hsd_plot import (
     DirectionPosthocTukeyHsdContext,

@@ -1,3 +1,9 @@
+"""Exploratory regression: numeric↔numeric relationship analysis utilities.
+
+This subpackage includes structure (scatter/LOWESS), magnitude (r, R², OLS),
+and direction (OLS slope) diagnostics and plotting helpers.
+"""
+
 from .direction_association_scatter_ols_trend_plot import (
     DirectionAssociationScatterOLSTrendContext,
     DirectionAssociationScatterOLSTrendPlot,

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Base plotting scaffold for Analytics-EDA."""
+
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
@@ -24,6 +25,7 @@ from analytics_eda.core.visualization.plot_parts import PlotParts
 
 Desc = str | Sequence[str] | None
 
+
 class BasePlot(ABC):
     """Abstract base class for plots: computes stats and renders figures."""
 
@@ -31,7 +33,7 @@ class BasePlot(ABC):
         self.ctx = ctx
         self.parts = parts or PlotParts()
         self._subtitle_queue: list[tuple] = []
-        self._draw_cache: dict[str, dict[str, Any]] = {}   # per-run cache (cleared each run)
+        self._draw_cache: dict[str, dict[str, Any]] = {}  # per-run cache (cleared each run)
         self.formatter = ReportFormatter(ctx=self)
 
     # ======== Metadata & Title ========
@@ -85,11 +87,11 @@ class BasePlot(ABC):
         """
         return self.parts.chart_metadata_builder.build_metadata(
             ctx=self.ctx,
-            version_cb=self.plot_semantic_version,     # preserve your version hook
+            version_cb=self.plot_semantic_version,  # preserve your version hook
             series=series,
             cols=cols,
             role_map=role_map,
-            title_kwargs_cb=self.title_kwargs,         # subclass hook
+            title_kwargs_cb=self.title_kwargs,  # subclass hook
             metadata_overrides_cb=self.metadata_overrides,  # subclass hook
         )
 
@@ -98,7 +100,7 @@ class BasePlot(ABC):
     @abstractmethod
     def default_descriptive(self) -> dict[str, Any]:
         """Return an empty/default descriptive-stats structure."""
-        return {}
+        pass
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         """Compute descriptive statistics for a Series."""
@@ -233,9 +235,7 @@ class BasePlot(ABC):
                 build_md=lambda: self._chart_metadata(series=s),
                 desc_fn=lambda: self.compute_descriptive(s),
                 inf_fn=lambda desc: self.compute_inferential(s, desc),
-                draw_fn=lambda desc, inf, md, fig, ax, palette: self.draw(
-                    s, desc, inf, md, fig=fig, ax=ax, palette=palette
-                ),
+                draw_fn=lambda desc, inf, md, fig, ax, palette: self.draw(s, desc, inf, md, fig=fig, ax=ax, palette=palette),
             )
 
         # ---- FRAME PATH ----
@@ -261,9 +261,7 @@ class BasePlot(ABC):
             build_md=lambda: self._chart_metadata(cols=cols, role_map=role_map),
             desc_fn=lambda: self.compute_descriptive_frame(df, cols=cols, role_map=role_map),
             inf_fn=lambda desc: self.compute_inferential_frame(df, desc, cols=cols, role_map=role_map),
-            draw_fn=lambda desc, inf, md, fig, ax, palette: self.draw_frame(
-                df, desc, inf, md, cols=cols, role_map=role_map, fig=fig, ax=ax, palette=palette
-            ),
+            draw_fn=lambda desc, inf, md, fig, ax, palette: self.draw_frame(df, desc, inf, md, cols=cols, role_map=role_map, fig=fig, ax=ax, palette=palette),
         )
 
     def _pipeline_execute(
@@ -304,15 +302,7 @@ class BasePlot(ABC):
                     "chart_metadata": chart_md,
                 }
 
-            chart_md["file_name"] = self.parts.renderer.render(
-                ctx=self.ctx,
-                chart_md=chart_md,
-                desc=desc,
-                inf=inf,
-                draw_fn=draw_fn,
-                subtitle_text=(self.subtitle_text(desc, inf, chart_md)),
-                footer_text=(self.footer_summary_text(desc, inf, chart_md))
-            )
+            chart_md["file_name"] = self.parts.renderer.render(ctx=self.ctx, chart_md=chart_md, desc=desc, inf=inf, draw_fn=draw_fn, subtitle_text=(self.subtitle_text(desc, inf, chart_md)), footer_text=(self.footer_summary_text(desc, inf, chart_md)))
 
             return {
                 "descriptive_stats": desc,

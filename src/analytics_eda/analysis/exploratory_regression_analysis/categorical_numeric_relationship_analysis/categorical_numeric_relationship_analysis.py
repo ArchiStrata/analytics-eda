@@ -11,6 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Run categorical↔numeric relationship analysis and write a JSON report.
+
+This module orchestrates structure, magnitude, and direction plots (group sizes,
+variance homogeneity, distribution overlap, effect sizes, and Tukey HSD) and
+bundles their outputs into a single machine-readable report.
+"""
+
 import logging
 from pathlib import Path
 from typing import Any
@@ -50,21 +57,21 @@ from ...univariate import univariate_numeric_analysis
 
 logger = logging.getLogger(__name__)
 
+
 def categorical_numeric_relationship_analysis(
     df: pd.DataFrame,
     numeric_col: str,
     categorical_col: str,
-    report_root: str = 'reports/eda/bivariate/categorical_numeric_relationship_analysis',
-    report_log_id = str(uuid.uuid4()),
+    report_root: str = "reports/eda/bivariate/categorical_numeric_relationship_analysis",
+    report_log_id: str | None = None,
     data_source: str | None = None,
-
     plot_relationship_structure_group_size_bar_overrides: dict[str, Any] | None = None,
     plot_relationship_structure_variance_homogeneity_box_overrides: dict[str, Any] | None = None,
     plot_magnitude_distribution_overlap_density_overrides: dict[str, Any] | None = None,
     plot_magnitude_central_tendency_anova_kruskal_overrides: dict[str, Any] | None = None,
     plot_magnitude_effect_size_barchart_overrides: dict[str, Any] | None = None,
     plot_dir_post_hoc_tukey_hsd_overrides: dict[str, Any] | None = None,
-    **kwargs
+    **kwargs,
 ) -> dict:
     """
     Run univariate numeric analysis on segments defined by a categorical column.
@@ -76,21 +83,16 @@ def categorical_numeric_relationship_analysis(
         report_root (str): Root directory for saving reports.
         report_log_id (str): report log id.
         **kwargs: Additional arguments passed to univariate_numeric_analysis (e.g., alpha, iqr_multiplier).
-    
+
     Returns
     -------
      Dict:
         - report_file_path: File path to the saved JSON report as written by `write_json_report`.
     """
-    logger.info(
-        "Starting categorical_numeric_relationship_analysis",
-        extra={
-            'numeric_col': numeric_col,
-            'categorical_col': categorical_col,
-            'report_root': report_root,
-            'report_log_id': report_log_id
-        }
-    )
+    if report_log_id is None:
+        report_log_id = str(uuid.uuid4())
+
+    logger.info("Starting categorical_numeric_relationship_analysis", extra={"numeric_col": numeric_col, "categorical_col": categorical_col, "report_root": report_root, "report_log_id": report_log_id})
 
     if categorical_col not in df.columns:
         raise KeyError(f"Categorical column '{categorical_col}' not found.")
@@ -123,7 +125,7 @@ def categorical_numeric_relationship_analysis(
         overrides=plot_relationship_structure_group_size_bar_overrides,
     )
     rs_group_size_bar_plot = RelationshipStructureGroupSizeBarPlot(rs_group_size_bar_ctx)
-    relationship_structure['group_size_barchart'] = rs_group_size_bar_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
+    relationship_structure["group_size_barchart"] = rs_group_size_bar_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
     rs_var_homogeneity_box_ctx = build_plot_context(
         RelationshipStructureVarianceHomogeneityContext,
@@ -131,47 +133,23 @@ def categorical_numeric_relationship_analysis(
         overrides=plot_relationship_structure_variance_homogeneity_box_overrides,
     )
     rs_var_homogeneity_box_plot = RelationshipStructureVarianceHomogeneityBoxPlot(rs_var_homogeneity_box_ctx)
-    relationship_structure['variance_homogeneity_boxplot'] = rs_var_homogeneity_box_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
+    relationship_structure["variance_homogeneity_boxplot"] = rs_var_homogeneity_box_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
     numeric_distribution_by_category = {}
     for category, group_df in df_copy.groupby(categorical_col, observed=True):
         category_slug = str(category).replace(" ", "_")
         category_report_root = report_path / f"{categorical_col}_{category_slug}"
-        logger.debug("Running univariate analysis for category",
-                extra={
-                    'category': category,
-                    'numeric_col': numeric_col,
-                    'categorical_col': categorical_col,
-                    'report_log_id': report_log_id
-                })
+        logger.debug("Running univariate analysis for category", extra={"category": category, "numeric_col": numeric_col, "categorical_col": categorical_col, "report_log_id": report_log_id})
 
         try:
-            report = univariate_numeric_analysis(
-                group_df[numeric_col],
-                report_root=category_report_root,
-                report_log_id=report_log_id,
-                data_source=data_source,
-                filter_desc=f"filtered by {categorical_col}={category_slug}",
-                **kwargs
-            )
+            report = univariate_numeric_analysis(group_df[numeric_col], report_root=category_report_root, report_log_id=report_log_id, data_source=data_source, filter_desc=f"filtered by {categorical_col}={category_slug}", **kwargs)
             numeric_distribution_by_category[category] = report
         except Exception as e:
             # NOTE: If a category analysis fails we still want to continue with the remaining categories.
-            logger.exception(
-                "univariate_numeric_analysis failed",
-                extra={
-                    'category': category,
-                    'numeric_col': numeric_col,
-                    'categorical_col': categorical_col,
-                    'report_log_id': report_log_id
-                }
-            )
-            numeric_distribution_by_category[category] = {
-                'error': str(e),
-                'report_log_id': report_log_id
-            }
+            logger.exception("univariate_numeric_analysis failed", extra={"category": category, "numeric_col": numeric_col, "categorical_col": categorical_col, "report_log_id": report_log_id})
+            numeric_distribution_by_category[category] = {"error": str(e), "report_log_id": report_log_id}
 
-    relationship_structure['numeric_distribution_by_category'] = numeric_distribution_by_category
+    relationship_structure["numeric_distribution_by_category"] = numeric_distribution_by_category
 
     # Magnitude of Association - How strongly are the two variables related?
     magnitude_of_association = {}
@@ -182,8 +160,7 @@ def categorical_numeric_relationship_analysis(
         overrides=plot_magnitude_distribution_overlap_density_overrides,
     )
     mag_dist_overlap_density_plot = MagnitudeDistributionOverlapDensityPlot(mag_dist_overlap_density_ctx)
-    magnitude_of_association['distribution_overlap_density'] = mag_dist_overlap_density_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
-
+    magnitude_of_association["distribution_overlap_density"] = mag_dist_overlap_density_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
     mag_central_tendency_anova_kruskal_ctx = build_plot_context(
         MagnitudeCentralTendencyAnovaKruskalContext,
@@ -191,8 +168,7 @@ def categorical_numeric_relationship_analysis(
         overrides=plot_magnitude_central_tendency_anova_kruskal_overrides,
     )
     mag_central_tendency_anova_kruskal_plot = MagnitudeCentralTendencyAnovaKruskalPlot(mag_central_tendency_anova_kruskal_ctx)
-    magnitude_of_association['central_tendency_anova_kruskal'] = mag_central_tendency_anova_kruskal_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
-
+    magnitude_of_association["central_tendency_anova_kruskal"] = mag_central_tendency_anova_kruskal_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
     mag_effect_size_barchart_ctx = build_plot_context(
         MagnitudeEffectSizeBarContext,
@@ -200,7 +176,7 @@ def categorical_numeric_relationship_analysis(
         overrides=plot_magnitude_effect_size_barchart_overrides,
     )
     mag_effect_size_bar_plot = MagnitudeEffectSizeBarPlot(mag_effect_size_barchart_ctx)
-    magnitude_of_association['effect_size_barchart'] = mag_effect_size_bar_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
+    magnitude_of_association["effect_size_barchart"] = mag_effect_size_bar_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
     # Direction of Association - Is the relationship positive, negative, or neutral?
     direction_of_association = {}
@@ -211,39 +187,19 @@ def categorical_numeric_relationship_analysis(
         overrides=plot_dir_post_hoc_tukey_hsd_overrides,
     )
     dir_post_hoc_tukey_hsd_plot = DirectionPosthocTukeyHsdPlot(dir_post_hoc_tukey_hsd_ctx)
-    direction_of_association['posthoc_tukey_hsd'] = dir_post_hoc_tukey_hsd_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
+    direction_of_association["posthoc_tukey_hsd"] = dir_post_hoc_tukey_hsd_plot.run(df_copy, cols=[categorical_col, numeric_col], role_map={"x": categorical_col, "y": numeric_col})
 
     eda_report = {
-        'relationship_structure': relationship_structure,
-        'magnitude_of_association': magnitude_of_association,
-        'direction_of_association': direction_of_association,
+        "relationship_structure": relationship_structure,
+        "magnitude_of_association": magnitude_of_association,
+        "direction_of_association": direction_of_association,
     }
 
-    full_report = {
-        'metadata': {
-            'version': '0.1.0',
-            'report_name': 'categorical_numeric_relationship_analysis',
-            'parameters': {
-                'numeric_col': numeric_col,
-                'categorical_col': categorical_col
-            }
-        },
-        'data': eda_report
-    }
+    full_report = {"metadata": {"version": "0.1.0", "report_name": "categorical_numeric_relationship_analysis", "parameters": {"numeric_col": numeric_col, "categorical_col": categorical_col}}, "data": eda_report}
 
     report_file_path = report_path / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis_report.json"
     full_report = write_json_report(full_report, report_file_path)
 
-    logger.info(
-        "Completed categorical_numeric_relationship_analysis",
-        extra={
-            'numeric_col': numeric_col,
-            'categorical_col': categorical_col,
-            'report_log_id': report_log_id,
-            'report_file_path': str(report_file_path)
-        }
-    )
+    logger.info("Completed categorical_numeric_relationship_analysis", extra={"numeric_col": numeric_col, "categorical_col": categorical_col, "report_log_id": report_log_id, "report_file_path": str(report_file_path)})
 
-    return {
-        'report_file_path': report_file_path
-    }
+    return {"report_file_path": report_file_path}

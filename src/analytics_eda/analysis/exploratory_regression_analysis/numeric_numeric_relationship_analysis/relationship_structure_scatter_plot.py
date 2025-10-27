@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Scatter-plot utilities for numeric–numeric relationship structure.
+
+This module defines the plotting context and a base scatter plot that
+visualizes the raw structure (form, spread, clusters, outliers) of the
+relationship between two numeric variables.
+"""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -25,23 +31,29 @@ from ..utils.utils import dropna_on, resolve_num_col
 
 # ---------------- Context ----------------
 
+
 @dataclass
 class RelationshipStructureScatterContext(PlotContext):
+    """Config for the numeric–numeric structure scatter plot (titles/labels)."""
+
     title_template: str = "Scatter Plot of {xlabel} vs {ylabel}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
 
+
 # -------------- Plot ---------------------
 
+
 class RelationshipStructureScatterPlot(BasePlot):
-    """
-    Shows the raw scatter plot of two numeric variables, highlighting the *structure*
-    of their relationship (form, spread, clustering, outliers).
+    """Show the raw scatter plot of two numeric variables.
+
+    Highlights the *structure* of their relationship (form, spread, clustering,
+    outliers).
 
     Why
     ---
-    In numeric–numeric EDA, the scatter plot is the foundational diagnostic for 
-    understanding relationship *structure*. Unlike correlation or regression, 
+    In numeric–numeric EDA, the scatter plot is the foundational diagnostic for
+    understanding relationship *structure*. Unlike correlation or regression,
     which quantify magnitude and direction, the scatter plot shows:
       - whether a relationship exists,
       - what form it takes (linear, curvilinear, clusters),
@@ -56,9 +68,8 @@ class RelationshipStructureScatterPlot(BasePlot):
     Inputs
     ------
     Call via the DataFrame path:
-      - `cols=['<numeric_x>', '<numeric_y>']`  
-      OR  
-      - `role_map={'x': '<numeric_x>', 'y': '<numeric_y>'}`
+      - ``cols=['<numeric_x>', '<numeric_y>']``
+      - or ``role_map={'x': '<numeric_x>', 'y': '<numeric_y>'}``
 
     Outputs
     -------
@@ -79,14 +90,12 @@ class RelationshipStructureScatterPlot(BasePlot):
           {"title","xlabel","ylabel","data_source","file_name"}
     """
 
+    def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty/default descriptive-stats structure."""
+        return {}
+
     # ---------- Frame API ----------
-    def validate_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> pd.DataFrame:
+    def validate_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> pd.DataFrame:
         """Ensure both X and Y numeric columns exist; drop NA pairs."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
@@ -94,13 +103,7 @@ class RelationshipStructureScatterPlot(BasePlot):
         df = dropna_on(df, y_col)
         return df
 
-    def compute_descriptive_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, Any]:
+    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
         """Compute basic descriptive statistics directly tied to structure."""
         x_col = role_map["x"]
         y_col = role_map["y"]
@@ -115,8 +118,10 @@ class RelationshipStructureScatterPlot(BasePlot):
             "y_mean": float(np.mean(y)),
             "y_std": float(np.std(y, ddof=1)),
             "covariance": float(np.cov(x, y, ddof=1)[0, 1]),
-            "x_min": float(np.min(x)), "x_max": float(np.max(x)),
-            "y_min": float(np.min(y)), "y_max": float(np.max(y)),
+            "x_min": float(np.min(x)),
+            "x_max": float(np.max(x)),
+            "y_min": float(np.min(y)),
+            "y_max": float(np.max(y)),
         }
 
     def draw_frame(

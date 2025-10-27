@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""LOWESS-smoothed scatter plot for numeric–numeric relationship structure.
+
+This module defines a context and plotting class that apply a robust LOWESS
+smoother to visualize the local structure (linear, curved, or plateau) between
+two numeric variables during exploratory regression analysis.
+"""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -26,8 +32,11 @@ from ..utils.utils import dropna_on, resolve_num_col
 
 # ---------------- Context ----------------
 
+
 @dataclass
 class RelationshipStructureScatterLowessContext(PlotContext):
+    """Configuration for the LOWESS-smoothed numeric–numeric scatter plot."""
+
     title_template: str = "LOWESS smooth Scatter Plot of {xlabel} vs {ylabel}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
@@ -39,15 +48,17 @@ class RelationshipStructureScatterLowessContext(PlotContext):
 
 # -------------- Plot ---------------------
 
+
 class RelationshipStructureScatterLowessPlot(BasePlot):
-    """
-    Use a robust, non-parametric LOWESS curve to visualize structure (linear,
-    curved, plateau) without committing to a global regression model.
+    """Use a robust, non-parametric LOWESS curve to visualize structure.
+
+    This plot shows local trends—linear, curved, or plateau—without fitting a
+    global regression model.
 
     Why
     ---
-    Clarifies relationship *structure* before introducing magnitude (correlation/R²)
-    or direction (slope) analyses.
+    Clarifies relationship *structure* before introducing magnitude
+    (correlation/R²) or direction (slope) analyses.
 
     What
     ----
@@ -63,14 +74,12 @@ class RelationshipStructureScatterLowessPlot(BasePlot):
         Robustness iterations (reweighting). 0–1 are common for EDA.
     """
 
+    def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty/default descriptive-stats structure."""
+        return {}
+
     # ---------- Frame API ----------
-    def validate_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> pd.DataFrame:
+    def validate_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> pd.DataFrame:
         """Ensure both X and Y numeric columns exist; drop NA pairs."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
@@ -78,13 +87,7 @@ class RelationshipStructureScatterLowessPlot(BasePlot):
         df = dropna_on(df, y_col)
         return df
 
-    def compute_descriptive_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, Any]:
+    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
         """Compute descriptive statistics tied to structure (no inference)."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")

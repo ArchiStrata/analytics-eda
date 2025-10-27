@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Density-overlap KDE plot for categorical–numeric analysis.
+
+Compares group distributions and quantifies their overlap using shared-grid KDEs,
+reporting overlap coefficient and Bhattacharyya distance.
+"""
+
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 import math
@@ -32,22 +38,27 @@ from ..utils.utils import (
 
 # ---------------- Context ----------------
 
+
 @dataclass
 class MagnitudeDistributionOverlapDensityContext(PlotContext):
+    """Configuration for the distribution-overlap density plot."""
+
     title_template: str = "Distribution Shape & Overlap for {name}{modifiers}"
     xlabel: str = "Value"
     ylabel: str = "Density"
 
     # plot-specific knobs
-    bw: float | str | None = "scott"   # "scott", "silverman", or a float bandwidth
-    grid_size: int = 256                  # number of x grid points
-    padding: float = 0.05                 # extra range padding as fraction of data range
-    facet_cols: int = 3                   # columns when faceting
-    alpha: float = 0.7                    # line alpha for overlays
-    linewidth: float = 2.0                # line width
+    bw: float | str | None = "scott"  # "scott", "silverman", or a float bandwidth
+    grid_size: int = 256  # number of x grid points
+    padding: float = 0.05  # extra range padding as fraction of data range
+    facet_cols: int = 3  # columns when faceting
+    alpha: float = 0.7  # line alpha for overlays
+    linewidth: float = 2.0  # line width
     sort_groups_by: str | None = "median"  # None|"mean"|"median" for facet ordering
 
+
 # -------------- Plot ---------------------
+
 
 class MagnitudeDistributionOverlapDensityPlot(BasePlot):
     """
@@ -91,15 +102,13 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
     }
     """
 
+    def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty/default descriptive-stats structure."""
+        return {}
+
     # ---------- Frame API ----------
 
-    def validate_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> pd.DataFrame:
+    def validate_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> pd.DataFrame:
         """Require categorical (x) and numeric (y); drop rows with NA in either."""
         cat = resolve_cat_col(df, cols, role_map)
         num = resolve_num_col(df, cols, role_map)
@@ -109,13 +118,7 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
             df[num] = pd.to_numeric(df[num], errors="coerce")
         return df.dropna(subset=[cat, num])
 
-    def compute_descriptive_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, Any]:
+    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
         """Build shared KDEs and pairwise overlap metrics."""
         ctx = self.ctx
         cat = resolve_cat_col(df, cols, role_map)
@@ -124,9 +127,8 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
         # --- group data & labels ---
         groups = grouped_arrays(df, cat, num)
         labels_raw = [g for g, _ in df.groupby(cat, observed=True)]
-        labels_raw_str = [str(x) for x in labels_raw]               # stable keys for dicts/indexing
-        labels_disp = truncate_labels([str(x) for x in labels_raw],
-                                    getattr(ctx, "max_label_len", None))
+        labels_raw_str = [str(x) for x in labels_raw]  # stable keys for dicts/indexing
+        labels_disp = truncate_labels([str(x) for x in labels_raw], getattr(ctx, "max_label_len", None))
 
         n_groups = len(groups)
         if n_groups == 0:
@@ -155,7 +157,7 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
         # --- KDE per group on shared grid ---
         kde_map: dict[str, np.ndarray] = {}
         ns: list[int] = []
-        for lab, arr in zip(labels_raw_str, groups):
+        for lab, arr in zip(labels_raw_str, groups, strict=True):
             ns.append(arr.size)
             kde_map[lab] = self._kde_gaussian(arr, grid, h)
 
@@ -171,17 +173,20 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
                 bc = np.trapezoid(np.sqrt(fi * fj), grid)
                 # guard against log(0)
                 bhatta = float("-inf") if bc <= 0 else float(-math.log(bc))
-                overlaps.append({
-                    "i": i, "j": j,
-                    "labels": (labels_raw_str[i], labels_raw_str[j]),
-                    "overlap_coeff": float(ovl),
-                    "bhattacharyya": bhatta,
-                })
+                overlaps.append(
+                    {
+                        "i": i,
+                        "j": j,
+                        "labels": (labels_raw_str[i], labels_raw_str[j]),
+                        "overlap_coeff": float(ovl),
+                        "bhattacharyya": bhatta,
+                    }
+                )
 
         # ----- facet ordering (store once here) -----
         facet_order = [str(x) for x in labels_raw]  # default: original order
         if ctx.sort_groups_by == "mean":
-            means = agg_mean(df, cat, num)                      # Series indexed by categories
+            means = agg_mean(df, cat, num)  # Series indexed by categories
             facet_order = [str(x) for x in means.sort_values().index]
         elif ctx.sort_groups_by == "median":
             med = df.groupby(cat, observed=True)[num].median()  # Series
@@ -189,7 +194,7 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
 
         return {
             "n_groups": n_groups,
-            "group_labels": labels_disp,   # display labels (truncated)
+            "group_labels": labels_disp,  # display labels (truncated)
             "group_labels_raw": labels_raw_str,  # raw labels for lookups
             "group_ns": ns,
             "grid": grid,
@@ -225,13 +230,20 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
 
         # Common limits
         ymin = 0.0
-        ymax = max((np.max(kde[l]) for l in labels), default=1.0) * 1.05
+        ymax = max((float(np.max(kde[str(lab_raw)])) for lab_raw in labels_raw), default=1.0) * 1.05
 
         if n_groups <= 4:
             # Overlay: use raw for lookup, display for legend
-            for lab_raw, lab_disp in zip(labels_raw, labels):
-                ax.plot(grid, kde[str(lab_raw)], label=lab_disp,
-                        alpha=ctx.alpha, linewidth=ctx.linewidth)
+            for i in range(len(labels_raw)):
+                lab_raw = labels_raw[i]
+                lab_disp = labels[i]
+                ax.plot(
+                    grid,
+                    kde[str(lab_raw)],
+                    label=lab_disp,
+                    alpha=ctx.alpha,
+                    linewidth=ctx.linewidth,
+                )
             ax.set_xlim(grid[0], grid[-1])
             ax.set_ylim(ymin, ymax)
             ax.legend(title="Group", loc="best", frameon=False)
@@ -240,37 +252,46 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
         # ----- faceted small multiples -----
         order = desc.get("facet_order", labels_raw)  # order in raw space
         # Map raw order -> display (truncated) labels for panel titles
-        disp_map = dict(zip(labels_raw, labels))
+        disp_map = {raw: disp for raw, disp in zip(labels_raw, labels, strict=True)}
         ordered_disp = [disp_map.get(lab, str(lab)) for lab in order]
 
         n = len(order)
         ncols = max(1, int(ctx.facet_cols))
         nrows = int(np.ceil(n / ncols))
 
-        fig, axes = plt.subplots(nrows=nrows, ncols=ncols,
-                                figsize=(ctx.figsize[0], max(ctx.figsize[1], 2 + 2*nrows)),
-                                sharex=True, sharey=True)
-        axes = np.array(axes).reshape(-1)
+        fig, axes = plt.subplots(
+            nrows=nrows,
+            ncols=ncols,
+            figsize=(ctx.figsize[0], max(ctx.figsize[1], 2 + 2 * nrows)),
+            sharex=True,
+            sharey=True,
+        )
+        axes_flat = np.asarray(axes).reshape(-1)
 
-        for idx, (ax, lab_raw, lab_disp) in enumerate(zip(axes, order, ordered_disp)):
-            ax.plot(grid, kde[str(lab_raw)], alpha=ctx.alpha, linewidth=ctx.linewidth)
-            ax.set_title(lab_disp, fontsize="medium")
-            ax.set_xlim(grid[0], grid[-1])
-            ax.set_ylim(0.0, ymax)
+        for idx in range(n):
+            ax_i = axes_flat[idx]
+            lab_raw = order[idx]
+            lab_disp = ordered_disp[idx]
+
+            ax_i.plot(grid, kde[str(lab_raw)], alpha=ctx.alpha, linewidth=ctx.linewidth)
+            ax_i.set_title(lab_disp, fontsize="medium")
+            ax_i.set_xlim(grid[0], grid[-1])
+            ax_i.set_ylim(0.0, ymax)
 
             # manual row/col checks (portable)
             row = idx // ncols
             col = idx % ncols
             if row == nrows - 1:
-                ax.set_xlabel(ctx.xlabel)
+                ax_i.set_xlabel(ctx.xlabel)
             if col == 0:
-                ax.set_ylabel(ctx.ylabel)
+                ax_i.set_ylabel(ctx.ylabel)
 
-        for ax in axes[len(order):]:
-            ax.axis("off")
+        # Hide any leftover (unused) panels
+        for ax_extra in axes_flat[n:]:
+            ax_extra.axis("off")
 
         fig.suptitle(chart_metadata["title"], y=0.98)
-        return fig, axes[0]
+        return fig, axes_flat[0]
 
     # ---------- Helpers ----------
 
@@ -280,16 +301,16 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
         x = np.asarray(x, dtype=float)
         n = max(1, x.size)
         sd = np.nanstd(x, ddof=1) if n > 1 else 0.0
-        if isinstance(method, (int, float)) and method > 0:
+        if isinstance(method, (int | float)) and method > 0:
             h = float(method)
         else:
             if method == "silverman":
                 # 0.9 * min(sd, IQR/1.34) * n**(-1/5)
                 iqr = np.subtract(*np.nanpercentile(x, [75, 25])) if n > 1 else 0.0
                 sigma = min(sd, iqr / 1.34) if (sd > 0 and iqr > 0) else max(sd, iqr / 1.34)
-                h = 0.9 * (sigma if sigma > 0 else 1.0) * (n ** (-1/5))
+                h = 0.9 * (sigma if sigma > 0 else 1.0) * (n ** (-1 / 5))
             else:  # default "scott"
-                h = (sd if sd > 0 else 1.0) * (n ** (-1/5))
+                h = (sd if sd > 0 else 1.0) * (n ** (-1 / 5))
         # avoid zero/NaN
         return max(h, np.finfo(float).eps)
 
@@ -297,7 +318,7 @@ class MagnitudeDistributionOverlapDensityPlot(BasePlot):
     def _kde_gaussian(samples: np.ndarray, grid: np.ndarray, bandwidth: float) -> np.ndarray:
         """Univariate Gaussian KDE evaluated on grid; integrates to ~1."""
         x = np.asarray(samples, dtype=float).reshape(1, -1)  # (1, n)
-        g = np.asarray(grid, dtype=float).reshape(-1, 1)     # (m, 1)
+        g = np.asarray(grid, dtype=float).reshape(-1, 1)  # (m, 1)
         h = float(bandwidth)
         # gaussian kernel
         z = (g - x) / h  # (m, n)

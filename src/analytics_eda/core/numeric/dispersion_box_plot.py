@@ -34,6 +34,7 @@ class DispersionBoxplotContext(PlotContext):
     # plot-specific knobs
     std_outlier_multiplier: float = 4.0
 
+
 class DispersionBoxPlot(BasePlot):
     """
     Generate a boxplot (with violin silhouette) that communicates dispersion and flags extreme values.
@@ -63,9 +64,7 @@ class DispersionBoxPlot(BasePlot):
     """
 
     def __init__(self, ctx):
-        parts = PlotParts(
-            series_validator=numeric_validator()
-        )
+        parts = PlotParts(series_validator=numeric_validator())
         super().__init__(ctx, parts)
 
     def default_descriptive(self) -> dict[str, Any]:
@@ -149,11 +148,16 @@ class DispersionBoxPlot(BasePlot):
         palette,
     ):
         """Render violin silhouette, boxplot, outlier bands/points, lines, legend, and stats box."""
+        # TODO: safe report format when descriptive stats are None.
         # 1) Thin violin silhouette behind box
         parts = ax.violinplot(
             s.to_numpy(),
-            vert=True, positions=[0], widths=0.8,
-            showmeans=False, showmedians=False, showextrema=False,
+            vert=True,
+            positions=[0],
+            widths=0.8,
+            showmeans=False,
+            showmedians=False,
+            showextrema=False,
         )
         for pc in parts["bodies"]:
             pc.set_facecolor(palette[0])
@@ -165,7 +169,11 @@ class DispersionBoxPlot(BasePlot):
         # 2) Boxplot
         ax.boxplot(
             s.to_numpy(),
-            positions=[0], widths=0.4, notch=False, patch_artist=True, showcaps=True,
+            positions=[0],
+            widths=0.4,
+            notch=False,
+            patch_artist=True,
+            showcaps=True,
             boxprops=dict(facecolor="white", linewidth=1.2),
             whiskerprops=dict(linewidth=1),
             medianprops=dict(linewidth=1.5, color=palette[1]),
@@ -181,10 +189,8 @@ class DispersionBoxPlot(BasePlot):
         m = desc["params"]["std_outlier_multiplier"]
         lower_bound = desc["mean"] - m * desc["std"]
         upper_bound = desc["mean"] + m * desc["std"]
-        ax.axhline(lower_bound, color=palette[2], linestyle="--",
-                   label=f"Lower {m}σ = {lower_bound:.2f} ({desc['extreme_lower_count']})")
-        ax.axhline(upper_bound, color=palette[3], linestyle="--",
-                   label=f"Upper {m}σ = {upper_bound:.2f} ({desc['extreme_upper_count']})")
+        ax.axhline(lower_bound, color=palette[2], linestyle="--", label=f"Lower {m}σ = {lower_bound:.2f} ({desc['extreme_lower_count']})")
+        ax.axhline(upper_bound, color=palette[3], linestyle="--", label=f"Upper {m}σ = {upper_bound:.2f} ({desc['extreme_upper_count']})")
 
         # Highlight extreme points
         lower_mask = s < lower_bound
@@ -202,22 +208,20 @@ class DispersionBoxPlot(BasePlot):
 
         # Dispersion stats textbox
         text = (
-            f"Std Dev = {desc['std']:.2f}\n"
-            f"Variance = {desc['var']:.2f}\n"
-            f"Min = {desc['min']:.2f}, Max = {desc['max']:.2f}\n"
-            f"Range = {desc['range']:.2f}\n"
-            f"MAD = {desc['mad']:.2f}\n"
-            f"CV = {desc['cv']:.2f}\n"
-            f"IQR = {desc['iqr']:.2f}"
+            f"Std Dev = {desc['std']:.2f}\n" f"Variance = {desc['var']:.2f}\n" f"Min = {desc['min']:.2f}, Max = {desc['max']:.2f}\n" f"Range = {desc['range']:.2f}\n" f"MAD = {desc['mad']:.2f}\n" f"CV = {desc['cv']:.2f}\n" f"IQR = {desc['iqr']:.2f}"
         )
         ax.text(
-            0.95, 0.95, text, transform=ax.transAxes,
-            va="top", ha="right", fontsize="small",
+            0.95,
+            0.95,
+            text,
+            transform=ax.transAxes,
+            va="top",
+            ha="right",
+            fontsize="small",
             bbox=dict(boxstyle="round", facecolor="white", alpha=0.5),
         )
 
         # Sample size footer (BasePlot.run will add data_source footer if present)
-        fig.text(0.99, 0.01, f"n = {desc['n']}", ha="right", va="bottom",
-                 fontsize="small", color="gray")
+        fig.text(0.99, 0.01, f"n = {desc['n']}", ha="right", va="bottom", fontsize="small", color="gray")
 
         return fig, ax

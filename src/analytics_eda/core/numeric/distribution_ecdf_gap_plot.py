@@ -37,6 +37,7 @@ class DistributionECDFGapContext(PlotContext):
     # plot-specific knobs
     threshold: float | None = None
 
+
 class DistributionECDFGapPlot(BasePlot):
     """
     Generate an Empirical Cumulative Distribution Function (ECDF) plot that highlights and quantifies gaps in a numeric distribution.
@@ -72,9 +73,7 @@ class DistributionECDFGapPlot(BasePlot):
     """
 
     def __init__(self, ctx):
-        parts = PlotParts(
-            series_validator=numeric_validator()
-        )
+        parts = PlotParts(series_validator=numeric_validator())
         super().__init__(ctx, parts)
 
     def default_descriptive(self) -> dict[str, Any]:
@@ -91,7 +90,7 @@ class DistributionECDFGapPlot(BasePlot):
             "pct90_gap": None,
             "n_gaps_above_thr": (0 if self.ctx.threshold is not None else None),
             "total_gap_prop": None,
-            "max_gap_loc": None
+            "max_gap_loc": None,
         }
 
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
@@ -156,6 +155,7 @@ class DistributionECDFGapPlot(BasePlot):
         palette,
     ):
         """Render ECDF, annotate the largest gap, and show a stats textbox."""
+        # TODO: safe report format when descriptive stats are None.
         # ECDF from full cleaned series (not just uniques)
         clean = s.dropna().sort_values()
         n = desc["n"]
@@ -196,8 +196,7 @@ class DistributionECDFGapPlot(BasePlot):
             f"max_gap = {desc['max_gap']:.2f}\n"
             f"median_gap = {desc['median_gap']:.2f}\n"
             f"P10 = {desc['pct10_gap']:.2f}, P50 = {desc['pct50_gap']:.2f}, P90 = {desc['pct90_gap']:.2f}\n"
-            f"total_gap_prop = {desc['total_gap_prop']:.2f}"
-            + (f"\n(gaps > {self.ctx.threshold}) = {desc['n_gaps_above_thr']}" if self.ctx.threshold is not None else "")
+            f"total_gap_prop = {desc['total_gap_prop']:.2f}" + (f"\n(gaps > {self.ctx.threshold}) = {desc['n_gaps_above_thr']}" if self.ctx.threshold is not None else "")
         )
         ax.text(
             0.98,

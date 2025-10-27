@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Numeric–numeric relationship analysis: structure, magnitude, and direction.
+
+This module orchestrates several plots (raw scatter, LOWESS smooth, OLS,
+residuals, trend overlay) and writes a bundled JSON report with their payloads.
+"""
 
 import logging
 from pathlib import Path
@@ -52,9 +57,8 @@ def numeric_numeric_relationship_analysis(
     x_col: str,
     y_col: str,
     report_root: str = "reports/eda/bivariate/numeric_numeric_relationship_analysis",
-    report_log_id: str = str(uuid.uuid4()),
+    report_log_id: str | None = None,
     data_source: str | None = None,
-
     # per‑plot override dicts
     plot_relationship_structure_scatter_overrides: dict[str, Any] | None = None,
     plot_relationship_structure_scatter_lowess_overrides: dict[str, Any] | None = None,
@@ -62,14 +66,21 @@ def numeric_numeric_relationship_analysis(
     plot_magnitude_residual_overrides: dict[str, Any] | None = None,
     plot_direction_scatter_ols_trend_overrides: dict[str, Any] | None = None,
 ) -> dict:
-    """
-    Run numeric↔numeric relationship analysis (structure, magnitude, direction) and
-    write a JSON report bundling plot payloads.
+    """Run numeric↔numeric relationship analysis and write a JSON report.
+
+    This bundles three facets of the X–Y relationship:
+    structure (scatter; LOWESS), magnitude (OLS; residuals), and direction
+    (OLS with trend overlay). Each plot’s payload is included in a single
+    report for downstream use.
 
     Returns
     -------
-        Dict with 'report_file_path' to the saved JSON report.
+    dict
+        A dictionary containing 'report_file_path' pointing to the saved JSON report.
     """
+    # generate an id only if one wasn’t provided
+    if report_log_id is None:
+        report_log_id = str(uuid.uuid4())
     logger.info(
         "Starting numeric_numeric_relationship_analysis",
         extra={"x_col": x_col, "y_col": y_col, "report_root": report_root, "report_log_id": report_log_id},
@@ -103,9 +114,7 @@ def numeric_numeric_relationship_analysis(
         overrides=plot_relationship_structure_scatter_overrides,
     )
     rs_scatter_plot = RelationshipStructureScatterPlot(rs_scatter_ctx)
-    relationship_structure["scatter"] = rs_scatter_plot.run(
-        df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col}
-    )
+    relationship_structure["scatter"] = rs_scatter_plot.run(df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col})
 
     rs_lowess_ctx = build_plot_context(
         RelationshipStructureScatterLowessContext,
@@ -113,9 +122,7 @@ def numeric_numeric_relationship_analysis(
         overrides=plot_relationship_structure_scatter_lowess_overrides,
     )
     rs_lowess_plot = RelationshipStructureScatterLowessPlot(rs_lowess_ctx)
-    relationship_structure["scatter_lowess"] = rs_lowess_plot.run(
-        df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col}
-    )
+    relationship_structure["scatter_lowess"] = rs_lowess_plot.run(df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col})
 
     # =========================
     # Magnitude of Association
@@ -128,9 +135,7 @@ def numeric_numeric_relationship_analysis(
         overrides=plot_magnitude_scatter_ols_overrides,
     )
     mag_scatter_ols_plot = MagnitudeAssociationScatterOLSPlot(mag_scatter_ols_ctx)
-    magnitude_of_association["scatter_ols"] = mag_scatter_ols_plot.run(
-        df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col}
-    )
+    magnitude_of_association["scatter_ols"] = mag_scatter_ols_plot.run(df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col})
 
     mag_resid_ctx = build_plot_context(
         MagnitudeAssociationResidualContext,
@@ -138,9 +143,7 @@ def numeric_numeric_relationship_analysis(
         overrides=plot_magnitude_residual_overrides,
     )
     mag_resid_plot = MagnitudeAssociationResidualPlot(mag_resid_ctx)
-    magnitude_of_association["residuals"] = mag_resid_plot.run(
-        df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col}
-    )
+    magnitude_of_association["residuals"] = mag_resid_plot.run(df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col})
 
     # =========================
     # Direction of Association
@@ -153,9 +156,7 @@ def numeric_numeric_relationship_analysis(
         overrides=plot_direction_scatter_ols_trend_overrides,
     )
     dir_trend_plot = DirectionAssociationScatterOLSTrendPlot(dir_trend_ctx)
-    direction_of_association["scatter_ols_trend"] = dir_trend_plot.run(
-        df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col}
-    )
+    direction_of_association["scatter_ols_trend"] = dir_trend_plot.run(df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col})
 
     # ---- bundle report ----
     eda_report = {

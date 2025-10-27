@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Direction-of-association plot: OLS trend line and slope inference for Y vs X."""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -26,8 +27,11 @@ from ..utils.utils import dropna_on, resolve_num_col
 
 # ---------------- Context ----------------
 
+
 @dataclass
 class DirectionAssociationScatterOLSTrendContext(PlotContext):
+    """Configuration for the OLS trend (direction-of-association) plot."""
+
     title_template: str = "Direction of Association (OLS Trend): {ylabel} vs {xlabel}{modifiers}"
     xlabel: str = "X"
     ylabel: str = "Y"
@@ -36,10 +40,11 @@ class DirectionAssociationScatterOLSTrendContext(PlotContext):
 
 # -------------- Plot ---------------------
 
+
 class DirectionAssociationScatterOLSTrendPlot(BasePlot):
-    """
-    Reveal the **direction** of the relationship between two numeric variables using
-    the OLS slope (β₁). The slope’s sign and size answer whether Y tends to increase,
+    """Reveal direction of association via OLS slope (β₁) for two numeric variables.
+
+    Use the sign and size of the slope to communicate whether Y tends to increase,
     decrease, or remain flat as X changes.
 
     Why this matters (purpose)
@@ -61,6 +66,7 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
 
     # ---- Defaults for empty/degenerate inputs ----
     def default_descriptive(self) -> dict[str, Any]:
+        """Return default/empty descriptive stats structure for the plot."""
         return {
             "params": {
                 # Add descriptive parameters here if the context ever includes any
@@ -72,6 +78,7 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
         }
 
     def default_inferential(self) -> dict[str, Any]:
+        """Return default/empty inferential stats structure, including α."""
         alpha = float(getattr(self.ctx, "alpha", 0.05))
         return {
             "params": {"alpha": alpha},
@@ -82,30 +89,20 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
                 "alpha": alpha,
                 "reject": False,
                 "ci": (None, None),
-            }
+            },
         }
 
     # ---------- Frame API ----------
-    def validate_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> pd.DataFrame:
+    def validate_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> pd.DataFrame:
+        """Ensure numeric X and Y exist and drop rows with NA in either column."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         df = dropna_on(df, x_col)
         df = dropna_on(df, y_col)
         return df
 
-    def compute_descriptive_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, Any]:
+    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
+        """Compute OLS slope/intercept, slope sign, and sample size n."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         x = df[x_col].to_numpy()
@@ -130,29 +127,23 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
         slope, intercept = np.polyfit(x, y, 1)
         slope_sign = float(np.sign(slope)) if np.isfinite(slope) and slope != 0 else 0.0
 
-        out.update({
-            "slope": float(slope),
-            "intercept": float(intercept),
-            "slope_sign": slope_sign,
-        })
+        out.update(
+            {
+                "slope": float(slope),
+                "intercept": float(intercept),
+                "slope_sign": slope_sign,
+            }
+        )
         return out
 
-    def compute_inferential_frame(
-        self,
-        df: pd.DataFrame,
-        desc: dict[str, Any],
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, Any]:
+    def compute_inferential_frame(self, df: pd.DataFrame, desc: dict[str, Any], *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
+        """Run t-test for slope (β₁), returning statistic, df, p-value, decision, and CI."""
         alpha = float(getattr(self.ctx, "alpha", 0.05))
         n = int(desc.get("n_obs", 0))
         slope = desc.get("slope", np.nan)
         intercept = desc.get("intercept", 0.0)
 
-        out: dict[str, Any] = {
-            "params": {"alpha": alpha}
-        }
+        out: dict[str, Any] = {"params": {"alpha": alpha}}
 
         # guard: need at least 3 points and finite slope
         if not (n >= 3) or not np.isfinite(slope):
@@ -187,7 +178,7 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
         # residuals & standard error of slope
         y_hat = slope * x + intercept
         resid = y - y_hat
-        s2 = np.sum(resid ** 2) / max(1, (n - 2))  # residual variance
+        s2 = np.sum(resid**2) / max(1, (n - 2))  # residual variance
         se_slope = np.sqrt(s2 / sxx) if s2 >= 0 else np.nan
 
         if not np.isfinite(se_slope) or se_slope == 0:
@@ -233,6 +224,7 @@ class DirectionAssociationScatterOLSTrendPlot(BasePlot):
         ax=None,
         palette=None,
     ):
+        """Render scatter of Y vs X and overlay the OLS trend line."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         x = df[x_col].to_numpy()

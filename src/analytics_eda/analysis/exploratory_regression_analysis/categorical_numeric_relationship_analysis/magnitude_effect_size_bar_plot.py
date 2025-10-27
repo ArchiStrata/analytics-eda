@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Effect-size bar plot for categorical–numeric EDA (η², ω², ε²)."""
+
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -25,11 +27,10 @@ from ..utils.utils import grouped_arrays, resolve_cat_col, resolve_num_col, trun
 
 # ---------------- Context ----------------
 
+
 @dataclass
 class MagnitudeEffectSizeBarContext(PlotContext):
-    """
-    Context for effect-size bar chart.
-    """
+    """Context for effect-size bar chart."""
 
     title_template: str = "Effect Sizes for {name}{modifiers}"
     xlabel: str = "Effect Size"
@@ -50,10 +51,10 @@ class MagnitudeEffectSizeBarContext(PlotContext):
 
 # -------------- Plot ---------------------
 
+
 class MagnitudeEffectSizeBarPlot(BasePlot):
     """
-    Summarize the **magnitude of association** between a categorical factor and a
-    numeric response using effect sizes.
+    Summarize the magnitude of association between a categorical factor and a numeric response using effect sizes.
 
     Why
     ---
@@ -62,13 +63,17 @@ class MagnitudeEffectSizeBarPlot(BasePlot):
 
     What
     ----
-    • Inputs: X = categorical, Y = numeric.  
-    • Metrics (0–1 scale):  
-      – Eta-squared (η²) — proportion of total variance explained by groups.  
-      – Omega-squared (ω²) — bias-corrected η².  
-      – Epsilon-squared (ε²) — Kruskal–Wallis–based nonparametric analogue.  
+    • Inputs: X = categorical, Y = numeric.
+    • Metrics (0–1 scale):
+      – Eta-squared (η²) — proportion of total variance explained by groups.
+      – Omega-squared (ω²) — bias-corrected η².
+      – Epsilon-squared (ε²) — Kruskal–Wallis–based nonparametric analogue.
     • Visual: three bars (η², ω², ε²) + dashed “small/medium/large” guides.
     """
+
+    def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty/default descriptive-stats structure."""
+        return {}
 
     # ---------- Frame API ----------
 
@@ -186,15 +191,11 @@ class MagnitudeEffectSizeBarPlot(BasePlot):
             (ctx.thresh_large, "large"),
         ]:
             ax.axhline(y, linestyle="--", linewidth=1, color="gray")
-            ax.text(
-                1.02, y, name,
-                transform=ax.get_yaxis_transform(),
-                va="center", ha="left", fontsize="small", color="dimgray"
-            )
+            ax.text(1.02, y, name, transform=ax.get_yaxis_transform(), va="center", ha="left", fontsize="small", color="dimgray")
 
         # annotations
         if ctx.annotate:
-            for xi, yi in zip(x, values):
+            for xi, yi in zip(x, values, strict=True):
                 if np.isfinite(yi):
                     ax.text(xi, yi, f"{yi:.2f}", ha="center", va="bottom", fontsize="small")
 

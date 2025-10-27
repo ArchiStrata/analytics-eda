@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Residuals vs fitted plot to assess linear-model adequacy for numeric–numeric EDA.
+
+Draws residuals against fitted values from a simple OLS line, reports summary
+stats, and (optionally) runs normality and heteroscedasticity diagnostics.
+"""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -26,8 +31,11 @@ from ..utils.utils import dropna_on, resolve_num_col
 
 # ---------------- Context ----------------
 
+
 @dataclass
 class MagnitudeAssociationResidualContext(PlotContext):
+    """Configuration for the residuals-vs-fitted diagnostic plot."""
+
     title_template: str = "Residuals vs Fitted: {ylabel} on {xlabel}{modifiers}"
     xlabel: str = "Fitted values"
     ylabel: str = "Residuals"
@@ -36,9 +44,10 @@ class MagnitudeAssociationResidualContext(PlotContext):
 
 # -------------- Plot ---------------------
 
+
 class MagnitudeAssociationResidualPlot(BasePlot):
-    """
-    Residual plot for assessing model adequacy before full regression analysis.
+    """Assess model adequacy via residuals vs fitted values before full regression.
+
     Use residuals vs fitted values to visually and numerically check if a linear
     model is a reasonable summary (random scatter around zero, constant spread).
 
@@ -59,14 +68,13 @@ class MagnitudeAssociationResidualPlot(BasePlot):
     - Output: payload with descriptive_stats, inferential_stats, and chart_metadata.
     """
 
+    def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty/default descriptive-stats structure."""
+        return {}
+
     # ---------- Frame API ----------
-    def validate_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> pd.DataFrame:
+    def validate_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> pd.DataFrame:
+        """Ensure required X and Y columns exist and drop rows with NA in either."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         df = dropna_on(df, x_col)
@@ -78,13 +86,8 @@ class MagnitudeAssociationResidualPlot(BasePlot):
         slope, intercept = np.polyfit(x, y, 1)
         return float(slope), float(intercept)
 
-    def compute_descriptive_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, float]:
+    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, float]:
+        """Compute OLS fitted values and residual summary (mean/std/min/max/range)."""
         x_col = resolve_num_col(df, cols, role_map, role="x")
         y_col = resolve_num_col(df, cols, role_map, role="y")
         x = df[x_col].to_numpy()
@@ -125,46 +128,32 @@ class MagnitudeAssociationResidualPlot(BasePlot):
         # cache for inference/draw
         self._cache = {"fitted": fitted, "residuals": resid}
 
-        out.update({
-            "resid_mean": resid_mean,
-            "resid_std": resid_std,
-            "resid_min": resid_min,
-            "resid_max": resid_max,
-            "resid_range": resid_range,
-            "slope": float(slope),
-            "intercept": float(intercept),
-        })
+        out.update(
+            {
+                "resid_mean": resid_mean,
+                "resid_std": resid_std,
+                "resid_min": resid_min,
+                "resid_max": resid_max,
+                "resid_range": resid_range,
+                "slope": float(slope),
+                "intercept": float(intercept),
+            }
+        )
         return out
 
-    def compute_inferential_frame(
-        self,
-        df: pd.DataFrame,
-        desc: dict[str, float],
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, float]:
+    def compute_inferential_frame(self, df: pd.DataFrame, desc: dict[str, float], *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, float]:
+        """Run optional diagnostics: Shapiro–Wilk; Breusch–Pagan; White test."""
         alpha = float(getattr(self.ctx, "alpha", 0.05))
         n = int(desc.get("n_obs", 0))
         resid = (getattr(self, "_cache", {}) or {}).get("residuals", None)
 
-        out: dict[str, Any] = {
-            "params": {"alpha": alpha}
-        }
+        out: dict[str, Any] = {"params": {"alpha": alpha}}
 
         # Not enough data to run tests
         if resid is None or n < 3:
-            out["normality_shapiro"] = {
-                "statistic": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False
-            }
-            out["homoscedasticity_breusch_pagan"] = {
-                "statistic": np.nan, "df": np.nan, "p_value": np.nan,
-                "alpha": alpha, "reject": False
-            }
-            out["homoscedasticity_white"] = {
-                "statistic": np.nan, "df": np.nan, "p_value": np.nan,
-                "alpha": alpha, "reject": False
-            }
+            out["normality_shapiro"] = {"statistic": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False}
+            out["homoscedasticity_breusch_pagan"] = {"statistic": np.nan, "df": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False}
+            out["homoscedasticity_white"] = {"statistic": np.nan, "df": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False}
             return out
 
         # Shapiro–Wilk (3 <= n <= 5000 per SciPy)
@@ -178,19 +167,15 @@ class MagnitudeAssociationResidualPlot(BasePlot):
                     "reject": bool(pW < alpha),
                 }
             else:
-                out["normality_shapiro"] = {
-                    "statistic": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False
-                }
+                out["normality_shapiro"] = {"statistic": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False}
         except Exception:
-            out["normality_shapiro"] = {
-                "statistic": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False
-            }
+            out["normality_shapiro"] = {"statistic": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False}
 
         # Breusch–Pagan: e^2 ~ 1 + x
         try:
             x_col = resolve_num_col(df, cols, role_map, role="x")
             x = df[x_col].to_numpy()
-            e2 = resid ** 2
+            e2 = resid**2
             X = np.column_stack([np.ones(n), x])
             beta = np.linalg.pinv(X) @ e2
             yhat = X @ beta
@@ -208,17 +193,14 @@ class MagnitudeAssociationResidualPlot(BasePlot):
                 "reject": bool(bp_p < alpha),
             }
         except Exception:
-            out["homoscedasticity_breusch_pagan"] = {
-                "statistic": np.nan, "df": np.nan, "p_value": np.nan,
-                "alpha": alpha, "reject": False
-            }
+            out["homoscedasticity_breusch_pagan"] = {"statistic": np.nan, "df": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False}
 
         # White test: e^2 ~ 1 + x + x^2
         try:
             x_col = resolve_num_col(df, cols, role_map, role="x")
             x = df[x_col].to_numpy()
-            e2 = resid ** 2
-            Xw = np.column_stack([np.ones(n), x, x ** 2])
+            e2 = resid**2
+            Xw = np.column_stack([np.ones(n), x, x**2])
             beta_w = np.linalg.pinv(Xw) @ e2
             yhat_w = Xw @ beta_w
             ss_tot_w = np.sum((e2 - e2.mean()) ** 2)
@@ -235,10 +217,7 @@ class MagnitudeAssociationResidualPlot(BasePlot):
                 "reject": bool(white_p < alpha),
             }
         except Exception:
-            out["homoscedasticity_white"] = {
-                "statistic": np.nan, "df": np.nan, "p_value": np.nan,
-                "alpha": alpha, "reject": False
-            }
+            out["homoscedasticity_white"] = {"statistic": np.nan, "df": np.nan, "p_value": np.nan, "alpha": alpha, "reject": False}
 
         return out
 
@@ -255,6 +234,7 @@ class MagnitudeAssociationResidualPlot(BasePlot):
         ax=None,
         palette=None,
     ):
+        """Render residuals vs fitted scatter with a horizontal zero reference line."""
         # Pull fitted/residuals from cache (computed in descriptive step)
         fitted = (getattr(self, "_cache", {}) or {}).get("fitted", None)
         resid = (getattr(self, "_cache", {}) or {}).get("residuals", None)

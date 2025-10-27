@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Group size (sum-of-values) bar plot for categorical–numeric EDA.
+
+Aggregates numeric values per category and visualizes group contributions
+to overall totals, supporting top-k filtering and annotation.
+"""
+
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -31,21 +37,26 @@ from ..utils.utils import (
 
 # ---------------- Context ----------------
 
+
 @dataclass
 class RelationshipStructureGroupSizeBarContext(PlotContext):
+    """Context/configuration for the group-size bar plot."""
+
     title_template: str = "Group Sizes for {name}{modifiers}"
     xlabel: str = "Group"
     ylabel: str = "Total"
 
     # plot-specific knobs
-    top_k: int | None = None          # show top-k groups by count (None = all)
-    min_count: int | None = None      # drop groups with count < min_count
-    sort_desc: bool = True               # sort by count desc
-    annotate: bool = True                # show value labels above bars
-    rotate_xticks: int = 45              # rotation for readability; 0 to disable
-    max_label_len: int | None = 30    # truncate long labels; None = no truncation
+    top_k: int | None = None  # show top-k groups by count (None = all)
+    min_count: int | None = None  # drop groups with count < min_count
+    sort_desc: bool = True  # sort by count desc
+    annotate: bool = True  # show value labels above bars
+    rotate_xticks: int = 45  # rotation for readability; 0 to disable
+    max_label_len: int | None = 30  # truncate long labels; None = no truncation
+
 
 # -------------- Plot ---------------------
+
 
 class RelationshipStructureGroupSizeBarPlot(BasePlot):
     """
@@ -89,31 +100,25 @@ class RelationshipStructureGroupSizeBarPlot(BasePlot):
 
     """
 
+    def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty/default descriptive-stats structure."""
+        return {}
+
     # ---------- Frame API ----------
-    def validate_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> pd.DataFrame:
-        """
-        Ensure categorical (x) and numeric (y) columns exist.
-        Drop rows where the **categorical** is NA (numeric NA are allowed; they just won't be counted).
+    def validate_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> pd.DataFrame:
+        """Ensure categorical (x) and numeric (y) columns exist.
+
+        Drop rows where the **categorical** is NA (numeric NA are allowed; they just
+        won't be counted).
         """
         cat = resolve_cat_col(df, cols, role_map)
         resolve_num_col(df, cols, role_map)  # validate presence
         return dropna_on(df, cat)
 
-    def compute_descriptive_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, Any]:
-        """
-        Sum numeric values per category:
+    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
+        """Sum numeric values per category.
+
+        Example:
             totals = df.groupby(cat, observed=True)[num].sum()
         """
         cat_col = resolve_cat_col(df, cols, role_map)
@@ -135,9 +140,9 @@ class RelationshipStructureGroupSizeBarPlot(BasePlot):
 
         return {
             "n_groups": int(len(totals)),
-            "group_sizes": values,   # now "totals per group"
+            "group_sizes": values,  # now "totals per group"
             "labels": labels_disp,
-            "counts": values,        # keep key name if downstream expects it
+            "counts": values,  # keep key name if downstream expects it
             "total": total_sum,
             "raw_labels": labels_raw,
             "col": cat_col,
@@ -168,7 +173,7 @@ class RelationshipStructureGroupSizeBarPlot(BasePlot):
         )
 
         if getattr(self.ctx, "annotate", True):
-            for xi, yi in zip(x, desc["counts"]):
+            for xi, yi in zip(x, desc["counts"], strict=True):
                 ax.text(xi, yi, f"{yi:,}", ha="center", va="bottom", fontsize="small")
 
         # subtle subtitle: #groups and total
@@ -176,12 +181,7 @@ class RelationshipStructureGroupSizeBarPlot(BasePlot):
             k = desc["n_groups"]
             total = desc["total"]
             subtitle = f"{k} group{'s' if k != 1 else ''} • total ={total:,}"
-            ax.text(
-                0.5, 1.01, subtitle,
-                transform=ax.transAxes,
-                ha="center", va="bottom",
-                fontsize="small", color="dimgray"
-            )
+            ax.text(0.5, 1.01, subtitle, transform=ax.transAxes, ha="center", va="bottom", fontsize="small", color="dimgray")
         except Exception:
             pass
 

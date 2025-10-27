@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Magnitude-of-differences plot for categorical–numeric analysis.
+
+Compares group centers across categories using ANOVA (means) or Kruskal–Wallis
+(medians), drawing CIs and contextual violins/boxplots.
+"""
+
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 import math
@@ -31,14 +37,17 @@ from ..utils.utils import (
 
 # ---------------- Context ----------------
 
+
 @dataclass
 class MagnitudeCentralTendencyAnovaKruskalContext(PlotContext):
+    """Configuration for the central-tendency (ANOVA/Kruskal) magnitude plot."""
+
     title_template: str = "Magnitude of Differences for {name}{modifiers}"
     xlabel: str = "Group"
     ylabel: str = "Value"
 
     # visual emphasis
-    bg_alpha: float = 0.18          # background violins/boxes alpha (de-emphasize)
+    bg_alpha: float = 0.18  # background violins/boxes alpha (de-emphasize)
     box_width: float = 0.6
     showfliers: bool = False
     rotate_xticks: int = 45
@@ -47,7 +56,7 @@ class MagnitudeCentralTendencyAnovaKruskalContext(PlotContext):
     # which center & CI to emphasize on the chart
     #   "anova"   -> draw means with 95% CI (mean ± 1.96 * s/sqrt(n))
     #   "kruskal" -> draw medians with bootstrap 95% CI
-    mode: str = "anova"             # "anova" or "kruskal"
+    mode: str = "anova"  # "anova" or "kruskal"
 
     # bootstrap for median CIs
     bootstrap_iters: int = 2000
@@ -59,6 +68,7 @@ class MagnitudeCentralTendencyAnovaKruskalContext(PlotContext):
 
 
 # -------------- Plot ---------------------
+
 
 class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
     """
@@ -105,6 +115,10 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
     }
     """
 
+    def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty/default descriptive-stats structure."""
+        return {}
+
     # ---------- Frame API ----------
 
     def validate_frame(
@@ -145,7 +159,9 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
         means, mean_lo, mean_hi = [], [], []
         for a in arrays:
             if a.size == 0:
-                means.append(np.nan); mean_lo.append(np.nan); mean_hi.append(np.nan)
+                means.append(np.nan)
+                mean_lo.append(np.nan)
+                mean_hi.append(np.nan)
                 continue
             m = float(np.mean(a))
             s = float(np.std(a, ddof=1)) if a.size > 1 else 0.0
@@ -162,19 +178,25 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
         medians, med_lo, med_hi = [], [], []
         for a in arrays:
             if a.size == 0:
-                medians.append(np.nan); med_lo.append(np.nan); med_hi.append(np.nan)
+                medians.append(np.nan)
+                med_lo.append(np.nan)
+                med_hi.append(np.nan)
                 continue
             med = float(np.median(a))
             if a.size == 1:
                 # CI undefined with 1 sample → keep median, CI=NaN
-                medians.append(med); med_lo.append(np.nan); med_hi.append(np.nan)
+                medians.append(med)
+                med_lo.append(np.nan)
+                med_hi.append(np.nan)
                 continue
             # bootstrap
             bs = rng.choice(a, size=(ctx.bootstrap_iters, a.size), replace=True)
             bs_meds = np.median(bs, axis=1)
             lo = float(np.quantile(bs_meds, q_lo))
             hi = float(np.quantile(bs_meds, q_hi))
-            medians.append(med); med_lo.append(lo); med_hi.append(hi)
+            medians.append(med)
+            med_lo.append(lo)
+            med_hi.append(hi)
 
         return {
             "n_groups": n_groups,
@@ -204,7 +226,7 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
 
         if len(arrays) < 2 or any(a.size == 0 for a in arrays):
             return {
-                "anova":   {"statistic": None, "p_value": None, "reject": False, "alpha": alpha},
+                "anova": {"statistic": None, "p_value": None, "reject": False, "alpha": alpha},
                 "kruskal": {"statistic": None, "p_value": None, "reject": False, "alpha": alpha},
             }
 
@@ -212,7 +234,7 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
         k_stat, k_p = kruskal(*arrays)
 
         return {
-            "anova":   {"statistic": float(a_stat), "p_value": float(a_p), "reject": bool(a_p < alpha), "alpha": alpha},
+            "anova": {"statistic": float(a_stat), "p_value": float(a_p), "reject": bool(a_p < alpha), "alpha": alpha},
             "kruskal": {"statistic": float(k_stat), "p_value": float(k_p), "reject": bool(k_p < alpha), "alpha": alpha},
         }
 
@@ -298,12 +320,7 @@ class MagnitudeCentralTendencyAnovaKruskalPlot(BasePlot):
             star_a = "★" if a.get("reject") else ""
             star_k = "★" if k.get("reject") else ""
             subtitle = f"ANOVA p={a.get('p_value', float('nan')):.3g}{star_a} • Kruskal p={k.get('p_value', float('nan')):.3g}{star_k}"
-            ax.text(
-                0.5, 1.01, subtitle,
-                transform=ax.transAxes,
-                ha="center", va="bottom",
-                fontsize="small", color="dimgray"
-            )
+            ax.text(0.5, 1.01, subtitle, transform=ax.transAxes, ha="center", va="bottom", fontsize="small", color="dimgray")
         except Exception:
             pass
 

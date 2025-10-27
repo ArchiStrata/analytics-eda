@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Post-hoc mean-difference plot using Tukey's HSD.
+
+Compares all pairs of group means after a significant ANOVA to show direction,
+magnitude, and significance of differences.
+"""
+
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -25,21 +31,25 @@ from ..utils.utils import resolve_cat_col, resolve_num_col, truncate_labels
 
 # ---------------- Context ----------------
 
+
 @dataclass
 class DirectionPosthocTukeyHsdContext(PlotContext):
+    """Configuration for the post-hoc Tukey HSD mean-difference plot."""
+
     title_template: str = "Post-hoc Mean Differences (Tukey HSD) for {name}{modifiers}"
     xlabel: str = "Mean difference"
     ylabel: str = "Comparison"
 
     alpha: float = 0.05
     max_label_len: int | None = 30
-    sort_by: str = "magnitude"   # "magnitude" | "diff" | "none"
+    sort_by: str = "magnitude"  # "magnitude" | "diff" | "none"
     capsize: float = 4.0
     line_alpha_nonsig: float = 0.35
     marker_size: float = 6.0
 
 
 # -------------- Plot ---------------------
+
 
 class DirectionPosthocTukeyHsdPlot(BasePlot):
     """
@@ -53,8 +63,8 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
 
     What
     ----
-    • X = categorical, Y = numeric (one-way design).  
-    • Computes Tukey’s HSD pairwise comparisons at α (default 0.05).  
+    • X = categorical, Y = numeric (one-way design).
+    • Computes Tukey’s HSD pairwise comparisons at α (default 0.05).
     • Visual: horizontal **difference ± CI** for each pair, with a vertical reference at 0.
       Non-significant intervals are de-emphasized (lower alpha); significant ones stand out.
     • Sorting options: by |difference| (default), by raw difference, or preserve original order.
@@ -76,15 +86,13 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
     }
     """
 
+    def default_descriptive(self) -> dict[str, Any]:
+        """Return an empty/default descriptive-stats structure."""
+        return {}
+
     # ---------- Frame API ----------
 
-    def validate_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> pd.DataFrame:
+    def validate_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> pd.DataFrame:
         """Require categorical (x) and numeric (y); drop rows with NA in either."""
         cat = resolve_cat_col(df, cols, role_map)
         num = resolve_num_col(df, cols, role_map)
@@ -93,13 +101,7 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
             df[num] = pd.to_numeric(df[num], errors="coerce")
         return df.dropna(subset=[cat, num])
 
-    def compute_descriptive_frame(
-        self,
-        df: pd.DataFrame,
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, Any]:
+    def compute_descriptive_frame(self, df: pd.DataFrame, *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
         """Run Tukey HSD and format pairwise mean-difference results."""
         ctx = self.ctx  # type: DirectionPosthocTukeyHsdContext
         cat = resolve_cat_col(df, cols, role_map)
@@ -119,9 +121,7 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
             }
 
         # Tukey HSD via statsmodels
-        res = pairwise_tukeyhsd(endog=df[num].to_numpy(),
-                                groups=df[cat].astype(str).to_numpy(),
-                                alpha=ctx.alpha)
+        res = pairwise_tukeyhsd(endog=df[num].to_numpy(), groups=df[cat].astype(str).to_numpy(), alpha=ctx.alpha)
 
         # statsmodels result provides summary with group1, group2, meandiff, lower, upper, reject
         # Build structured list
@@ -135,14 +135,18 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
             ci_low = float(row[4])
             ci_high = float(row[5])
             reject = bool(row[6])
-            pairs.append({
-                "i": None, "j": None,   # indices are not essential for Tukey; leave None
-                "g1": g1, "g2": g2,
-                "diff": diff,
-                "ci_low": ci_low,
-                "ci_high": ci_high,
-                "reject": reject,
-            })
+            pairs.append(
+                {
+                    "i": None,
+                    "j": None,  # indices are not essential for Tukey; leave None
+                    "g1": g1,
+                    "g2": g2,
+                    "diff": diff,
+                    "ci_low": ci_low,
+                    "ci_high": ci_high,
+                    "reject": reject,
+                }
+            )
 
         # Sorting policy
         if ctx.sort_by == "magnitude":
@@ -158,14 +162,7 @@ class DirectionPosthocTukeyHsdPlot(BasePlot):
             "_labels_disp": truncate_labels([str(x) for x in group_names], ctx.max_label_len),
         }
 
-    def compute_inferential_frame(
-        self,
-        df: pd.DataFrame,
-        desc: dict[str, Any],
-        *,
-        cols: Sequence[str],
-        role_map: Mapping[str, str] | None = None
-    ) -> dict[str, Any]:
+    def compute_inferential_frame(self, df: pd.DataFrame, desc: dict[str, Any], *, cols: Sequence[str], role_map: Mapping[str, str] | None = None) -> dict[str, Any]:
         """No additional inferential stats; Tukey HSD results are descriptive outputs here."""
         return {}
 

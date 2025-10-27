@@ -8,7 +8,9 @@ dependencies:
   - setuptools
   - twine
   - wheel
+  - python-dateutil>=2.8
 
   # install package, plus everything in [project.optional-dependencies.dev]
   - pip:
+      - typing_extensions>=4.8
       - -e ".[dev]"
