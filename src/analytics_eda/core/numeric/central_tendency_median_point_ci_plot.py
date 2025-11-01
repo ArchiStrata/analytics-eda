@@ -184,6 +184,14 @@ class CentralTendencyMedianPointCIPlot(BasePlot):
                 "alpha": float(self.ctx.alpha),
                 "reject": bool(p_wr < self.ctx.alpha),
             }
+            # rank-biserial r = 1 - 2*W / (n*(n+1)/2), using n_eff = len(nonzero diffs)
+            nonzero = (s - self.ctx.popmedian).to_numpy()
+            nonzero = nonzero[nonzero != 0]
+            n_eff = nonzero.size
+            if n_eff >= 1 and np.isfinite(stat_wr):
+                T = n_eff * (n_eff + 1) / 2.0
+                r_rb = 1.0 - 2.0 * stat_wr / T
+                out["popmedian"]["wilcoxon"]["rank_biserial"] = float(r_rb)
         except ValueError:
             out["popmedian"]["wilcoxon"] = {
                 "statistic": float("nan"),
@@ -209,31 +217,154 @@ class CentralTendencyMedianPointCIPlot(BasePlot):
         return out
 
     def draft_inferential_findings(self, inf: dict[str, Any], desc: dict[str, Any]) -> dict[str, Any]:
-        """Emit concise, evidence-based inference statement for median tests."""
+        """Emit concise, evidence-based statements derived strictly from `inf`.
+
+        Returns
+        -------
+            Dict with context, primary_finding, and optional secondary_finding,
+            or an empty dict if no inference was run.
+        """
         if not inf or "popmedian" not in inf:
             return {}
+
         pm = inf["popmedian"]
         alpha = float(inf["params"]["alpha"])
+        fmt = self.formatter
 
-        if "wilcoxon" in pm and np.isfinite(pm["wilcoxon"].get("p_value", np.nan)):
-            ptxt = self.formatter.format_p_value(pm["wilcoxon"]["p_value"])
-            rej = pm["wilcoxon"]["reject"]
-            return {
-                "context": f"Wilcoxon signed-rank, alpha = {self.formatter.format_alpha(alpha)}",
+        w = pm.get("wilcoxon")
+        s = pm.get("sign_test")
+
+        # Helper to check usable p-values
+        def usable(test):
+            return bool(test) and np.isfinite(test.get("p_value", np.nan))
+
+        # Pull optional extras for context (safe formatting)
+        def wilcoxon_context_bits(wdict: dict | None) -> str:
+            if not usable(wdict):
+                return ""
+            bits = []
+            # W statistic (integer-like)
+            if np.isfinite(wdict.get("statistic", np.nan)):
+                wtxt = fmt.format_test_statistic(wdict["statistic"])
+                bits.append(f"W={wtxt}")
+            # rank-biserial effect size r (if computed)
+            r = wdict.get("rank_biserial", None)
+            if r is not None and np.isfinite(r):
+                # 2 decimals is typical for r
+                rtxt = fmt.format_numeric_value(r, decimals=2)
+                bits.append(f"r={rtxt}")
+            return (" [" + ", ".join(bits) + "]") if bits else ""
+
+        def sign_context_bits(sdict: dict | None) -> str:
+            if not usable(sdict):
+                return ""
+            n = sdict.get("n", None)
+            pos = sdict.get("num_positive", None)
+            neg = sdict.get("num_negative", None)
+            # Only add when we have counts
+            if all(v is not None for v in (n, pos, neg)):
+                return f" [n={int(n)}, +={int(pos)}, -={int(neg)}]"
+            return ""
+
+        # Heuristics to choose primary
+        n_sign = s.get("n") if isinstance(s, dict) else None
+        many_zeros_or_ties = n_sign is not None and n_sign < 10
+        use_sign_as_primary = (not usable(w)) or many_zeros_or_ties
+
+        if use_sign_as_primary and usable(s):
+            # Primary (unchanged sentence)
+            ptxt = fmt.format_p_value(s["p_value"])
+            rej = s["reject"]
+            context = f"Binomial sign test, α = {fmt.format_alpha(alpha)}"
+            # Add sign-test counts into context
+            context += sign_context_bits(s)
+            out = {
+                "context": context,
                 "primary_finding": f"Difference from population median {'is' if rej else 'is not'} statistically significant ({ptxt}).",
                 "secondary_finding": None,
             }
-        if "sign_test" in pm and np.isfinite(pm["sign_test"].get("p_value", np.nan)):
-            ptxt = self.formatter.format_p_value(pm["sign_test"]["p_value"])
-            rej = pm["sign_test"]["reject"]
-            return {
-                "context": f"Binomial sign test, alpha = {self.formatter.format_alpha(alpha)}",
-                "primary_finding": f"Difference from population median {'is' if rej else 'is not'} statistically significant ({ptxt}).",
+            # Secondary (unchanged sentence), keep Wilcoxon as confirmation if available
+            if usable(w):
+                wp = fmt.format_p_value(w["p_value"])
+                wrej = "(reject)" if w["reject"] else "(ns)"
+                out["secondary_finding"] = f"Wilcoxon signed-rank: p = {wp} {wrej}."
+                # Enrich context further with Wilcoxon W and r (still not changing the sentences)
+                out["context"] += " • Wilcoxon" + wilcoxon_context_bits(w)
+            return out
+
+        # Default: Wilcoxon primary
+        if usable(w):
+            wp = fmt.format_p_value(w["p_value"])
+            rej = w["reject"]
+            context = f"Wilcoxon signed-rank, α = {fmt.format_alpha(alpha)}"
+            # Add Wilcoxon W and r into context
+            context += wilcoxon_context_bits(w)
+            out = {
+                "context": context,
+                "primary_finding": f"Difference from population median {'is' if rej else 'is not'} statistically significant ({wp}).",
                 "secondary_finding": None,
             }
+            if usable(s):
+                sp = fmt.format_p_value(s["p_value"])
+                srej = "(reject)" if s["reject"] else "(ns)"
+                # Secondary (unchanged sentence)
+                out["secondary_finding"] = f"Sign test (robust check): p = {sp} {srej}."
+                # Enrich context with sign-test counts
+                out["context"] += " • Sign test" + sign_context_bits(s)
+            return out
+
+        # If neither is usable, return empty
         return {}
 
-    # TODO: subtitle_text
+    def subtitle_text(self, desc: dict[str, Any], inf: dict[str, Any], chart_metadata: dict[str, Any]) -> str:
+        """
+        Build a short subtitle for the Median ± CI plot.
+
+        Focus: sample size, CI level/method, optional CI range, and (if applicable)
+        a compact one-sample test decision against H₀: median = popmedian.
+
+        Avoids duplicating the title ("Median ± CI for {name}{modifiers}").
+        """
+        if not getattr(self.ctx, "show_subtitle", True):
+            return ""
+
+        n = int(desc.get("n", 0) or 0)
+        if n == 0:
+            return "No non-null observations."
+
+        fmt = self.formatter
+        params = desc.get("params", {})
+        ci_level = params.get("ci_level", 1.0 - float(getattr(self.ctx, "alpha", 0.05)))
+        ci_pct = f"{int(round(ci_level * 100))}%"
+        method = params.get("median_ci_method", getattr(self.ctx, "median_ci_method", "bootstrap"))
+        method_label = "bootstrap" if method == "bootstrap" else "none"
+
+        parts: list[str] = [f"n = {n:,}", f"{ci_pct} CI ({method_label})"]
+
+        # Optional CI range
+        lo, hi = desc.get("median_ci", (None, None))
+        d = int(desc.get("median_round_decimals", getattr(fmt, "report_default_decimals", 2)))
+        if lo is not None and hi is not None and np.isfinite(lo) and np.isfinite(hi):
+            lo_txt = fmt.format_numeric_value(lo, decimals=d)
+            hi_txt = fmt.format_numeric_value(hi, decimals=d)
+            parts.append(f"{lo_txt}–{hi_txt}")
+
+        # Optional one-sample test decision (prefer Wilcoxon; fallback to sign test)
+        pm = (inf or {}).get("popmedian") if isinstance(inf, dict) else None
+        if pm:
+            alpha = float((inf.get("params") or {}).get("alpha", getattr(self.ctx, "alpha", 0.05)))
+
+            def usable(test: dict | None) -> bool:
+                return bool(test) and np.isfinite(test.get("p_value", np.nan))
+
+            if usable(pm.get("wilcoxon")):
+                decision = "significant" if pm["wilcoxon"].get("reject") else "not significant"
+                parts.append(f"Wilcoxon: {decision} at α={fmt.format_alpha(alpha)}")
+            elif usable(pm.get("sign_test")):
+                decision = "significant" if pm["sign_test"].get("reject") else "not significant"
+                parts.append(f"Sign test: {decision} at α={fmt.format_alpha(alpha)}")
+
+        return " • ".join(parts)
 
     def footer_summary_text(self, desc: dict[str, Any], inf: dict[str, Any], chart_metadata: dict[str, Any]) -> str:
         """Return a compact footer summary string (e.g., sample size)."""
