@@ -125,7 +125,7 @@ class DistributionECDFGapPlot(BasePlot):
             max_idx = None
             n_gaps_above = 0 if self.ctx.threshold is not None else None
 
-        return {
+        desc = {
             "params": {"threshold": self.ctx.threshold},
             "n": n,
             "n_unique": n_unique,
@@ -143,6 +143,12 @@ class DistributionECDFGapPlot(BasePlot):
             "max_gap_idx": max_idx,
         }
 
+        if n == 0:
+            desc["skip_plot"] = True
+            desc["error"] = "no data to display"
+
+        return desc
+
     def draw(
         self,
         s: pd.Series,
@@ -155,20 +161,21 @@ class DistributionECDFGapPlot(BasePlot):
         palette,
     ):
         """Render ECDF, annotate the largest gap, and show a stats textbox."""
-        # TODO: safe report format when descriptive stats are None.
         # ECDF from full cleaned series (not just uniques)
         clean = s.dropna().sort_values()
-        n = desc["n"]
+        n = int(desc.get("n", 0))
         ecdf_x = clean.values
         ecdf_y = (np.arange(1, n + 1) / n) if n > 0 else np.array([])
 
         if n > 0:
             ax.step(ecdf_x, ecdf_y, where="post", label="ECDF")
 
-        # Annotate largest gap
+        # Annotate largest gap (only if we have two consecutive unique values and a finite gap)
         unique_vals = desc["unique_vals"]
-        idx = desc["max_gap_idx"]
-        if idx is not None:
+        idx = desc.get("max_gap_idx")
+        max_gap = desc.get("max_gap")
+
+        if idx is not None and isinstance(idx, int | np.integer) and 0 <= idx < len(unique_vals) - 1 and self.is_finite(max_gap) and n > 0:
             # ECDF level just before the gap
             count_le = int(np.searchsorted(ecdf_x, unique_vals[idx], side="right"))
             y_level = count_le / n if n > 0 else 0.0
@@ -182,22 +189,37 @@ class DistributionECDFGapPlot(BasePlot):
             ax.text(
                 float((unique_vals[idx] + unique_vals[idx + 1]) / 2),
                 y_level + 0.02,
-                f"Max gap = {desc['max_gap']:.2f}",
+                f"Max gap = {self.formatter.format_numeric_value(max_gap, decimals=2)}",
                 ha="center",
                 va="bottom",
                 color="red",
                 fontsize="small",
             )
 
-        # Stats textbox
-        stats_text = (
-            f"n = {desc['n']}\n"
-            f"n_unique = {desc['n_unique']}\n"
-            f"max_gap = {desc['max_gap']:.2f}\n"
-            f"median_gap = {desc['median_gap']:.2f}\n"
-            f"P10 = {desc['pct10_gap']:.2f}, P50 = {desc['pct50_gap']:.2f}, P90 = {desc['pct90_gap']:.2f}\n"
-            f"total_gap_prop = {desc['total_gap_prop']:.2f}" + (f"\n(gaps > {self.ctx.threshold}) = {desc['n_gaps_above_thr']}" if self.ctx.threshold is not None else "")
-        )
+        # Build stats textbox with safe formatting
+        fmt = self.formatter.format_numeric_value
+        n_unique = desc.get("n_unique", 0)
+        median_gap = desc.get("median_gap")
+        pct10_gap = desc.get("pct10_gap")
+        pct50_gap = desc.get("pct50_gap")
+        pct90_gap = desc.get("pct90_gap")
+        total_gap_prop = desc.get("total_gap_prop")
+        thr = getattr(self.ctx, "threshold", None)
+        n_gaps_above_thr = desc.get("n_gaps_above_thr")
+
+        lines = [
+            f"n = {int(n)}",
+            f"n_unique = {int(n_unique) if n_unique is not None else 0}",
+            f"max_gap = {fmt(max_gap, decimals=2)}",
+            f"median_gap = {fmt(median_gap, decimals=2)}",
+            f"P10 = {fmt(pct10_gap, decimals=2)}, P50 = {fmt(pct50_gap, decimals=2)}, P90 = {fmt(pct90_gap, decimals=2)}",
+            f"total_gap_prop = {fmt(total_gap_prop, decimals=2)}",
+        ]
+        if thr is not None and n_gaps_above_thr is not None:
+            lines.append(f"(gaps > {fmt(thr, decimals=2)}) = {int(n_gaps_above_thr)}")
+
+        stats_text = "\n".join(lines)
+
         ax.text(
             0.98,
             0.02,

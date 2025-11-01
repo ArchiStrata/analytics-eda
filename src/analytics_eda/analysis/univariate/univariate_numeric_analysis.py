@@ -35,22 +35,23 @@ from ...core.reporting import write_json_report
 
 logger = logging.getLogger(__name__)
 
+
 def univariate_numeric_analysis(
     series: pd.Series,
-    report_root: str = 'reports/eda/univariate/numeric',
+    report_root: str = "reports/eda/univariate/numeric",
     report_log_id: str | None = None,
     data_source: str | None = None,
     filter_desc: str | None = None,
-    distribution_names: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon'),
+    distribution_names: Sequence[str] = ("norm", "lognorm", "gamma", "expon"),
     plot_central_tendency_histogram_overrides: dict[str, Any] | None = None,
-    plot_central_tendency_violin_overrides: dict[str, Any] | None = None,
+    plot_central_tendency_mean_point_ci_overrides: dict[str, Any] | None = None,
+    plot_central_tendency_median_point_ci_overrides: dict[str, Any] | None = None,
     plot_dispersion_boxplot_overrides: dict[str, Any] | None = None,
     plot_distribution_ecdf_gap_overrides: dict[str, Any] | None = None,
     plot_distribution_ecdf_vs_cdf_overrides: dict[str, Any] | None = None,
-    plot_distribution_density_overrides:      dict[str, Any] | None = None,
+    plot_distribution_density_overrides: dict[str, Any] | None = None,
     plot_distribution_qq_fit_overrides: dict[str, Any] | None = None,
     plot_distribution_probability_overrides: dict[str, Any] | None = None,
-
     plot_missing_data_bar_overrides: dict[str, Any] | None = None,
     plot_string_coercion_bar_overrides: dict[str, Any] | None = None,
     plot_cardinality_bar_overrides: dict[str, Any] | None = None,
@@ -99,16 +100,10 @@ def univariate_numeric_analysis(
     # 1. Validation (Named, Typed)
     series_copy = named_only_validator(dropna=False, cast_str=False).validate(series)
 
-    logger.info(
-        "Starting univariate_numeric_analysis",
-        extra={
-            'series_name': series_copy.name,
-            'report_log_id': report_log_id
-        }
-    )
+    logger.info("Starting univariate_numeric_analysis", extra={"series_name": series_copy.name, "report_log_id": report_log_id})
 
     # Prepare directory
-    report_path = Path(report_root) / series_copy.name.replace(' ', '_')
+    report_path = Path(report_root) / series_copy.name.replace(" ", "_")
     report_path.mkdir(parents=True, exist_ok=True)
 
     # Convenience: base context kwargs shared by all plots
@@ -127,7 +122,7 @@ def univariate_numeric_analysis(
         overrides=plot_missing_data_bar_overrides,
     )
     md_plot = MissingDataBarPlot(md_ctx)
-    data_quality['missing_data_barchart'] = md_plot.run(series_copy)
+    data_quality["missing_data_barchart"] = md_plot.run(series_copy)
 
     # Check for strings in numeric series.
     string_coercion_ctx = build_plot_context(
@@ -149,11 +144,9 @@ def univariate_numeric_analysis(
     card_plot = CardinalityBarPlot(card_ctx)
     cardinality_bar_plot_result = card_plot.run(series_copy)
 
-    is_discrete = cardinality_bar_plot_result['descriptive_stats']['is_discrete']
+    is_discrete = cardinality_bar_plot_result["descriptive_stats"]["is_discrete"]
 
-    cardinality = {
-        'barchart': cardinality_bar_plot_result
-    }
+    cardinality = {"barchart": cardinality_bar_plot_result}
 
     # 2. Distribution Analysis
     distribution_result = numeric_distribution_analysis(
@@ -165,7 +158,8 @@ def univariate_numeric_analysis(
         report_log_id=report_log_id,
         distribution_names=distribution_names,
         plot_central_tendency_histogram_overrides=plot_central_tendency_histogram_overrides,
-        plot_central_tendency_violin_overrides=plot_central_tendency_violin_overrides,
+        plot_central_tendency_mean_point_ci_overrides=plot_central_tendency_mean_point_ci_overrides,
+        plot_central_tendency_median_point_ci_overrides=plot_central_tendency_median_point_ci_overrides,
         plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
         plot_distribution_ecdf_gap_overrides=plot_distribution_ecdf_gap_overrides,
         plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,
@@ -175,34 +169,13 @@ def univariate_numeric_analysis(
     )
 
     # Generate report
-    eda_report = {
-        'data_quality': data_quality,
-        'cardinality': cardinality,
-        'distribution': distribution_result
-    }
+    eda_report = {"data_quality": data_quality, "cardinality": cardinality, "distribution": distribution_result}
 
-    full_report = {
-        'metadata': {
-            'version': '1.0.0',
-            'report_name': 'univariate_numeric_analysis',
-            'parameters': {
-                'series': series_copy.name
-            }
-        },
-        'data': eda_report
-    }
+    full_report = {"metadata": {"version": "1.0.0", "report_name": "univariate_numeric_analysis", "parameters": {"series": series_copy.name}}, "data": eda_report}
 
     report_file_path = report_path / f"{series_copy.name.replace(' ', '_')}_univariate_analysis_report.json"
     write_json_report(full_report, report_file_path)
 
-    logger.info(
-        "Completed univariate_numeric_analysis",
-        extra={
-            'series_name': series_copy.name,
-            'report_log_id': report_log_id
-        }
-    )
+    logger.info("Completed univariate_numeric_analysis", extra={"series_name": series_copy.name, "report_log_id": report_log_id})
 
-    return {
-        'report_file_path': report_file_path
-    }
+    return {"report_file_path": report_file_path}

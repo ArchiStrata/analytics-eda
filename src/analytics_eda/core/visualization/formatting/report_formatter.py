@@ -58,9 +58,10 @@ class ReportFormatter:
             return "NA"
 
         ctx_dec = getattr(self.ctx, "report_default_decimals", 2)
+        cap = int(getattr(self.ctx, "report_max_decimals", 6))
         ctx_unit = getattr(self.ctx, "report_default_unit", None)
 
-        d = ctx_dec if decimals is None else decimals
+        d = ctx_dec if decimals is None else min(int(decimals), cap)
         u = ctx_unit if unit is None else unit
 
         s = (
@@ -94,16 +95,16 @@ class ReportFormatter:
         """Infer the maximum number of decimal places in raw numeric values.
 
         Integers -> 0. Floats are parsed via Decimal(str(...)) to avoid binary fp artifacts.
+        The result is capped by `report_max_decimals` to prevent over-precision.
         """
+        cap = int(getattr(self, "report_max_decimals", 6))
+
         def dec_count(v) -> int:
-            # ints (including numpy ints)
-            if isinstance(v, (int, np.integer)):
+            if isinstance(v, int | np.integer):
                 return 0
-            # floats or numerics coerced to string
             try:
                 d = Decimal(str(v)).normalize()
                 exp = d.as_tuple().exponent
-                # exponent is negative for decimal places; e.g., 1.230 -> exponent -3
                 return max(-exp, 0)
             except (InvalidOperation, ValueError, TypeError):
                 return 0
@@ -111,45 +112,79 @@ class ReportFormatter:
         x = s.dropna()
         if x.empty:
             return 0
-        return int(max(dec_count(v) for v in x))
+        raw = int(max(dec_count(v) for v in x))
+        return min(raw, cap)
+
+    def format_mean(
+        self,
+        s: pd.Series,
+        mean_value: float | None = None,
+    ) -> tuple[float | None, int, str]:
+        """
+        Return (mean, mean_round_decimals, mean_formatted) for a numeric Series.
+
+        - If `mean_value` is provided, it is used; otherwise the mean is computed
+        from finite numeric values in `s`. Empty/invalid -> mean=None.
+        - Decimal places follow `mean_decimals_from_series(s)`.
+        - Formatted string uses `format_numeric_value(...)` and respects ctx defaults.
+        """
+        # Coerce to numeric and keep only finite values for precision inference / mean
+        nums = pd.to_numeric(s, errors="coerce")
+        nums = nums[np.isfinite(nums)]
+
+        mean = mean_value if mean_value is not None else (float(nums.mean()) if not nums.empty else None)
+        mean_round_decimals = int(self.mean_decimals_from_series(nums))
+        mean_formatted = self.format_numeric_value(mean, decimals=mean_round_decimals)
+
+        return mean, mean_round_decimals, mean_formatted
 
     def mean_decimals_from_series(self, s: pd.Series) -> int:
-        """Return decimals for displaying the mean.
-
-        Rule: show the mean to one more decimal than the most precise raw value.
-        Empty series defaults to 1 decimal.
-
-        Examples
-        --------
-        raw values as integers  -> returns 1
-        raw values to tenths    -> returns 2
-        raw values to hundredth -> returns 3
-        """
+        """Show mean to one more decimal than the most precise raw value, capped."""
+        cap = int(getattr(self, "report_max_decimals", 6))
+        default = int(getattr(self, "report_default_decimals", 2))
         raw_max = self.max_decimals_in_series(s.dropna())
-        # Apply the rounding rule for the mean: display it to one more decimal place than the
-        # most precise raw data value. For example, if inputs are whole numbers → 1 decimal;
-        # if inputs are to tenths → 2 decimals. We infer the maximum raw precision, then add 1.
-        # (Affects formatting only; the underlying mean value is unchanged.)
-        return (raw_max + 1) if raw_max is not None else 1
+        base = (raw_max + 1) if raw_max is not None else default
+        return min(base, cap)
 
     def median_decimals_from_series(self, s: pd.Series, median_value: float | None = None) -> int:
-        """Return decimals for displaying the median.
+        """Use max raw precision; for even-n, add 1 if median is an average of distinct middles; cap."""
+        cap = int(getattr(self, "report_max_decimals", 6))
+        default = int(getattr(self, "report_default_decimals", 2))
 
-        Uses the maximum raw precision in `s`. For even-length series where the
-        median is the average of two values (and a `median_value` is provided),
-        increases precision by one if the median is not equal to either middle value.
-        """
         x = s.dropna()
         if x.empty:
-            return getattr(self, "report_default_decimals", 2)
+            return default
+
         raw_max = self.max_decimals_in_series(x)
         n = len(x)
+        out = raw_max
         if n % 2 == 0 and median_value is not None:
             xs = np.sort(np.asarray(x, dtype=float))
-            m1, m2 = xs[n//2 - 1], xs[n//2]
+            m1, m2 = xs[n // 2 - 1], xs[n // 2]
             if not (np.isclose(median_value, m1) or np.isclose(median_value, m2)):
-                return raw_max + 1
-        return raw_max
+                out = raw_max + 1
+        return min(out, cap)
+
+    def format_median(
+        self,
+        s: pd.Series,
+        median_value: float | None = None,
+    ) -> tuple[float | None, int, str]:
+        """
+        Return (median, median_round_decimals, median_formatted) for a numeric Series.
+
+        - If `median_value` is provided, use it; otherwise compute from finite numeric values in `s`.
+        - Decimal places follow `median_decimals_from_series(s, median_value)`.
+        - Formatted string uses `format_numeric_value(...)` and respects ctx defaults.
+        """
+        nums = pd.to_numeric(s, errors="coerce")
+        nums = nums[np.isfinite(nums)]
+
+        median = median_value if median_value is not None else (float(nums.median()) if not nums.empty else None)
+        median_round_decimals = int(self.median_decimals_from_series(nums, median))
+        median_formatted = self.format_numeric_value(median, decimals=median_round_decimals)
+
+        return median, median_round_decimals, median_formatted
 
     # ---------- Alpha & p-values ----------
 
@@ -238,6 +273,33 @@ class ReportFormatter:
         """
         return self.format_numeric_value(value, decimals=decimals, unit=None)
 
+    def format_cohens_d(
+        self,
+        d: float | None,
+        *,
+        decimals: int | None = None,
+        tiny_threshold: float = 0.10,
+    ) -> str:
+        """
+        Format Cohen's d with sensible defaults.
+
+        Rules:
+        - None/NaN -> "NA"
+        - Default 2 decimals; if |d| < tiny_threshold and no explicit `decimals`,
+            use 3 decimals to avoid "0.00".
+        - Leading zero for |d| < 1, sign preserved.
+        """
+        if d is None or (isinstance(d, float) and math.isnan(d)):
+            return "NA"
+
+        # Decide precision
+        dec = 2 if decimals is None else int(decimals)
+        if decimals is None and abs(d) < tiny_threshold:
+            dec = 3
+
+        # Use the existing numeric formatter to respect ctx defaults (unit=None)
+        return self.format_numeric_value(float(d), decimals=dec, unit=None)
+
     # ---------- Degrees of freedom ----------
 
     def format_df(
@@ -261,6 +323,7 @@ class ReportFormatter:
         - int or float: single df
         - (df1, df2): tuple for F-tests
         """
+
         def _is_nan(x) -> bool:
             return isinstance(x, float) and math.isnan(x)
 
@@ -279,7 +342,7 @@ class ReportFormatter:
             return "df = NA"
 
         # Paired df (e.g., F-tests)
-        if isinstance(df, (tuple, list)) and len(df) == 2:
+        if isinstance(df, tuple | list) and len(df) == 2:
             df1, df2 = df
             return f"df = ({_fmt_one(df1)}, {_fmt_one(df2)})"
 

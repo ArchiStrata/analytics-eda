@@ -55,87 +55,58 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
             },
         ),
-
         # 1) Default bins via Square-Root Choice on non-empty data (n=9 → bins=3)
         (
-            lambda: pd.Series([1,2,3,4,5,6,7,8,9], dtype="float64", name="nums"),
+            lambda: pd.Series([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype="float64", name="nums"),
             {"file_name": "hist.png"},
             {
-                "chart_metadata": {
-                    "file_name": "hist.png"
-                },
+                "chart_metadata": {"file_name": "hist.png"},
                 "descriptive_stats": {
                     "mean": 5.0,
                     "median": 5.0,
                     "modality": "multimodal",
-                    "modes": [
-                    1.4444444444444444,
-                    2.333333333333333,
-                    3.2222222222222223,
-                    4.111111111111111,
-                    5.0,
-                    5.888888888888889,
-                    6.777777777777777,
-                    7.666666666666666,
-                    8.555555555555555
-                    ],
+                    "modes": [1.4444444444444444, 2.333333333333333, 3.2222222222222223, 4.111111111111111, 5.0, 5.888888888888889, 6.777777777777777, 7.666666666666666, 8.555555555555555],
                     "n": 9,
-                    "params": {
-                        "bin_rule": "discrete_integer",
-                        "bins": None,
-                        "bins_arg": 9,
-                        "max_mode_lines": 3,
-                        "min_peak_strength": 0.05,
-                        "mode_method": "histogram_bin_centers"
-                    },
-                    "peak_strength": 0.1111111111111111
+                    "params": {"bin_rule": "discrete_integer", "bins": None, "bins_arg": 9, "max_mode_lines": 3, "min_peak_strength": 0.05, "mode_method": "histogram_bin_centers"},
+                    "peak_strength": 0.1111111111111111,
                 },
                 "draft_descriptive_findings": {
                     "context": "n = 9 observations",
                     "primary_finding": "The distribution is multimodal, indicating several distinct peaks.",
-                    "secondary_finding": "Mean and median are nearly identical at 5.0, suggesting a symmetric distribution."
+                    "secondary_finding": "Mean and median are nearly identical at 5.0, suggesting a symmetric distribution.",
                 },
             },
         ),
-
         # 2) Explicit integer bins; single clear mode uses series.mode()
         (
-            lambda: pd.Series([1,1,2,3,4,5], dtype="float64", name="vals"),
+            lambda: pd.Series([1, 1, 2, 3, 4, 5], dtype="float64", name="vals"),
             {"bins": 5, "file_name": "hist.png"},
             {
-                "chart_metadata": {
-                    "file_name": "hist.png"
-                },
+                "chart_metadata": {"file_name": "hist.png"},
                 "descriptive_stats": {
                     "mean": 2.6666666666666665,
                     "median": 2.5,
                     "modality": "unimodal",
-                    "modes": [
-                        1.0
-                    ],
+                    "modes": [1.0],
                     "n": 6,
                     "params": {
                         "bins": 5,
                         "mode_method": "series.mode",
                     },
-                    "peak_strength": 0.3333333333333333
+                    "peak_strength": 0.3333333333333333,
                 },
                 "draft_descriptive_findings": {
                     "context": "n = 6 observations",
                     "primary_finding": "The distribution is unimodal with a central peak around 1.00.",
-                    "secondary_finding": "Mean (2.7) is greater than median (2.5), suggesting right-skew."
+                    "secondary_finding": "Mean (2.7) exceeds median (2.5) by 0.2, suggesting right-skew.",
                 },
             },
         ),
-
         # 3) Custom bin edges (sequence); ambiguous/multimodal → histogram_bin_centers
         #    We only assert the mode_method and that at least one mode was produced.
         (
-            lambda: pd.Series([1,2,3,4,5,6,7,8,9], dtype="float64", name="edges"),
-            {
-                "bins": [0, 3, 6, 10],
-                "file_name": "hist.png"
-            },
+            lambda: pd.Series([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype="float64", name="edges"),
+            {"bins": [0, 3, 6, 10], "file_name": "hist.png"},
             {
                 "chart_metadata": {},
                 "descriptive_stats": {
@@ -148,7 +119,6 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
             },
         ),
-
         # 4) NaNs present → n counts non-NaN, title defaults
         (
             lambda: pd.Series([1.0, np.nan, 2.0, np.nan, 3.0], name="with_nans"),
@@ -166,7 +136,6 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
             },
         ),
-
         # 5) Name override + modifiers in title (filter + transform)
         (
             lambda: pd.Series([10, 20, 20, 30], name="ignored"),
@@ -180,7 +149,6 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
             },
         ),
-
         # 6) Custom title template that ignores modifiers
         (
             lambda: pd.Series([1, 2, 3, 4], name="nums"),
@@ -192,7 +160,6 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 "descriptive_stats": {"n": 4},
             },
         ),
-
         # 7) Axis labels + data_source overrides, with explicit save filename
         (
             lambda: pd.Series([1, 1, 2, 3, 5, 8], name="fib"),
@@ -230,7 +197,6 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
             },
         ),
-
         # T2) Two modes with bin edges, check exact modes [1, 2]
         (
             lambda: pd.Series([1, 1, 2, 2, 3, 4], name="numeric_series"),
@@ -246,7 +212,6 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
             },
         ),
-
         # T3) Three modes with bin edges, check exact sorted modes
         (
             lambda: pd.Series([1, 1, 2, 2, 3, 3, 4], name="numeric_series"),
@@ -262,7 +227,6 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
             },
         ),
-
         # T4) Save with explicit filename, verify PNG signature
         (
             lambda: pd.Series([0, 1, 2, 2, 3, 3, 3], name="numeric_series"),

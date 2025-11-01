@@ -23,17 +23,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import (
             },
             {
                 # Top-level expectations (from the univariate report)
-                "data_quality": {
-                    "missing_data_barchart": {
-                        "chart_metadata": {
-                            "title": "Missing Data for metric",
-                            "xlabel": "Status",
-                            "ylabel": "Percentage of Total",
-                            "data_source": "UnitTest",
-                            "file_name": "Missing Data for metric.png"
-                        }
-                    }
-                },
+                "data_quality": {"missing_data_barchart": {"chart_metadata": {"title": "Missing Data for metric", "xlabel": "Status", "ylabel": "Percentage of Total", "data_source": "UnitTest", "file_name": "Missing Data for metric.png"}}},
                 # Cardinality section expectations (plot payload in the top-level report)
                 "cardinality": {
                     "barchart": {
@@ -48,10 +38,8 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import (
                             "chart_metadata": {"data_source": "UnitTest"},
                             "descriptive_stats": {},  # nothing specific to assert
                         },
-                        "violin": {
-                            "chart_metadata": {"data_source": "UnitTest"},
-                            "descriptive_stats": {},
-                        },
+                        "mean_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                        "median_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     },
                     "dispersion": {
                         "boxplot": {
@@ -83,8 +71,8 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import (
                                         "xlabel": "Value",
                                         "ylabel": "CDF",
                                         "data_source": "UnitTest",
-                                        "file_name": "ECDF vs. Theoretical CDF of metric (fitted to norm).png"
-                                    }
+                                        "file_name": "ECDF vs. Theoretical CDF of metric (fitted to norm).png",
+                                    },
                                 },
                                 "qq_fit": {
                                     "descriptive_stats": {},
@@ -94,31 +82,17 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import (
                                         "xlabel": "Theoretical Quantiles",
                                         "ylabel": "Sample Quantiles",
                                         "data_source": "UnitTest",
-                                        "file_name": "Q\u2013Q Plot Fit Assessment of metric (fitted to norm).png"
-                                    }
-                                }
+                                        "file_name": "Q\u2013Q Plot Fit Assessment of metric (fitted to norm).png",
+                                    },
+                                },
                             },
                             "lognorm": {
-                                "ecdf_vs_cdf": {
-                                    "descriptive_stats": {},
-                                    "inferential_stats": {},
-                                    "chart_metadata": {
-                                        "title": "ECDF vs. Theoretical CDF of metric (fitted to lognorm)",
-                                        "xlabel": "Value",
-                                        "ylabel": "CDF",
-                                        "data_source": "UnitTest"
-                                    }
-                                },
+                                "ecdf_vs_cdf": {"descriptive_stats": {}, "inferential_stats": {}, "chart_metadata": {"title": "ECDF vs. Theoretical CDF of metric (fitted to lognorm)", "xlabel": "Value", "ylabel": "CDF", "data_source": "UnitTest"}},
                                 "qq_fit": {
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
-                                    "chart_metadata": {
-                                        "title": "Q\u2013Q Plot Fit Assessment of metric (fitted to lognorm)",
-                                        "xlabel": "Theoretical Quantiles",
-                                        "ylabel": "Sample Quantiles",
-                                        "data_source": "UnitTest"
-                                    }
-                                }
+                                    "chart_metadata": {"title": "Q\u2013Q Plot Fit Assessment of metric (fitted to lognorm)", "xlabel": "Theoretical Quantiles", "ylabel": "Sample Quantiles", "data_source": "UnitTest"},
+                                },
                             },
                             "gamma": {
                                 "ecdf_vs_cdf": {
@@ -128,47 +102,23 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import (
                                         }
                                     },
                                     "inferential_stats": {},
-                                    "chart_metadata": {
-                                        "title": "ECDF vs. Theoretical CDF of metric (fitted to gamma)",
-                                        "xlabel": "Value",
-                                        "ylabel": "CDF",
-                                        "data_source": "UnitTest"
-                                    }
+                                    "chart_metadata": {"title": "ECDF vs. Theoretical CDF of metric (fitted to gamma)", "xlabel": "Value", "ylabel": "CDF", "data_source": "UnitTest"},
                                 },
                                 "qq_fit": {
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
-                                    "chart_metadata": {
-                                        "title": "Q\u2013Q Plot Fit Assessment of metric (fitted to gamma)",
-                                        "xlabel": "Theoretical Quantiles",
-                                        "ylabel": "Sample Quantiles",
-                                        "data_source": "UnitTest"
-                                    }
-                                }
+                                    "chart_metadata": {"title": "Q\u2013Q Plot Fit Assessment of metric (fitted to gamma)", "xlabel": "Theoretical Quantiles", "ylabel": "Sample Quantiles", "data_source": "UnitTest"},
+                                },
                             },
                             "expon": {
-                                "ecdf_vs_cdf": {
-                                    "descriptive_stats": {},
-                                    "inferential_stats": {},
-                                    "chart_metadata": {
-                                        "title": "ECDF vs. Theoretical CDF of metric (fitted to expon)",
-                                        "xlabel": "Value",
-                                        "ylabel": "CDF",
-                                        "data_source": "UnitTest"
-                                    }
-                                },
+                                "ecdf_vs_cdf": {"descriptive_stats": {}, "inferential_stats": {}, "chart_metadata": {"title": "ECDF vs. Theoretical CDF of metric (fitted to expon)", "xlabel": "Value", "ylabel": "CDF", "data_source": "UnitTest"}},
                                 "qq_fit": {
                                     "descriptive_stats": {},
                                     "inferential_stats": {},
-                                    "chart_metadata": {
-                                        "title": "Q\u2013Q Plot Fit Assessment of metric (fitted to expon)",
-                                        "xlabel": "Theoretical Quantiles",
-                                        "ylabel": "Sample Quantiles",
-                                        "data_source": "UnitTest"
-                                    }
-                                }
-                            }
-                        }
+                                    "chart_metadata": {"title": "Q\u2013Q Plot Fit Assessment of metric (fitted to expon)", "xlabel": "Theoretical Quantiles", "ylabel": "Sample Quantiles", "data_source": "UnitTest"},
+                                },
+                            },
+                        },
                     },
                 },
             },
@@ -195,7 +145,7 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import (
                             "data_source": "UnitTest",
                             "file_name": "Non-Numeric (String) Values in metric_strings.png",
                         },
-                    }
+                    },
                 },
                 "cardinality": {
                     "barchart": {
@@ -205,15 +155,16 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import (
                 "distribution": {
                     "central_tendency": {
                         "histogram": {"chart_metadata": {"data_source": "UnitTest"}},
-                        "violin":    {"chart_metadata": {"data_source": "UnitTest"}},
+                        "mean_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                        "median_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     },
                     "dispersion": {
-                        "boxplot":   {"chart_metadata": {"data_source": "UnitTest"}},
+                        "boxplot": {"chart_metadata": {"data_source": "UnitTest"}},
                     },
                     "shape": {
-                        "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}},
-                        "density":    {"chart_metadata": {"data_source": "UnitTest"}},
-                        "probability":{"chart_metadata": {"data_source": "UnitTest"}},
+                        "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}},
+                        "density": {"chart_metadata": {"data_source": "UnitTest"}},
+                        "probability": {"chart_metadata": {"data_source": "UnitTest"}},
                     },
                 },
             },

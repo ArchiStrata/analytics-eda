@@ -38,70 +38,27 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
             {
                 "central_tendency": {
                     "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "mean_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "median_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
-                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                     "distribution_fits": {
                         "norm": {
                             "ecdf_vs_cdf": {
-                                "descriptive_stats": {
-                                    "n": 150,
-                                    "params": {
-                                        "distribution_name": "norm",
-                                        "distribution_fit": [
-                                            0.063,
-                                            0.959
-                                        ]
-                                    },
-                                    "ks_D": 0.0405234014173278
-                                },
+                                "descriptive_stats": {"n": 150, "params": {"distribution_name": "norm", "distribution_fit": [0.063, 0.959]}, "ks_D": 0.0405234014173278},
                                 "inferential_stats": {
-                                    "params": {
-                                        "alpha": 0.05
-                                    },
-                                    "ks": {
-                                        "statistic": 0.040439623105054445,
-                                        "p_value": 0.9585664995494558,
-                                        "reject": False
-                                    },
-                                    "anderson": {
-                                        "statistic": 0.40396592474297677,
-                                        "critical_value": 0.767,
-                                        "critical_values": [
-                                            0.562,
-                                            0.64,
-                                            0.767,
-                                            0.895,
-                                            1.065
-                                        ],
-                                        "significance_levels": [
-                                            15.0,
-                                            10.0,
-                                            5.0,
-                                            2.5,
-                                            1.0
-                                        ],
-                                        "reject": False
-                                    },
-                                    "cvm": {
-                                        "statistic": 0.0556707443438706,
-                                        "p_value": 0.8419518956667803,
-                                        "reject": False
-                                    }
+                                    "params": {"alpha": 0.05},
+                                    "ks": {"statistic": 0.040439623105054445, "p_value": 0.9585664995494558, "reject": False},
+                                    "anderson": {"statistic": 0.40396592474297677, "critical_value": 0.767, "critical_values": [0.562, 0.64, 0.767, 0.895, 1.065], "significance_levels": [15.0, 10.0, 5.0, 2.5, 1.0], "reject": False},
+                                    "cvm": {"statistic": 0.0556707443438706, "p_value": 0.8419518956667803, "reject": False},
                                 },
-                                "chart_metadata": {
-                                    "title": "ECDF vs. Theoretical CDF of norm (fitted to norm)",
-                                    "xlabel": "Value",
-                                    "ylabel": "CDF",
-                                    "data_source": "UnitTest",
-                                    "file_name": "ECDF vs. Theoretical CDF of norm (fitted to norm).png"
-                                }
+                                "chart_metadata": {"title": "ECDF vs. Theoretical CDF of norm (fitted to norm)", "xlabel": "Value", "ylabel": "CDF", "data_source": "UnitTest", "file_name": "ECDF vs. Theoretical CDF of norm (fitted to norm).png"},
                             },
                             "qq_fit": {
                                 "descriptive_stats": {
@@ -113,53 +70,23 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     "max_abs_residual": 0.6571515339829359,
                                     "skewness": -0.20357498056930046,
                                     "kurtosis": -0.4148577220304337,
-                                    "min": -2.3653039062769743
+                                    "min": -2.3653039062769743,
                                 },
-                                "inferential_stats": {
-                                    "params": {
-                                        "alpha": 0.05,
-                                        "distribution_name": "norm"
-                                    },
-                                    "dagostino_pearson": {
-                                        "statistic": 2.4918425812847533,
-                                        "p_value": 0.28767575302776366,
-                                        "reject": False
-                                    },
-                                    "reject_normality": False
-                                },
+                                "inferential_stats": {"params": {"alpha": 0.05, "distribution_name": "norm"}, "dagostino_pearson": {"statistic": 2.4918425812847533, "p_value": 0.28767575302776366, "reject": False}, "reject_normality": False},
                                 "chart_metadata": {
                                     "title": "Q\u2013Q Plot Fit Assessment of norm (fitted to norm)",
                                     "xlabel": "Theoretical Quantiles",
                                     "ylabel": "Sample Quantiles",
                                     "data_source": "UnitTest",
-                                    "file_name": "Q\u2013Q Plot Fit Assessment of norm (fitted to norm).png"
-                                }
-                            }
+                                    "file_name": "Q\u2013Q Plot Fit Assessment of norm (fitted to norm).png",
+                                },
+                            },
                         },
                         "lognorm": {
                             "ecdf_vs_cdf": {
-                                "descriptive_stats": {
-                                    "n": 150,
-                                    "params": {
-                                        "distribution_name": "lognorm"
-                                    },
-                                    "error": "requires positive data",
-                                    "skip_plot": True,
-                                    "x": "[]",
-                                    "ecdf": "[]",
-                                    "cdf_theo": "[]"
-                                },
-                                "inferential_stats": {
-                                    "params": {
-                                        "alpha": 0.05
-                                    }
-                                },
-                                "chart_metadata": {
-                                    "title": "ECDF vs. Theoretical CDF of norm (fitted to lognorm)",
-                                    "xlabel": "Value",
-                                    "ylabel": "CDF",
-                                    "data_source": "UnitTest"
-                                }
+                                "descriptive_stats": {"n": 150, "params": {"distribution_name": "lognorm"}, "error": "requires positive data", "skip_plot": True, "x": "[]", "ecdf": "[]", "cdf_theo": "[]"},
+                                "inferential_stats": {"params": {"alpha": 0.05}},
+                                "chart_metadata": {"title": "ECDF vs. Theoretical CDF of norm (fitted to lognorm)", "xlabel": "Value", "ylabel": "CDF", "data_source": "UnitTest"},
                             },
                             "qq_fit": {
                                 "descriptive_stats": {
@@ -173,21 +100,11 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     "kurtosis": None,
                                     "min": -2.3653039062769743,
                                     "error": "requires positive data",
-                                    "skip_plot": True
+                                    "skip_plot": True,
                                 },
-                                "inferential_stats": {
-                                    "params": {
-                                        "alpha": 0.05,
-                                        "distribution_name": "lognorm"
-                                    }
-                                },
-                                "chart_metadata": {
-                                    "title": "Q\u2013Q Plot Fit Assessment of norm (fitted to lognorm)",
-                                    "xlabel": "Theoretical Quantiles",
-                                    "ylabel": "Sample Quantiles",
-                                    "data_source": "UnitTest"
-                                }
-                            }
+                                "inferential_stats": {"params": {"alpha": 0.05, "distribution_name": "lognorm"}},
+                                "chart_metadata": {"title": "Q\u2013Q Plot Fit Assessment of norm (fitted to lognorm)", "xlabel": "Theoretical Quantiles", "ylabel": "Sample Quantiles", "data_source": "UnitTest"},
+                            },
                         },
                         "gamma": {
                             "ecdf_vs_cdf": {
@@ -200,19 +117,10 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     "skip_plot": True,
                                     "x": "[]",
                                     "ecdf": "[]",
-                                    "cdf_theo": "[]"
+                                    "cdf_theo": "[]",
                                 },
-                                "inferential_stats": {
-                                    "params": {
-                                        "alpha": 0.05
-                                    }
-                                },
-                                "chart_metadata": {
-                                    "title": "ECDF vs. Theoretical CDF of norm (fitted to gamma)",
-                                    "xlabel": "Value",
-                                    "ylabel": "CDF",
-                                    "data_source": "UnitTest"
-                                }
+                                "inferential_stats": {"params": {"alpha": 0.05}},
+                                "chart_metadata": {"title": "ECDF vs. Theoretical CDF of norm (fitted to gamma)", "xlabel": "Value", "ylabel": "CDF", "data_source": "UnitTest"},
                             },
                             "qq_fit": {
                                 "descriptive_stats": {
@@ -226,48 +134,17 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     "kurtosis": None,
                                     "min": -2.3653039062769743,
                                     "error": "requires positive data",
-                                    "skip_plot": True
+                                    "skip_plot": True,
                                 },
-                                "inferential_stats": {
-                                    "params": {
-                                        "alpha": 0.05,
-                                        "distribution_name": "gamma"
-                                    }
-                                },
-                                "chart_metadata": {
-                                    "title": "Q\u2013Q Plot Fit Assessment of norm (fitted to gamma)",
-                                    "xlabel": "Theoretical Quantiles",
-                                    "ylabel": "Sample Quantiles",
-                                    "data_source": "UnitTest"
-                                }
-                            }
+                                "inferential_stats": {"params": {"alpha": 0.05, "distribution_name": "gamma"}},
+                                "chart_metadata": {"title": "Q\u2013Q Plot Fit Assessment of norm (fitted to gamma)", "xlabel": "Theoretical Quantiles", "ylabel": "Sample Quantiles", "data_source": "UnitTest"},
+                            },
                         },
                         "expon": {
                             "ecdf_vs_cdf": {
-                                "descriptive_stats": {
-                                    "n": 150,
-                                    "params": {
-                                        "distribution_name": "expon",
-                                        "distribution_fit": None
-                                    },
-                                    "error": "requires non-negative data",
-                                    "skip_plot": True,
-                                    "x": "[]",
-                                    "ecdf": "[]",
-                                    "cdf_theo": "[]",
-                                    "ks_D": None
-                                },
-                                "inferential_stats": {
-                                    "params": {
-                                        "alpha": 0.05
-                                    }
-                                },
-                                "chart_metadata": {
-                                    "title": "ECDF vs. Theoretical CDF of norm (fitted to expon)",
-                                    "xlabel": "Value",
-                                    "ylabel": "CDF",
-                                    "data_source": "UnitTest"
-                                }
+                                "descriptive_stats": {"n": 150, "params": {"distribution_name": "expon", "distribution_fit": None}, "error": "requires non-negative data", "skip_plot": True, "x": "[]", "ecdf": "[]", "cdf_theo": "[]", "ks_D": None},
+                                "inferential_stats": {"params": {"alpha": 0.05}},
+                                "chart_metadata": {"title": "ECDF vs. Theoretical CDF of norm (fitted to expon)", "xlabel": "Value", "ylabel": "CDF", "data_source": "UnitTest"},
                             },
                             "qq_fit": {
                                 "descriptive_stats": {
@@ -281,24 +158,14 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                                     "kurtosis": None,
                                     "min": -2.3653039062769743,
                                     "error": "requires non-negative data",
-                                    "skip_plot": True
+                                    "skip_plot": True,
                                 },
-                                "inferential_stats": {
-                                    "params": {
-                                        "alpha": 0.05,
-                                        "distribution_name": "expon"
-                                    }
-                                },
-                                "chart_metadata": {
-                                    "title": "Q\u2013Q Plot Fit Assessment of norm (fitted to expon)",
-                                    "xlabel": "Theoretical Quantiles",
-                                    "ylabel": "Sample Quantiles",
-                                    "data_source": "UnitTest"
-                                }
-                            }
-                        }
-                    }
-                }
+                                "inferential_stats": {"params": {"alpha": 0.05, "distribution_name": "expon"}},
+                                "chart_metadata": {"title": "Q\u2013Q Plot Fit Assessment of norm (fitted to expon)", "xlabel": "Theoretical Quantiles", "ylabel": "Sample Quantiles", "data_source": "UnitTest"},
+                            },
+                        },
+                    },
+                },
             },
         ),
         # 2) Lognormal (strictly positive)
@@ -308,16 +175,17 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
             {
                 "central_tendency": {
                     "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "mean_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "median_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
-                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                }
+                    "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
             },
         ),
         # 3) Gamma (strictly positive)
@@ -327,16 +195,17 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
             {
                 "central_tendency": {
                     "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "mean_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "median_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
-                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                }
+                    "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                },
             },
         ),
         # 4) Exponential (non‑negative)
@@ -346,15 +215,16 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
             {
                 "central_tendency": {
                     "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "mean_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "median_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
-                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
             },
         ),
@@ -368,16 +238,17 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
             {
                 "central_tendency": {
                     "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "mean_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "median_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
-                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "transforms": {"yeo-johnson": {}, "arcsinh": {}}
+                    "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "transforms": {"yeo-johnson": {}, "arcsinh": {}},
                 },
             },
         ),
@@ -388,15 +259,16 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
             {
                 "central_tendency": {
                     "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "mean_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "median_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
-                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
             },
         ),
@@ -407,15 +279,16 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
             {
                 "central_tendency": {
                     "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "mean_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "median_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
-                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
             },
         ),
@@ -426,32 +299,32 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
             {
                 "central_tendency": {
                     "histogram": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "violin":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "mean_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "median_point_ci": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
-                    "ecdf_gap":   {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "density":    {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
-                    "probability":{"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "density": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "probability": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
             },
         ),
     ],
     ids=[
-        "norm_series", "lognorm_series", "gamma_series", "expon_series",
-        "norm_series_with_transforms", "lognorm_series_with_transforms",
-        "gamma_series_with_transforms", "expon_series_with_transforms",
+        "norm_series",
+        "lognorm_series",
+        "gamma_series",
+        "expon_series",
+        "norm_series_with_transforms",
+        "lognorm_series_with_transforms",
+        "gamma_series_with_transforms",
+        "expon_series_with_transforms",
     ],
 )
-def test_numeric_distribution_analysis_param(
-    make_series,
-    kwargs,
-    expected_report_data,
-    tmp_path,
-    assert_report_data
-):
+def test_numeric_distribution_analysis_param(make_series, kwargs, expected_report_data, tmp_path, assert_report_data):
     # Arrange
     s = make_series()
 

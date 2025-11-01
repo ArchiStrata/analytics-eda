@@ -5,7 +5,8 @@ from .central_tendency_histogram_plot import (
     CentralTendencyHistogramContext,
     CentralTendencyHistogramPlot,
 )
-from .central_tendency_violin_plot import CentralTendencyViolinContext, CentralTendencyViolinPlot
+from .central_tendency_mean_point_ci_plot import CentralTendencyMeanPointCIContext, CentralTendencyMeanPointCIPlot
+from .central_tendency_median_point_ci_plot import CentralTendencyMedianPointCIContext, CentralTendencyMedianPointCIPlot
 from .dispersion_box_plot import DispersionBoxPlot, DispersionBoxplotContext
 from .distribution_density_plot import DistributionDensityContext, DistributionDensityPlot
 from .distribution_ecdf_gap_plot import DistributionECDFGapContext, DistributionECDFGapPlot

@@ -29,7 +29,8 @@ from .central_tendency_histogram_plot import (
     CentralTendencyHistogramContext,
     CentralTendencyHistogramPlot,
 )
-from .central_tendency_violin_plot import CentralTendencyViolinContext, CentralTendencyViolinPlot
+from .central_tendency_mean_point_ci_plot import CentralTendencyMeanPointCIContext, CentralTendencyMeanPointCIPlot
+from .central_tendency_median_point_ci_plot import CentralTendencyMedianPointCIContext, CentralTendencyMedianPointCIPlot
 from .dispersion_box_plot import DispersionBoxPlot, DispersionBoxplotContext
 from .distribution_density_plot import DistributionDensityContext, DistributionDensityPlot
 from .distribution_ecdf_gap_plot import DistributionECDFGapContext, DistributionECDFGapPlot
@@ -42,22 +43,24 @@ from .distribution_qq_fit_plot import DistributionQqFitContext, DistributionQqFi
 
 logger = logging.getLogger(__name__)
 
+
 def numeric_distribution_analysis(
     series: pd.Series,
     is_discrete: bool,
     report_path: Path,
     report_log_id: str = str(uuid.uuid4()),
-    distribution_names: Sequence[str] = ('norm', 'lognorm', 'gamma', 'expon'),
+    distribution_names: Sequence[str] = ("norm", "lognorm", "gamma", "expon"),
     evaluate_transforms_fn: Callable[[pd.Series, dict, dict, Path], dict] | None = None,
     data_source: str | None = None,
     filter_desc: str | None = None,
     transform_desc: str | None = None,
     plot_central_tendency_histogram_overrides: dict[str, Any] | None = None,
-    plot_central_tendency_violin_overrides: dict[str, Any] | None = None,
+    plot_central_tendency_mean_point_ci_overrides: dict[str, Any] | None = None,
+    plot_central_tendency_median_point_ci_overrides: dict[str, Any] | None = None,
     plot_dispersion_boxplot_overrides: dict[str, Any] | None = None,
     plot_distribution_ecdf_gap_overrides: dict[str, Any] | None = None,
     plot_distribution_ecdf_vs_cdf_overrides: dict[str, Any] | None = None,
-    plot_distribution_density_overrides:      dict[str, Any] | None = None,
+    plot_distribution_density_overrides: dict[str, Any] | None = None,
     plot_distribution_qq_fit_overrides: dict[str, Any] | None = None,
     plot_distribution_probability_overrides: dict[str, Any] | None = None,
 ) -> dict:
@@ -93,13 +96,7 @@ def numeric_distribution_analysis(
     """
     cleaned_series = numeric_validator().validate(series)
 
-    logger.info(
-        "Starting numeric_distribution_analysis",
-        extra={
-            'series_name': cleaned_series.name,
-            'report_log_id': report_log_id
-        }
-    )
+    logger.info("Starting numeric_distribution_analysis", extra={"series_name": cleaned_series.name, "report_log_id": report_log_id})
 
     # Convenience: base context kwargs shared by all plots
     common_base = {
@@ -119,13 +116,21 @@ def numeric_distribution_analysis(
     )
     central_tendency["histogram"] = CentralTendencyHistogramPlot(hist_ctx).run(cleaned_series)
 
-
-    violin_ctx = build_plot_context(
-        CentralTendencyViolinContext,
+    # Mean: point + CI
+    mean_ctx = build_plot_context(
+        CentralTendencyMeanPointCIContext,
         base=common_base,
-        overrides=plot_central_tendency_violin_overrides,
+        overrides=plot_central_tendency_mean_point_ci_overrides,
     )
-    central_tendency["violin"] = CentralTendencyViolinPlot(violin_ctx).run(cleaned_series)
+    central_tendency["mean_point_ci"] = CentralTendencyMeanPointCIPlot(mean_ctx).run(cleaned_series)
+
+    # Median: point + CI
+    median_ctx = build_plot_context(
+        CentralTendencyMedianPointCIContext,
+        base=common_base,
+        overrides=plot_central_tendency_median_point_ci_overrides,
+    )
+    central_tendency["median_point_ci"] = CentralTendencyMedianPointCIPlot(median_ctx).run(cleaned_series)
 
     # TODO: Central Tendency time series analysis
     # * Trend Direction
@@ -158,7 +163,6 @@ def numeric_distribution_analysis(
     )
     shape["ecdf_gap"] = DistributionECDFGapPlot(ecdf_gap_ctx).run(cleaned_series)
 
-
     # Density plot
     dens_ctx = build_plot_context(
         DistributionDensityContext,
@@ -174,7 +178,6 @@ def numeric_distribution_analysis(
         overrides=plot_distribution_probability_overrides,
     )
     shape["probability"] = DistributionProbabilityFunctionPlot(prob_ctx).run(cleaned_series)
-
 
     # Fit each theoretical distribution
     distribution_fits = {}
@@ -195,13 +198,13 @@ def numeric_distribution_analysis(
             "qq_fit": DistributionQqFitPlot(qq_ctx).run(cleaned_series),
         }
 
-    shape['distribution_fits'] = distribution_fits
+    shape["distribution_fits"] = distribution_fits
 
     # optionally evaluate transforms on the 'norm' residuals
-    if evaluate_transforms_fn and 'norm' in distribution_fits:
-        norm_qq = distribution_fits['norm']['qq_fit']
-        descriptive_stats   = norm_qq['descriptive_stats']
-        inferential_stats   = norm_qq.get('inferential_stats', {})
+    if evaluate_transforms_fn and "norm" in distribution_fits:
+        norm_qq = distribution_fits["norm"]["qq_fit"]
+        descriptive_stats = norm_qq["descriptive_stats"]
+        inferential_stats = norm_qq.get("inferential_stats", {})
         transforms_meta = evaluate_transforms_fn(
             series=cleaned_series,
             is_discrete=is_discrete,
@@ -213,7 +216,8 @@ def numeric_distribution_analysis(
             filter_desc=filter_desc,
             distribution_names=distribution_names,
             plot_central_tendency_histogram_overrides=plot_central_tendency_histogram_overrides,
-            plot_central_tendency_violin_overrides=plot_central_tendency_violin_overrides,
+            plot_central_tendency_mean_point_ci_overrides=plot_central_tendency_mean_point_ci_overrides,
+            plot_central_tendency_median_point_ci_overrides=plot_central_tendency_median_point_ci_overrides,
             plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
             plot_distribution_ecdf_gap_overrides=plot_distribution_ecdf_gap_overrides,
             plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,
@@ -222,38 +226,16 @@ def numeric_distribution_analysis(
             plot_distribution_probability_overrides=plot_distribution_probability_overrides,
         )
         # expose only the inner mapping of name → analysis
-        shape['transforms'] = transforms_meta.get('transforms', {})
+        shape["transforms"] = transforms_meta.get("transforms", {})
 
-    logger.info(
-        "Completed numeric_distribution_analysis",
-        extra={
-            'series_name': cleaned_series.name,
-            'report_log_id': report_log_id
-        }
-    )
+    logger.info("Completed numeric_distribution_analysis", extra={"series_name": cleaned_series.name, "report_log_id": report_log_id})
 
-    distribution_report = {
-            'central_tendency': central_tendency,
-            'dispersion': dispersion,
-            'shape': shape
-        }
+    distribution_report = {"central_tendency": central_tendency, "dispersion": dispersion, "shape": shape}
 
-    full_report = {
-        'metadata': {
-            'version': '1.0.0',
-            'report_name': 'numeric_distribution_analysis',
-            'parameters': {
-                'series': cleaned_series.name,
-                'distribution_names': distribution_names
-            }
-        },
-        'data': distribution_report
-    }
+    full_report = {"metadata": {"version": "1.0.0", "report_name": "numeric_distribution_analysis", "parameters": {"series": cleaned_series.name, "distribution_names": distribution_names}}, "data": distribution_report}
 
     report_file_name = f"{cleaned_series.name.replace(' ', '_')}_numeric_distribution_analysis_report.json"
     report_file_path = report_path / report_file_name
     write_json_report(full_report, report_file_path)
 
-    return {
-        'report_file_path': report_file_name
-    }
+    return {"report_file_path": report_file_name}

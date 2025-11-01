@@ -1,7 +1,21 @@
+minimum_pre_commit_version: "4.0.0"
 repos:
+  # 1) FORMAT FIRST
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9 # set to a specific released tag you’re happy with
+    rev: v0.6.9
     hooks:
-      - id: ruff
-        args: [--fix]
       - id: ruff-format
+      - id: ruff
+        # 2) then LINT + fix; enable unsafe fixes so UP038 is auto-fixed
+        args: [--fix, --unsafe-fixes]
+  # 3A) Run tests from your active environment (fastest if you always commit from an activated venv)
+  - repo: local
+    hooks:
+      - id: pytest-with-coverage
+        name: pytest (with coverage threshold)
+        entry: conda
+        language: system
+        args: [run, -n, analytics_eda, python, -m, pytest, -q, --cov-branch]
+        pass_filenames: false
+        types: [python]
+        stages: [pre-commit]

@@ -39,8 +39,9 @@ class CentralTendencyHistogramContext(PlotContext):
 
     # plot-specific knob
     bins: int | None = None  # if None, use choose_bins
-    min_peak_strength: float = 0.05            # suppress modes if weaker than this fraction
-    max_mode_lines: int = 3                    # hard cap on how many mode lines to draw
+    min_peak_strength: float = 0.05  # suppress modes if weaker than this fraction
+    max_mode_lines: int = 3  # hard cap on how many mode lines to draw
+
 
 class CentralTendencyHistogramPlot(BasePlot):
     """
@@ -61,9 +62,7 @@ class CentralTendencyHistogramPlot(BasePlot):
     """
 
     def __init__(self, ctx):
-        parts = PlotParts(
-            series_validator=numeric_validator()
-        )
+        parts = PlotParts(series_validator=numeric_validator())
         super().__init__(ctx, parts)
 
     def plot_semantic_version(self) -> str:
@@ -98,12 +97,12 @@ class CentralTendencyHistogramPlot(BasePlot):
             b = self.ctx.bins
 
             # int-like (Python int or numpy integer)
-            if isinstance(b, (int, np.integer)):
+            if isinstance(b, int | np.integer):
                 chosen_bins = max(int(b), 1)
                 bin_rule = "explicit:int"
 
             # array-like edges (list/tuple/ndarray) -> must be monotonic increasing with >= 2 edges
-            elif isinstance(b, (list, tuple, np.ndarray)):
+            elif isinstance(b, list | tuple | np.ndarray):
                 edges = np.asarray(b, dtype=float)
 
                 # Valid edges require at least 2 unique, strictly increasing values
@@ -127,21 +126,31 @@ class CentralTendencyHistogramPlot(BasePlot):
         else:
             chosen_bins, bin_rule = choose_bins(x)
 
-        bins_arg = (chosen_bins if (isinstance(chosen_bins, (list, tuple, np.ndarray)) and len(chosen_bins) > 0)
-                    else (max(int(chosen_bins), 1) if isinstance(chosen_bins, int) else 1))
+        bins_arg = chosen_bins if (isinstance(chosen_bins, list | tuple | np.ndarray) and len(chosen_bins) > 0) else (max(int(chosen_bins), 1) if isinstance(chosen_bins, int) else 1)
 
-        mean = float(x.mean()) if n else None
-        mean_round_decimals = self.formatter.mean_decimals_from_series(x)
-        mean_formatted = self.formatter.format_numeric_value(mean, decimals=mean_round_decimals)
+        # Mean / Median with ReportFormatter
+        mean, mean_round_decimals, mean_formatted = self.formatter.format_mean(x)
+        median, median_round_decimals, median_formatted = self.formatter.format_median(x)
 
-        median = float(x.median()) if n else None
-        median_round_decimals = self.formatter.median_decimals_from_series(x, median)
-        median_formatted = self.formatter.format_numeric_value(median, decimals=median_round_decimals)
+        # --- Mean − Median Delta (with consistent precision) ---
+        if (mean is not None and np.isfinite(mean)) and (median is not None and np.isfinite(median)):
+            mean_median_delta = float(mean - median)
+            mean_median_delta_round_decimals = int(max(mean_round_decimals, median_round_decimals))
+            mean_median_delta_formatted = self.formatter.format_numeric_value(mean_median_delta, decimals=mean_median_delta_round_decimals)
+        else:
+            mean_median_delta = None
+            mean_median_delta_round_decimals = int(
+                max(
+                    int(mean_round_decimals) if mean_round_decimals is not None else 0,
+                    int(median_round_decimals) if median_round_decimals is not None else 0,
+                )
+            )
+            mean_median_delta_formatted = self.formatter.format_numeric_value(None)
 
         # Defaults
         mode_method: str | None = None
         candidate_modes: list[float] = []
-        modality: str = "none"          # "unimodal" | "bimodal" | "multimodal" | "none"
+        modality: str = "none"  # "unimodal" | "bimodal" | "multimodal" | "none"
         peak_strength: float = None  # fraction of observations in the strongest peak
 
         if n == 0:
@@ -180,9 +189,7 @@ class CentralTendencyHistogramPlot(BasePlot):
 
                 candidate_modes = [float(0.5 * (edges[i] + edges[i + 1])) for i in top_bins]
                 mode_method = "histogram_bin_centers"
-                modality = ("unimodal" if len(candidate_modes) == 1
-                            else "bimodal" if len(candidate_modes) == 2
-                            else "multimodal")
+                modality = "unimodal" if len(candidate_modes) == 1 else "bimodal" if len(candidate_modes) == 2 else "multimodal"
 
         params = {
             "bins": self.ctx.bins,
@@ -192,6 +199,8 @@ class CentralTendencyHistogramPlot(BasePlot):
             "max_mode_lines": int(self.ctx.max_mode_lines),
             "bin_rule": bin_rule,
             "mean_round_decimals": int(mean_round_decimals),
+            "median_round_decimals": int(median_round_decimals),
+            "mean_median_delta_round_decimals": int(mean_median_delta_round_decimals),
         }
         return {
             "params": params,
@@ -200,6 +209,8 @@ class CentralTendencyHistogramPlot(BasePlot):
             "mean_formatted": mean_formatted,
             "median": median,
             "median_formatted": median_formatted,
+            "mean_median_delta": mean_median_delta,
+            "mean_median_delta_formatted": mean_median_delta_formatted,
             "modes": candidate_modes,
             "modality": modality,
             "peak_strength": peak_strength,
@@ -214,6 +225,9 @@ class CentralTendencyHistogramPlot(BasePlot):
 
         median = desc.get("median")
         median_formatted = desc.get("median_formatted")
+
+        delta = desc.get("mean_median_delta")
+        delta_formatted = desc.get("mean_median_delta_formatted")
 
         modes = desc.get("modes", [])
         modality = desc.get("modality", "none")
@@ -239,12 +253,16 @@ class CentralTendencyHistogramPlot(BasePlot):
 
         # Secondary finding: relationship between mean and median
         if not np.isnan(mean) and not np.isnan(median):
-            if abs(mean - median) < 1e-6:  # effectively equal
+            if abs(delta) < 1e-6:
                 secondary = f"Mean and median are nearly identical at {mean_formatted}, suggesting a symmetric distribution."
             elif mean > median:
-                secondary = f"Mean ({mean_formatted}) is greater than median ({median_formatted}), suggesting right-skew."
+                secondary = (
+                    f"Mean ({mean_formatted}) exceeds median ({median_formatted}) " f"by {delta_formatted}, suggesting right-skew." if delta is not None else f"Mean ({mean_formatted}) exceeds median ({median_formatted}), suggesting right-skew."
+                )
             else:
-                secondary = f"Mean ({mean_formatted}) is less than median ({median_formatted}), suggesting left-skew."
+                secondary = (
+                    f"Mean ({mean_formatted}) is below median ({median_formatted}) " f"by {delta_formatted}, suggesting left-skew." if delta is not None else f"Mean ({mean_formatted}) is below median ({median_formatted}), suggesting left-skew."
+                )
         else:
             secondary = None
 
@@ -311,25 +329,19 @@ class CentralTendencyHistogramPlot(BasePlot):
         sns.histplot(s, bins=bins_arg, ax=ax, color=self.neutral_grey(variant="light"))
 
         if desc["n"] > 0:
-            mean  = desc.get("mean")
-            mtxt  = desc.get("mean_formatted")
+            mean = desc.get("mean")
+            mtxt = desc.get("mean_formatted")
             median = desc.get("median")
-            mdtxt  = desc.get("median_formatted")
+            mdtxt = desc.get("median_formatted")
 
             # Colorblind-friendly fallbacks
-            mean_color   = palette[0]
+            mean_color = palette[0]
             median_color = palette[1]
-            mode_color   = palette[2]
+            mode_color = palette[2]
 
             # Distinct styles + slightly thicker lines + on top of bars
-            ax.axvline(
-                mean, color=mean_color, linestyle="--", linewidth=2.0, zorder=3,
-                label=f"Mean = {mtxt}"
-            )
-            ax.axvline(
-                median, color=median_color, linestyle="-.", linewidth=2.0, zorder=3,
-                label=f"Median = {mdtxt}"
-            )
+            ax.axvline(mean, color=mean_color, linestyle="--", linewidth=2.0, zorder=3, label=f"Mean = {mtxt}")
+            ax.axvline(median, color=median_color, linestyle="-.", linewidth=2.0, zorder=3, label=f"Median = {mdtxt}")
 
             # Modes (guard + cap). Use dotted style; vary shade if multiple.
             candidate_modes = desc.get("modes", []) or []
@@ -341,10 +353,6 @@ class CentralTendencyHistogramPlot(BasePlot):
                 for i, center in enumerate(to_draw, start=1):
                     label = "Mode" if len(to_draw) == 1 else f"Mode {i}"
                     # Slight variation in alpha for multiple modes to avoid color collisions
-                    ax.axvline(
-                        center,
-                        color=mode_color, linestyle=":", linewidth=1.8, alpha=0.9 - 0.1*(i-1),
-                        zorder=3, label=f"{label} ≈ {self.formatter.format_numeric_value(center)}"
-                    )
+                    ax.axvline(center, color=mode_color, linestyle=":", linewidth=1.8, alpha=0.9 - 0.1 * (i - 1), zorder=3, label=f"{label} ≈ {self.formatter.format_numeric_value(center)}")
 
         return fig, ax

@@ -34,7 +34,8 @@ def evaluate_transforms(
     filter_desc: str | None = None,
     distribution_names=None,
     plot_central_tendency_histogram_overrides=None,
-    plot_central_tendency_violin_overrides: dict[str, Any] | None = None,
+    plot_central_tendency_mean_point_ci_overrides: dict[str, Any] | None = None,
+    plot_central_tendency_median_point_ci_overrides: dict[str, Any] | None = None,
     plot_dispersion_boxplot_overrides=None,
     plot_distribution_ecdf_gap_overrides=None,
     plot_distribution_ecdf_vs_cdf_overrides=None,
@@ -87,7 +88,8 @@ def evaluate_transforms(
             transform_desc=f"{transform_name} transform",
             distribution_names=distribution_names,
             plot_central_tendency_histogram_overrides=plot_central_tendency_histogram_overrides,
-            plot_central_tendency_violin_overrides=plot_central_tendency_violin_overrides,
+            plot_central_tendency_mean_point_ci_overrides=plot_central_tendency_mean_point_ci_overrides,
+            plot_central_tendency_median_point_ci_overrides=plot_central_tendency_median_point_ci_overrides,
             plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
             plot_distribution_ecdf_gap_overrides=plot_distribution_ecdf_gap_overrides,
             plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,
@@ -98,6 +100,4 @@ def evaluate_transforms(
 
         transforms[transform_name] = analysis_meta
 
-    return {
-        'transforms': transforms
-    }
+    return {"transforms": transforms}

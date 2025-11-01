@@ -74,7 +74,7 @@ _(default_inferential, compute_inferential, compute_inferential_frame)_
 
 ### Draft Inferential Findings (recommended)
 
-Implement `draft_inferential_findings(inf) -> Dict[str, Any]` to emit short, human-readable statements derived strictly from `inf` (optionally using `desc` for added context).  
+Implement `draft_inferential_findings(inf, desc) -> Dict[str, Any]` to emit short, human-readable statements derived strictly from `inf` (optionally using `desc` for added context).  
 Findings are **plot-scoped** — each plot communicates only the inference it was designed to test.
 
 #### Standard schema (required keys)

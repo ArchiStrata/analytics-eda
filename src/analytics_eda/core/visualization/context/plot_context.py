@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Plot context and axis-format primitives for Analytics-EDA."""
+
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 Desc = str | Sequence[str] | None
+
 
 @dataclass
 class AxisFormat:
@@ -31,19 +33,20 @@ class AxisFormat:
     kind: Literal["auto", "number", "percent", "currency", "category", "datetime"] = "auto"
 
     # Number/percent/currency options
-    decimals: int | None = None         # e.g., 0, 1, 2; None = don't force
-    thousands_sep: bool = True             # 12,345 vs 12345
-    unit_suffix: str | None = None      # e.g., "ms", "kg" (appended after value)
-    currency_code: str | None = None    # e.g., "USD" (used if kind == "currency")
+    decimals: int | None = None  # e.g., 0, 1, 2; None = don't force
+    thousands_sep: bool = True  # 12,345 vs 12345
+    unit_suffix: str | None = None  # e.g., "ms", "kg" (appended after value)
+    currency_code: str | None = None  # e.g., "USD" (used if kind == "currency")
 
     # Percent options
-    percent_scale_0to1: bool = True        # True if data are proportions (0..1)
+    percent_scale_0to1: bool = True  # True if data are proportions (0..1)
 
     # Datetime options
     datetime_format: str | None = None  # e.g., "%Y-%m-%d"
 
     # Escape hatch: custom formatter
     formatter: Callable[[float], str] | None = None
+
 
 @dataclass
 class PlotContext:
@@ -61,9 +64,9 @@ class PlotContext:
     extra_desc: Desc = None
     title_fmt: dict[str, Any] | None = None
     title_template: str = "{name}{modifiers}"
-    show_subtitle: bool = False   # auto-draw a subtitle if provided by the plot
+    show_subtitle: bool = False  # auto-draw a subtitle if provided by the plot
 
-    is_orientation_vertical: bool = True   # True = vertical bars/values on Y; False = horizontal
+    is_orientation_vertical: bool = True  # True = vertical bars/values on Y; False = horizontal
     xlabel: str = ""
     ylabel: str = ""
     data_source: str | None = None
@@ -76,7 +79,7 @@ class PlotContext:
     file_name: str | None = None
     show: bool = False
 
-    enable_legend: bool = False # draw a legend when True
+    enable_legend: bool = False  # draw a legend when True
 
     x_format: AxisFormat = field(default_factory=AxisFormat)
     y_format: AxisFormat = field(default_factory=AxisFormat)
@@ -86,10 +89,11 @@ class PlotContext:
     headroom_label_offset: float = 0.02
     headroom_extra_pad: float = 0.04
     headroom_max_extra: float = 0.20
-    headroom_use_text_extents: bool = True        # measure label text bboxes to set limits
-    headroom_preserve_symmetry: bool = False      # keep +/- limits symmetric when expanding
-    headroom_axis: Literal["auto","x","y"] = "auto"  # which axis to expand (auto = by orientation)
+    headroom_use_text_extents: bool = True  # measure label text bboxes to set limits
+    headroom_preserve_symmetry: bool = False  # keep +/- limits symmetric when expanding
+    headroom_axis: Literal["auto", "x", "y"] = "auto"  # which axis to expand (auto = by orientation)
 
     # Report Formatting
     report_default_decimals: int = 2
+    report_max_decimals: int = 6
     report_default_unit: str | None = None

@@ -53,7 +53,7 @@ where = ["src"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 # add command-line flags by default
-addopts = "--strict-markers --tb=short --maxfail=1 --cov=src --cov-report=term-missing"
+addopts = "--strict-markers --tb=short --maxfail=1 --cov=src --cov-report=term-missing --cov-fail-under=85"
 
 # Configure https://github.com/astral-sh/ruff
 # --- Ruff (linter + formatter) ----------------------------------------------

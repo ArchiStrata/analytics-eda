@@ -30,6 +30,7 @@ class DispersionBoxplotContext(PlotContext):
 
     title_template: str = "Dispersion of {name}{modifiers} (IQR & Outliers)"
     ylabel: str = "Value"
+    show_footer_summary: bool = True
 
     # plot-specific knobs
     std_outlier_multiplier: float = 4.0
@@ -114,7 +115,7 @@ class DispersionBoxPlot(BasePlot):
         extreme_lower_count = int((s < extreme_lower_bound).sum())
         extreme_upper_count = int((s > extreme_upper_bound).sum())
 
-        return {
+        desc = {
             "params": {"std_outlier_multiplier": m},
             "n": n,
             "mean": mean,
@@ -136,6 +137,16 @@ class DispersionBoxPlot(BasePlot):
             "extreme_upper_bound": extreme_upper_bound,
         }
 
+        if n == 0:
+            desc["skip_plot"] = True
+            desc["error"] = "no data to display"
+
+        return desc
+
+    def footer_summary_text(self, desc: dict[str, Any], inf: dict[str, Any], chart_metadata: dict[str, Any]) -> str:
+        """Return a compact footer summary string (e.g., sample size)."""
+        return f"n = {desc['n']}"
+
     def draw(
         self,
         s: pd.Series,
@@ -148,7 +159,6 @@ class DispersionBoxPlot(BasePlot):
         palette,
     ):
         """Render violin silhouette, boxplot, outlier bands/points, lines, legend, and stats box."""
-        # TODO: safe report format when descriptive stats are None.
         # 1) Thin violin silhouette behind box
         parts = ax.violinplot(
             s.to_numpy(),
@@ -181,34 +191,58 @@ class DispersionBoxPlot(BasePlot):
             zorder=2,
         )
 
-        # Mean dot
-        mean = desc["mean"]
-        ax.scatter([0], [mean], color=palette[1], marker="o", s=60, zorder=4, label=f"Mean = {mean:.2f}")
+        # --- Safe pulls
+        mean = desc.get("mean")
+        std = desc.get("std")
+        var_ = desc.get("var")
+        min_ = desc.get("min")
+        max_ = desc.get("max")
+        rng = desc.get("range")
+        mad = desc.get("mad")
+        cv = desc.get("cv")
+        iqr = desc.get("iqr")
+        pct10 = desc.get("pct_10")
+        pct90 = desc.get("pct_90")
 
-        # Extremes (±kσ) lines and counts
+        # 3) Mean dot (only if finite)
+        if self.is_finite(mean):
+            ax.scatter([0], [mean], color=palette[1], marker="o", s=60, zorder=4, label=f"Mean = {self.formatter.format_numeric_value(mean, decimals=2)}")
+
+        # 4) σ-bands and extreme counts (only if mean & std are finite)
         m = desc["params"]["std_outlier_multiplier"]
-        lower_bound = desc["mean"] - m * desc["std"]
-        upper_bound = desc["mean"] + m * desc["std"]
-        ax.axhline(lower_bound, color=palette[2], linestyle="--", label=f"Lower {m}σ = {lower_bound:.2f} ({desc['extreme_lower_count']})")
-        ax.axhline(upper_bound, color=palette[3], linestyle="--", label=f"Upper {m}σ = {upper_bound:.2f} ({desc['extreme_upper_count']})")
+        if self.is_finite(mean) and self.is_finite(std):
+            lower_bound = mean - m * std
+            upper_bound = mean + m * std
 
-        # Highlight extreme points
-        lower_mask = s < lower_bound
-        upper_mask = s > upper_bound
-        if lower_mask.any():
-            ax.scatter([0] * int(lower_mask.sum()), s[lower_mask], color=palette[2], zorder=3)
-        if upper_mask.any():
-            ax.scatter([0] * int(upper_mask.sum()), s[upper_mask], color=palette[3], zorder=3)
+            ax.axhline(lower_bound, color=palette[2], linestyle="--", label=f"Lower {m}σ = {self.formatter.format_numeric_value(lower_bound, decimals=2)} ({int(desc.get('extreme_lower_count', 0))})")
+            ax.axhline(upper_bound, color=palette[3], linestyle="--", label=f"Upper {m}σ = {self.formatter.format_numeric_value(upper_bound, decimals=2)} ({int(desc.get('extreme_upper_count', 0))})")
 
-        # 10th/90th percentile lines
-        ax.axhline(desc["pct_10"], color="purple", linestyle=":", label=f"10th pct = {desc['pct_10']:.2f}")
-        ax.axhline(desc["pct_90"], color="purple", linestyle=":", label=f"90th pct = {desc['pct_90']:.2f}")
+            # Highlight extreme points
+            lower_mask = s < lower_bound
+            upper_mask = s > upper_bound
+            if lower_mask.any():
+                ax.scatter([0] * int(lower_mask.sum()), s[lower_mask], color=palette[2], zorder=3)
+            if upper_mask.any():
+                ax.scatter([0] * int(upper_mask.sum()), s[upper_mask], color=palette[3], zorder=3)
+
+        # 5) 10th/90th percentile lines (only if finite)
+        if self.is_finite(pct10):
+            ax.axhline(pct10, color="purple", linestyle=":", label=f"10th pct = {self.formatter.format_numeric_value(pct10, decimals=2)}")
+        if self.is_finite(pct90):
+            ax.axhline(pct90, color="purple", linestyle=":", label=f"90th pct = {self.formatter.format_numeric_value(pct90, decimals=2)}")
 
         ax.legend(loc="upper left", fontsize="small", frameon=False)
 
-        # Dispersion stats textbox
+        # 7) Dispersion stats textbox — use safe formatter (returns "NA" for None/NaN)
         text = (
-            f"Std Dev = {desc['std']:.2f}\n" f"Variance = {desc['var']:.2f}\n" f"Min = {desc['min']:.2f}, Max = {desc['max']:.2f}\n" f"Range = {desc['range']:.2f}\n" f"MAD = {desc['mad']:.2f}\n" f"CV = {desc['cv']:.2f}\n" f"IQR = {desc['iqr']:.2f}"
+            f"Std Dev = {self.formatter.format_numeric_value(std,  decimals=2)}\n"
+            f"Variance = {self.formatter.format_numeric_value(var_, decimals=2)}\n"
+            f"Min = {self.formatter.format_numeric_value(min_, decimals=2)}, "
+            f"Max = {self.formatter.format_numeric_value(max_, decimals=2)}\n"
+            f"Range = {self.formatter.format_numeric_value(rng,  decimals=2)}\n"
+            f"MAD = {self.formatter.format_numeric_value(mad,  decimals=2)}\n"
+            f"CV = {self.formatter.format_numeric_value(cv,   decimals=2)}\n"
+            f"IQR = {self.formatter.format_numeric_value(iqr, decimals=2)}"
         )
         ax.text(
             0.95,
@@ -220,8 +254,5 @@ class DispersionBoxPlot(BasePlot):
             fontsize="small",
             bbox=dict(boxstyle="round", facecolor="white", alpha=0.5),
         )
-
-        # Sample size footer (BasePlot.run will add data_source footer if present)
-        fig.text(0.99, 0.01, f"n = {desc['n']}", ha="right", va="bottom", fontsize="small", color="gray")
 
         return fig, ax

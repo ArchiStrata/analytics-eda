@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from analytics_eda.core.visualization.context.plot_context import PlotContext
@@ -316,6 +317,10 @@ class BasePlot(ABC):
             self._draw_clear()
 
     # ----------------- unified validation dispatchers -----------------
+    def is_finite(self, x):
+        """Check if the value is finite."""
+        return x is not None and np.isfinite(x)
+
     def _validate_series(self, s_in: pd.Series) -> pd.Series:
         """Prefer injected SeriesValidator; fall back to `validate()`.
 
