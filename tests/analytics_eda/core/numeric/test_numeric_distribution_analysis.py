@@ -43,6 +43,8 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "sigma_bands": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "percentiles": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
                     "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
@@ -180,6 +182,8 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "sigma_bands": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "percentiles": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
                     "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
@@ -200,6 +204,8 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "sigma_bands": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "percentiles": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
                     "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
@@ -220,6 +226,8 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "sigma_bands": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "percentiles": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
                     "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
@@ -243,6 +251,8 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "sigma_bands": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "percentiles": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
                     "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
@@ -264,6 +274,8 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "sigma_bands": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "percentiles": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
                     "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
@@ -284,6 +296,8 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "sigma_bands": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "percentiles": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
                     "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
@@ -304,6 +318,8 @@ def test_validate_numeric_named_series_errors(make_input, exc, pattern, tmp_path
                 },
                 "dispersion": {
                     "boxplot": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "sigma_bands": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
+                    "percentiles": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},
                 },
                 "shape": {
                     "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}, "descriptive_stats": {}},

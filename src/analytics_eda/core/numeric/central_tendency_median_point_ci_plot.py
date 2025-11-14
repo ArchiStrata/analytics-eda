@@ -66,7 +66,19 @@ class CentralTendencyMedianPointCIContext(PlotContext):
 
 
 class CentralTendencyMedianPointCIPlot(BasePlot):
-    """Single point (median) with CI and optional one-sample tests (Wilcoxon, sign)."""
+    """Median point ± CI for robust central-tendency reporting.
+
+    Why this matters:
+    Decision makers often need a location estimate that is resilient to outliers and skew.
+    A median with its confidence interval communicates the typical value and its uncertainty
+    without distributional clutter.
+
+    What this plot does:
+    Computes the sample median and an optional confidence interval (bootstrap or none),
+    renders a single horizontal point with error bars, and—if a population median is
+    provided—runs one-sample tests (Wilcoxon signed-rank and binomial sign test) and
+    summarizes their results for concise, evidence-based interpretation.
+    """
 
     def __init__(self, ctx: CentralTendencyMedianPointCIContext):
         parts = PlotParts(series_validator=numeric_validator())
@@ -79,10 +91,7 @@ class CentralTendencyMedianPointCIPlot(BasePlot):
     def default_descriptive(self) -> dict[str, Any]:
         """Return default descriptive payload for an empty or invalid series."""
         return {
-            "params": {
-                "median_ci_method": self.ctx.median_ci_method,
-                "ci_level": 1.0 - float(self.ctx.alpha),
-            },
+            "params": {"median_ci_method": self.ctx.median_ci_method, "ci_level": 1.0 - float(self.ctx.alpha), "alpha": self.ctx.alpha, "bootstrap_samples": self.ctx.bootstrap_samples},
             "n": 0,
             "median": None,
             "median_formatted": "NA",
@@ -116,11 +125,7 @@ class CentralTendencyMedianPointCIPlot(BasePlot):
             raise ValueError("median_ci_method must be 'bootstrap' or None")
 
         return {
-            "params": {
-                "median_ci_method": self.ctx.median_ci_method,
-                "alpha": self.ctx.alpha,
-                "ci_level": 1.0 - float(self.ctx.alpha),
-            },
+            "params": {"median_ci_method": self.ctx.median_ci_method, "alpha": self.ctx.alpha, "ci_level": 1.0 - float(self.ctx.alpha), "bootstrap_samples": self.ctx.bootstrap_samples},
             "n": n,
             "median": median,
             "median_formatted": median_fmt,
@@ -209,6 +214,7 @@ class CentralTendencyMedianPointCIPlot(BasePlot):
                 "num_positive": pos,
                 "num_negative": n_sign - pos,
                 "n": n_sign,
+                "statistic": float(bt.statistic),
                 "p_value": float(bt.pvalue),
                 "alpha": float(self.ctx.alpha),
                 "reject": bool(bt.pvalue < self.ctx.alpha),
@@ -287,7 +293,7 @@ class CentralTendencyMedianPointCIPlot(BasePlot):
             if usable(w):
                 wp = fmt.format_p_value(w["p_value"])
                 wrej = "(reject)" if w["reject"] else "(ns)"
-                out["secondary_finding"] = f"Wilcoxon signed-rank: p = {wp} {wrej}."
+                out["secondary_finding"] = f"Wilcoxon signed-rank: {wp} {wrej}."
                 # Enrich context further with Wilcoxon W and r (still not changing the sentences)
                 out["context"] += " • Wilcoxon" + wilcoxon_context_bits(w)
             return out
@@ -308,7 +314,7 @@ class CentralTendencyMedianPointCIPlot(BasePlot):
                 sp = fmt.format_p_value(s["p_value"])
                 srej = "(reject)" if s["reject"] else "(ns)"
                 # Secondary (unchanged sentence)
-                out["secondary_finding"] = f"Sign test (robust check): p = {sp} {srej}."
+                out["secondary_finding"] = f"Sign test (robust check): {sp} {srej}."
                 # Enrich context with sign-test counts
                 out["context"] += " • Sign test" + sign_context_bits(s)
             return out

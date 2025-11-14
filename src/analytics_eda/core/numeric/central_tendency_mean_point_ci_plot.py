@@ -93,10 +93,7 @@ class CentralTendencyMeanPointCIPlot(BasePlot):
     def default_descriptive(self) -> dict[str, Any]:
         """Return default descriptive payload for an empty or invalid series."""
         return {
-            "params": {
-                "mean_ci_method": self.ctx.mean_ci_method,
-                "ci_level": 1.0 - float(self.ctx.alpha),
-            },
+            "params": {"mean_ci_method": self.ctx.mean_ci_method, "ci_level": 1.0 - float(self.ctx.alpha), "alpha": self.ctx.alpha, "bootstrap_samples": self.ctx.bootstrap_samples},
             "n": 0,
             "mean": None,
             "mean_formatted": "NA",
@@ -135,7 +132,7 @@ class CentralTendencyMeanPointCIPlot(BasePlot):
             mean_ci = (None, None)
 
         return {
-            "params": {"mean_ci_method": self.ctx.mean_ci_method, "ci_level": 1.0 - float(self.ctx.alpha), "alpha": self.ctx.alpha},
+            "params": {"mean_ci_method": self.ctx.mean_ci_method, "ci_level": 1.0 - float(self.ctx.alpha), "alpha": self.ctx.alpha, "bootstrap_samples": self.ctx.bootstrap_samples},
             "n": n,
             "mean": mean,
             "mean_formatted": mean_fmt,
@@ -189,9 +186,9 @@ class CentralTendencyMeanPointCIPlot(BasePlot):
         mean = desc["mean"]
         out["popmean"] = {}
 
-        if n >= 2 and mean is not None:
+        if n >= 2 and mean is not None and np.isfinite(mean):
             sd = float(s.std(ddof=1))
-            cohens_d = (mean - self.ctx.popmean) / sd if (sd != 0 and mean is not None) else None
+            cohens_d = (mean - self.ctx.popmean) / sd if (sd > 0 and np.isfinite(sd)) else None
             out["popmean"]["cohens_d"] = None if cohens_d is None else float(cohens_d)
 
             t_stat, t_p = stats.ttest_1samp(s, self.ctx.popmean)
@@ -202,16 +199,17 @@ class CentralTendencyMeanPointCIPlot(BasePlot):
                 "reject": bool(t_p < self.ctx.alpha),
             }
 
-            if self.ctx.popvariance is not None:
+            if self.ctx.popvariance is not None and self.ctx.popvariance >= 0:
                 sigma = float(np.sqrt(self.ctx.popvariance))
-                z = (mean - self.ctx.popmean) / (sigma / np.sqrt(n))
-                z_p = 2 * (1 - stats.norm.cdf(abs(z)))
-                out["popmean"]["z_test"] = {
-                    "statistic": float(z),
-                    "p_value": float(z_p),
-                    "alpha": float(self.ctx.alpha),
-                    "reject": bool(z_p < self.ctx.alpha),
-                }
+                if sigma > 0:
+                    z = (mean - self.ctx.popmean) / (sigma / np.sqrt(n))
+                    z_p = 2 * (1 - stats.norm.cdf(abs(z)))
+                    out["popmean"]["z_test"] = {
+                        "statistic": float(z),
+                        "p_value": float(z_p),
+                        "alpha": float(self.ctx.alpha),
+                        "reject": bool(z_p < self.ctx.alpha),
+                    }
         return out
 
     def draft_inferential_findings(self, inf: dict[str, Any], desc: dict[str, Any]) -> dict[str, Any]:

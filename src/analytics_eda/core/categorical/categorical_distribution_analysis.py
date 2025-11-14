@@ -24,7 +24,7 @@ from analytics_eda.core.visualization.validation import categorical_validator
 
 from ..numeric import (
     DispersionBoxPlot,
-    DispersionBoxplotContext,
+    DispersionBoxPlotContext,
     DistributionDensityContext,
     DistributionDensityPlot,
 )
@@ -40,6 +40,7 @@ from .frequency_pareto_plot import FrequencyParetoContext, FrequencyParetoPlot
 
 logger = logging.getLogger(__name__)
 
+
 def categorical_distribution_analysis(
     series: pd.Series,
     report_path: Path,
@@ -51,7 +52,7 @@ def categorical_distribution_analysis(
     plot_dispersion_boxplot_overrides: dict[str, Any] | None = None,
     plot_balance_chi_square_uniform_overrides: dict[str, Any] | None = None,
     plot_balance_lorenz_curve_overrides: dict[str, Any] | None = None,
-    plot_balance_rare_categories_overrides: dict[str, Any] | None = None
+    plot_balance_rare_categories_overrides: dict[str, Any] | None = None,
 ) -> dict:
     """
     Perform a comprehensive statistical and visual analysis of a categorical Series.
@@ -102,13 +103,7 @@ def categorical_distribution_analysis(
     # validate input
     cleaned_series = categorical_validator().validate(series)
 
-    logger.info(
-        "Starting categorical_distribution_analysis",
-        extra={
-            'series_name': cleaned_series.name,
-            'report_log_id': report_log_id
-        }
-    )
+    logger.info("Starting categorical_distribution_analysis", extra={"series_name": cleaned_series.name, "report_log_id": report_log_id})
 
     # Convenience: base context kwargs shared by all plots
     common_base = {
@@ -156,13 +151,12 @@ def categorical_distribution_analysis(
 
     # Boxplot + Violin (Dispersion)
     box_ctx = build_plot_context(
-        DispersionBoxplotContext,
+        DispersionBoxPlotContext,
         base={**common_base, "ylabel": "Frequency"},
         overrides=plot_dispersion_boxplot_overrides,
     )
     box_plot = DispersionBoxPlot(box_ctx)
     balance["boxplot"] = box_plot.run(freq_counts)
-
 
     # Rare categories
     rare_cat_ctx = build_plot_context(
@@ -192,34 +186,14 @@ def categorical_distribution_analysis(
     balance["lorenz_curve"] = lor_plot.run(cleaned_series)
 
     # compile report
-    distribution_report = {
-        'frequency_distribution': frequency_distribution,
-        'balance': balance
-    }
+    distribution_report = {"frequency_distribution": frequency_distribution, "balance": balance}
 
-    full_report = {
-        'metadata': {
-            'version': '1.0.0',
-            'report_name': 'categorical_distribution_analysis',
-            'parameters': {
-                'series': cleaned_series.name
-            }
-        },
-        'data': distribution_report
-    }
+    full_report = {"metadata": {"version": "1.0.0", "report_name": "categorical_distribution_analysis", "parameters": {"series": cleaned_series.name}}, "data": distribution_report}
 
-    logger.info(
-        "Completed categorical_distribution_analysis",
-        extra={
-            'series_name': cleaned_series.name,
-            'report_log_id': report_log_id
-        }
-    )
+    logger.info("Completed categorical_distribution_analysis", extra={"series_name": cleaned_series.name, "report_log_id": report_log_id})
 
     report_file_name = f"{cleaned_series.name.replace(' ', '_')}_categorical_distribution_analysis_report.json"
     report_file_path = report_path / report_file_name
     write_json_report(full_report, report_file_path)
 
-    return {
-        'report_file_path': report_file_name
-    }
+    return {"report_file_path": report_file_name}

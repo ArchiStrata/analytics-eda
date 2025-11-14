@@ -46,6 +46,14 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import (
                             "chart_metadata": {"data_source": "UnitTest"},
                             "descriptive_stats": {},
                         },
+                        "sigma_bands": {
+                            "chart_metadata": {"data_source": "UnitTest"},
+                            "descriptive_stats": {},
+                        },
+                        "percentiles": {
+                            "chart_metadata": {"data_source": "UnitTest"},
+                            "descriptive_stats": {},
+                        },
                     },
                     "shape": {
                         # We'll assert distribution_fits separately (per distribution)
@@ -160,6 +168,8 @@ from analytics_eda.analysis.univariate.univariate_numeric_analysis import (
                     },
                     "dispersion": {
                         "boxplot": {"chart_metadata": {"data_source": "UnitTest"}},
+                        "sigma_bands": {"chart_metadata": {"data_source": "UnitTest"}},
+                        "percentiles": {"chart_metadata": {"data_source": "UnitTest"}},
                     },
                     "shape": {
                         "ecdf_gap": {"chart_metadata": {"data_source": "UnitTest"}},

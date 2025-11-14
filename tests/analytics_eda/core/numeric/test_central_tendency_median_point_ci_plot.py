@@ -45,15 +45,9 @@ def _is_finite_interval(v):
         # 1) Happy path (bootstrap CI, default alpha=0.05)
         (
             lambda: pd.Series(np.random.default_rng(0).normal(0.0, 1.0, size=120), name="x", dtype="float64"),
-            {"data_source": "UnitTest"},
+            {"data_source": "UnitTest", "file_name": "median_point_ci.png"},
             {
-                "chart_metadata": {
-                    "title": "Median ± CI for x",
-                    "xlabel": "Value",
-                    "ylabel": "",
-                    "data_source": "UnitTest",
-                    "file_name": None,
-                },
+                "chart_metadata": {"title": "Median ± CI for x", "xlabel": "Value", "ylabel": "", "data_source": "UnitTest", "file_name": "median_point_ci.png"},
                 "descriptive_stats": {
                     "n": 120,
                     "median": pytest.approx(0.0, abs=0.2),
@@ -68,14 +62,9 @@ def _is_finite_interval(v):
         # 2) No CI (median_ci_method=None) – still returns median, but CI is (None, None)
         (
             lambda: pd.Series(np.random.default_rng(1).normal(2.0, 0.5, size=80), name="y", dtype="float64"),
-            {"median_ci_method": None, "alpha": 0.10},
+            {"median_ci_method": None, "alpha": 0.10, "file_name": "median_point_ci.png"},
             {
-                "chart_metadata": {
-                    "title": "Median ± CI for y",
-                    "xlabel": "Value",
-                    "ylabel": "",
-                    "file_name": None,
-                },
+                "chart_metadata": {"title": "Median ± CI for y", "xlabel": "Value", "ylabel": "", "file_name": "median_point_ci.png"},
                 "descriptive_stats": {
                     "n": 80,
                     "median": pytest.approx(2.0, abs=0.15),
@@ -91,7 +80,7 @@ def _is_finite_interval(v):
         # 3) Inference: popmedian present → Wilcoxon and Sign test available (structure check)
         (
             lambda: pd.Series(np.random.default_rng(2).normal(0.0, 1.0, size=100), name="z", dtype="float64"),
-            {"popmedian": 0.0, "alpha": 0.05, "bootstrap_samples": 400},
+            {"popmedian": 0.0, "alpha": 0.05, "bootstrap_samples": 400, "file_name": "median_point_ci.png"},
             {
                 "descriptive_stats": {
                     "n": 100,
@@ -110,33 +99,22 @@ def _is_finite_interval(v):
                 },
             },
         ),
-        # 4) Custom title template (ignores modifiers)
+        # 4) Custom chart_metadata
         (
             lambda: pd.Series(np.random.default_rng(3).normal(1.5, 0.4, size=60), name="w", dtype="float64"),
-            {"title_template": "My Median Plot: {name}", "filter_desc": "ignored", "transform_desc": "ignored"},
+            {"title_template": "My Median Plot: {name}", "filter_desc": "ignored", "transform_desc": "ignored", "xlabel": "Score", "ylabel": "Confidence", "data_source": "UnitTest", "file_name": "median_point_ci.png"},
             {
                 "chart_metadata": {
                     "title": "My Median Plot: w",
+                    "xlabel": "Score",
+                    "ylabel": "Confidence",
+                    "data_source": "UnitTest",
+                    "file_name": "median_point_ci.png",
                 },
                 "descriptive_stats": {"n": 60},
             },
         ),
-        # 5) Labels + source + save artifact
-        (
-            lambda: pd.Series(np.random.default_rng(4).normal(10.0, 2.0, size=50), name="m", dtype="float64"),
-            {"xlabel": "Score", "ylabel": "", "data_source": "UnitTest", "file_name": "median_point_ci.png"},
-            {
-                "chart_metadata": {
-                    "title": "Median ± CI for m",
-                    "xlabel": "Score",
-                    "ylabel": "",
-                    "data_source": "UnitTest",
-                    "file_name": "median_point_ci.png",
-                },
-                "descriptive_stats": {"n": 50},
-            },
-        ),
-        # 6) Edge: many ties around popmedian → sign test still reports counts; Wilcoxon handles ties
+        # 5) Edge: many ties around popmedian → sign test still reports counts; Wilcoxon handles ties
         (
             lambda: pd.Series(
                 np.concatenate(
@@ -149,7 +127,7 @@ def _is_finite_interval(v):
                 name="tied",
                 dtype="float64",
             ),
-            {"popmedian": 0.0, "alpha": 0.05, "bootstrap_samples": 300},
+            {"popmedian": 0.0, "alpha": 0.05, "bootstrap_samples": 300, "file_name": "median_point_ci.png"},
             {
                 "descriptive_stats": {"n": 50},
                 "inferential_stats": {
@@ -169,7 +147,6 @@ def _is_finite_interval(v):
         "no_ci_method_none",
         "inference_wilcoxon_and_sign",
         "custom_title_template",
-        "labels_source_and_save",
         "ties_around_popmedian",
     ],
 )

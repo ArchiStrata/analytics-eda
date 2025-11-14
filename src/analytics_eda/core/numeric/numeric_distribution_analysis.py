@@ -31,7 +31,9 @@ from .central_tendency_histogram_plot import (
 )
 from .central_tendency_mean_point_ci_plot import CentralTendencyMeanPointCIContext, CentralTendencyMeanPointCIPlot
 from .central_tendency_median_point_ci_plot import CentralTendencyMedianPointCIContext, CentralTendencyMedianPointCIPlot
-from .dispersion_box_plot import DispersionBoxPlot, DispersionBoxplotContext
+from .dispersion_box_plot import DispersionBoxPlot, DispersionBoxPlotContext
+from .dispersion_percentile_plot import DispersionPercentilePlot, DispersionPercentilePlotContext
+from .dispersion_sigma_bands_plot import DispersionSigmaBandsPlot, DispersionSigmaBandsPlotContext
 from .distribution_density_plot import DistributionDensityContext, DistributionDensityPlot
 from .distribution_ecdf_gap_plot import DistributionECDFGapContext, DistributionECDFGapPlot
 from .distribution_ecdf_vs_cdf_plot import DistributionECDFvsCDFContext, DistributionECDFvsCDFPlot
@@ -58,6 +60,8 @@ def numeric_distribution_analysis(
     plot_central_tendency_mean_point_ci_overrides: dict[str, Any] | None = None,
     plot_central_tendency_median_point_ci_overrides: dict[str, Any] | None = None,
     plot_dispersion_boxplot_overrides: dict[str, Any] | None = None,
+    plot_dispersion_sigma_bands_overrides: dict[str, Any] | None = None,
+    plot_dispersion_percentile_overrides: dict[str, Any] | None = None,
     plot_distribution_ecdf_gap_overrides: dict[str, Any] | None = None,
     plot_distribution_ecdf_vs_cdf_overrides: dict[str, Any] | None = None,
     plot_distribution_density_overrides: dict[str, Any] | None = None,
@@ -75,7 +79,7 @@ def numeric_distribution_analysis(
 
     What:
         • Central-tendency histogram via `plot_central_tendency_histogram`
-        • Dispersion boxplot via `plot_dispersion_boxplot`
+        • Dispersion diagnostics via `plot_dispersion_boxplot`, `plot_dispersion_sigma_bands`, and `plot_dispersion_percentile`
         • ECDF gap analysis via `plot_distribution_ecdf_gap`
         • Density (histogram + KDE) via `plot_distribution_density`
         • ECDF vs. theoretical CDF for each in `distribution_names` via `plot_distribution_ecdf_vs_cdf`
@@ -142,11 +146,30 @@ def numeric_distribution_analysis(
     # Dispersion
     dispersion = {}
     box_ctx = build_plot_context(
-        DispersionBoxplotContext,
+        DispersionBoxPlotContext,
         base=common_base,
         overrides=plot_dispersion_boxplot_overrides,
     )
     dispersion["boxplot"] = DispersionBoxPlot(box_ctx).run(cleaned_series)
+
+    sigma_ctx = build_plot_context(
+        DispersionSigmaBandsPlotContext,
+        base=common_base,
+        overrides=plot_dispersion_sigma_bands_overrides,
+    )
+    dispersion["sigma_bands"] = DispersionSigmaBandsPlot(sigma_ctx).run(cleaned_series)
+
+    percentile_ctx = build_plot_context(
+        DispersionPercentilePlotContext,
+        base=common_base,
+        overrides=plot_dispersion_percentile_overrides,
+    )
+    dispersion["percentiles"] = DispersionPercentilePlot(percentile_ctx).run(cleaned_series)
+
+    # TODO: plot for var and cv descriptive stats
+
+    # TODO: DispersionZScoreHistogramPlot
+    # TODO: DispersionRobustZScoreHistogramPlot
 
     # TODO: Dispersion time series analysis
 
@@ -219,6 +242,8 @@ def numeric_distribution_analysis(
             plot_central_tendency_mean_point_ci_overrides=plot_central_tendency_mean_point_ci_overrides,
             plot_central_tendency_median_point_ci_overrides=plot_central_tendency_median_point_ci_overrides,
             plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
+            plot_dispersion_sigma_bands_overrides=plot_dispersion_sigma_bands_overrides,
+            plot_dispersion_percentile_overrides=plot_dispersion_percentile_overrides,
             plot_distribution_ecdf_gap_overrides=plot_distribution_ecdf_gap_overrides,
             plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,
             plot_distribution_density_overrides=plot_distribution_density_overrides,

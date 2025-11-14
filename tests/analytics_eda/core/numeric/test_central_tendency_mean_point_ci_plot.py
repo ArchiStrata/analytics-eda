@@ -45,14 +45,14 @@ def _is_finite_interval(v):
         # 1) Happy path (t CI)
         (
             lambda: pd.Series(np.random.default_rng(0).normal(0, 1, size=120), name="x", dtype="float64"),
-            {"data_source": "UnitTest"},
+            {"data_source": "UnitTest", "file_name": "mean_point_ci.png"},
             {
                 "chart_metadata": {
                     "title": "Mean ± CI for x",
                     "xlabel": "Value",
                     "ylabel": "",
                     "data_source": "UnitTest",
-                    "file_name": None,
+                    "file_name": "mean_point_ci.png",
                 },
                 "descriptive_stats": {
                     "n": 120,
@@ -68,13 +68,13 @@ def _is_finite_interval(v):
         # 2) Bootstrap CI
         (
             lambda: pd.Series(np.random.default_rng(1).normal(2.0, 0.5, size=80), name="y", dtype="float64"),
-            {"mean_ci_method": "bootstrap", "bootstrap_samples": 500, "alpha": 0.1},
+            {"mean_ci_method": "bootstrap", "bootstrap_samples": 500, "alpha": 0.1, "file_name": "mean_point_ci.png"},
             {
                 "chart_metadata": {
                     "title": "Mean ± CI for y",
                     "xlabel": "Value",
                     "ylabel": "",
-                    "file_name": None,
+                    "file_name": "mean_point_ci.png",
                 },
                 "descriptive_stats": {
                     "n": 80,
@@ -91,8 +91,9 @@ def _is_finite_interval(v):
         # 3) Inference: popmean + popvariance (t and z present)
         (
             lambda: pd.Series(np.random.default_rng(2).normal(0.0, 1.0, size=100), name="z", dtype="float64"),
-            {"popmean": 0.0, "popvariance": 1.0, "alpha": 0.05},
+            {"popmean": 0.0, "popvariance": 1.0, "alpha": 0.05, "file_name": "mean_point_ci.png"},
             {
+                "chart_metadata": {"file_name": "mean_point_ci.png"},
                 "descriptive_stats": {
                     "n": 100,
                     "mean_ci": _is_finite_interval,
@@ -103,32 +104,15 @@ def _is_finite_interval(v):
                 },
             },
         ),
-        # 4) Custom title template (ignores modifiers)
+        # 4) Custom chart_metadata
         (
             lambda: pd.Series(np.random.default_rng(3).normal(1.5, 0.4, size=60), name="w", dtype="float64"),
-            {"title_template": "My Mean Plot: {name}", "filter_desc": "ignored", "transform_desc": "ignored"},
+            {"title_template": "My Mean Plot: {name}", "filter_desc": "ignored", "transform_desc": "ignored", "xlabel": "Score", "ylabel": "Confidence", "data_source": "UnitTest", "file_name": "mean_point_ci.png"},
             {
-                "chart_metadata": {
-                    "title": "My Mean Plot: w",
-                },
+                "chart_metadata": {"title": "My Mean Plot: w", "xlabel": "Score", "ylabel": "Confidence", "data_source": "UnitTest", "file_name": "mean_point_ci.png"},
                 "descriptive_stats": {
                     "n": 60,
                 },
-            },
-        ),
-        # 5) Labels + source + save artifact
-        (
-            lambda: pd.Series(np.random.default_rng(4).normal(10.0, 2.0, size=50), name="m", dtype="float64"),
-            {"xlabel": "Score", "ylabel": "", "data_source": "UnitTest", "file_name": "mean_point_ci.png"},
-            {
-                "chart_metadata": {
-                    "title": "Mean ± CI for m",
-                    "xlabel": "Score",
-                    "ylabel": "",
-                    "data_source": "UnitTest",
-                    "file_name": "mean_point_ci.png",
-                },
-                "descriptive_stats": {"n": 50},
             },
         ),
     ],
@@ -138,7 +122,6 @@ def _is_finite_interval(v):
         "bootstrap_ci",
         "inference_t_and_z",
         "custom_title_template",
-        "labels_source_and_save",
     ],
 )
 def test_central_tendency_mean_point_ci_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
