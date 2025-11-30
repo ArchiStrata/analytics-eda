@@ -231,7 +231,7 @@ def test_<plot_snake_case>_data_driven(make_series_or_df, kwargs, expect, tmp_pa
 
     # Route artifacts to tmp_path if saving
     if "file_name" in kwargs:
-        kwargs = {**kwargs, "save_path": tmp_path}
+        kwargs = {**kwargs, "base_dir": tmp_path}
 
     ctx = <PlotContext>(**kwargs)
     plot = <PlotClass>(ctx)
@@ -248,7 +248,7 @@ payload must be a dict with these keys (omit blocks not implemented by the plot)
 
 - chart_metadata
   Required fields: title, xlabel, ylabel, data_source, version
-  Conditional: file_name (present only when save_path in context)
+  Conditional: file_name (present only when base_dir in context)
 
 - descriptive_stats
   Dict of descriptive outputs computed by the plot
@@ -283,4 +283,4 @@ Edge Conditions (plot-specific):
 - Determinism: Set seeds (np.random.seed) and use fixed inputs.
 - Numeric Tolerances: Prefer callables or pytest.approx for derived metrics.
 - Text Resilience: Use \*\_contains substring checks for findings to avoid brittle tests.
-- Artifacts Isolation: Always redirect save_path to tmp_path.
+- Artifacts Isolation: Always redirect base_dir to tmp_path.

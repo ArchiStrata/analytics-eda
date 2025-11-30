@@ -11,189 +11,121 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""End-to-end categorical distribution analysis with plots and a JSON report."""
+"""End-to-end categorical distribution analysis built on BaseAnalysis."""
 
-import logging
-from pathlib import Path
+from dataclasses import dataclass, replace
 from typing import Any
-import uuid
 
 import pandas as pd
 
+from analytics_eda.core.reporting.analysis_context import AnalysisContext
+from analytics_eda.core.reporting.base_analysis import BaseAnalysis
 from analytics_eda.core.visualization.validation import categorical_validator
 
-from ..numeric import (
-    DispersionBoxPlot,
-    DispersionBoxPlotContext,
-    DistributionDensityContext,
-    DistributionDensityPlot,
+from .balance import (
+    CategoricalBalanceAnalysis,
+    CategoricalBalanceAnalysisContext,
 )
-from ..reporting import write_json_report
-from ..visualization.context.build_plot_context import build_plot_context
-from .balance_chi_square_uniform_plot import (
-    BalanceChiSquareUniformContext,
-    BalanceChiSquareUniformPlot,
+from .frequency_distribution import (
+    CategoricalFrequencyDistributionAnalysis,
+    CategoricalFrequencyDistributionAnalysisContext,
 )
-from .balance_lorenz_curve_plot import BalanceLorenzCurveContext, BalanceLorenzCurvePlot
-from .balance_rare_categories_plot import BalanceRareCategoriesContext, BalanceRareCategoriesPlot
-from .frequency_pareto_plot import FrequencyParetoContext, FrequencyParetoPlot
-
-logger = logging.getLogger(__name__)
 
 
-def categorical_distribution_analysis(
-    series: pd.Series,
-    report_path: Path,
-    report_log_id: str | None = None,
-    data_source: str | None = None,
-    filter_desc: str | None = None,
-    plot_frequency_pareto_overrides: dict[str, Any] | None = None,
-    plot_distribution_density_overrides: dict[str, Any] | None = None,
-    plot_dispersion_boxplot_overrides: dict[str, Any] | None = None,
-    plot_balance_chi_square_uniform_overrides: dict[str, Any] | None = None,
-    plot_balance_lorenz_curve_overrides: dict[str, Any] | None = None,
-    plot_balance_rare_categories_overrides: dict[str, Any] | None = None,
-) -> dict:
+@dataclass
+class CategoricalDistributionAnalysisContext(AnalysisContext):
+    """Context bundling nested contexts for frequency and balance sub-analyses."""
+
+    report_name: str = "categorical_distribution_analysis"
+    report_relative_path: str = "categorical_distribution_analysis"
+    report_file_name: str = "categorical_distribution_analysis_report.json"
+    save_json_report: bool = True
+    return_full_report: bool = False
+    frequency_context: CategoricalFrequencyDistributionAnalysisContext | None = None
+    balance_context: CategoricalBalanceAnalysisContext | None = None
+
+
+class CategoricalDistributionAnalysis(BaseAnalysis):
     """
-    Perform a comprehensive statistical and visual analysis of a categorical Series.
+    Run categorical frequency and balance analyses under one cohesive report.
 
-    This function is designed to help identify dominant categories, rare "tail" categories,
-    and the overall distribution fairness of categorical data. It produces a combination of
-    descriptive statistics, inferential tests, and plots that reveal category proportions,
-    variability, and equality of distribution.
+    Big idea:
+        Deliver both dominance and inequality perspectives together so consumers
+        can understand categorical behavior without orchestrating multiple runs.
 
-    The analysis includes:
-      - **Frequency Distribution**: Counts and proportions of each category, visualized via a Pareto chart.
-      - **Balance Metrics**:
-          * Frequency density (histogram + KDE) of category counts.
-          * Boxplot of category frequencies to highlight dispersion.
-          * Chi-square goodness-of-fit test against a uniform distribution.
-          * Lorenz curve with Gini index to measure category inequality.
-          * Rare categories barchart.
+    What this analysis does:
+        Executes `CategoricalFrequencyDistributionAnalysis` (Pareto-based counts)
+        and `CategoricalBalanceAnalysis` (dispersion, chi-square, Lorenz, rare categories)
+        while sharing IO metadata and paths.
 
-    Results are saved to disk as a JSON report containing:
-      - Chart metadata for each visualization.
-      - Descriptive and inferential statistics for each analysis component.
-      - Report metadata (version, parameters, identifiers).
-
-    Parameters
-    ----------
-    series : pd.Series
-        Categorical data to analyze (dtype 'category' or 'object').
-    report_path : pathlib.Path
-        Directory where the JSON report and generated plots will be saved.
-    report_log_id : str, optional
-        Unique identifier for logging and traceability.
-    data_source : str, optional
-        Source description to embed in plots and metadata.
-    plot_*_overrides : dict, optional
-        Keyword overrides for customizing the context of individual plots
-        (e.g., axis labels, titles, save options). Keys must match the
-        corresponding `PlotContext` fields.
-
-    Returns
-    -------
-    dict
-        Dictionary with the relative path to the generated JSON report.
+    Why it matters:
+        Downstream workflows (profiling, fairness checks) often require both views
+        simultaneously; this orchestration keeps reporting consistent and avoids
+        duplicated plumbing.
     """
-    # Generate a stable log id if none was provided.
-    if report_log_id is None:
-        report_log_id = str(uuid.uuid4())
 
-    # validate input
-    cleaned_series = categorical_validator().validate(series)
+    semantic_version = "1.0.0"
+    context: CategoricalDistributionAnalysisContext
 
-    logger.info("Starting categorical_distribution_analysis", extra={"series_name": cleaned_series.name, "report_log_id": report_log_id})
+    def __init__(self, context: CategoricalDistributionAnalysisContext) -> None:
+        """Retain the aggregated context for downstream orchestration."""
+        super().__init__(context)
 
-    # Convenience: base context kwargs shared by all plots
-    common_base = {
-        "save_path": report_path,
-        "data_source": data_source,
-        "filter_desc": filter_desc,
-    }
+    def validate(self, data_input: pd.Series | pd.DataFrame) -> pd.Series:
+        """Validate the series and stamp the report filename for downstream IO."""
+        cleaned = categorical_validator().validate(data_input)
+        sanitized_name = cleaned.name.replace(" ", "_")
+        self.context.report_file_name = f"{sanitized_name}_categorical_distribution_analysis_report.json"
+        return cleaned
 
-    # 1. Frequency Distribution
-    # What it is: A listing of each category alongside its count and proportion.
-    # Why it matters: Shows which categories dominate and which are rare.
-    frequency_distribution = {}
+    def _resolve_frequency_context(self) -> CategoricalFrequencyDistributionAnalysisContext:
+        proto = self.context.frequency_context or CategoricalFrequencyDistributionAnalysisContext()
+        return replace(
+            proto,
+            data_source=proto.data_source or self.context.data_source,
+            filter_desc=proto.filter_desc or self.context.filter_desc,
+            base_dir=self.report_dir(),
+        )
 
-    # Pareto
-    fp_ctx = build_plot_context(
-        FrequencyParetoContext,
-        base=common_base,
-        overrides=plot_frequency_pareto_overrides,
-    )
-    fp_plot = FrequencyParetoPlot(fp_ctx)
-    frequency_distribution["pareto"] = fp_plot.run(cleaned_series)
+    def _resolve_balance_context(self) -> CategoricalBalanceAnalysisContext:
+        proto = self.context.balance_context or CategoricalBalanceAnalysisContext()
+        return replace(
+            proto,
+            data_source=proto.data_source or self.context.data_source,
+            filter_desc=proto.filter_desc or self.context.filter_desc,
+            base_dir=self.report_dir(),
+        )
 
-    # TODO: Word cloud
-    # TODO: Categorical time series analysis - Category Drift: Do category definitions or distributions change over time?
+    def build_artifacts(self, data_input: pd.Series | pd.DataFrame) -> dict[str, Any]:
+        """
+        Execute the nested analyses and merge their outputs under clear sections.
 
-    # 2. Balance
-    # What it is:
-    #   Assessment of category balance –
-    #   counting unique categories, identifying rare “tail” categories (often grouped as ‘Others’),
-    #   and quantifying how evenly observations are distributed using metrics like entropy and the Gini index.
-    # Why it matters: Tells you if you have too many categories to handle, or if one category overwhelms the rest.
+        Sections
+        --------
+        frequency_distribution
+            What it is: Pareto-style view of category counts/proportions.
+            Why it matters: Identifies dominant vs. rare categories for prioritization
+            or grouping.
 
-    balance = {}
+        balance
+            What it is: Density, dispersion, rare-category, chi-square, and Lorenz
+            diagnostics.
+            Why it matters: Reveals inequality and long-tail behavior that impact
+            modeling, fairness, and reporting decisions.
+        """
+        freq_ctx = self._resolve_frequency_context()
+        freq_analysis = CategoricalFrequencyDistributionAnalysis(freq_ctx)
 
-    freq_counts = cleaned_series.value_counts()
+        balance_ctx = self._resolve_balance_context()
+        balance_analysis = CategoricalBalanceAnalysis(balance_ctx)
 
-    # Density plot (Histogram + KDE)
-    dens_ctx = build_plot_context(
-        DistributionDensityContext,
-        base={**common_base, "xlabel": "Frequency"},
-        overrides=plot_distribution_density_overrides,
-    )
-    dens_plot = DistributionDensityPlot(dens_ctx)
-    balance["density"] = dens_plot.run(freq_counts)
+        # TODO: Word cloud
+        # TODO: Categorical time series analysis - Category Drift: Do category definitions or distributions change over time?
 
-    # Boxplot + Violin (Dispersion)
-    box_ctx = build_plot_context(
-        DispersionBoxPlotContext,
-        base={**common_base, "ylabel": "Frequency"},
-        overrides=plot_dispersion_boxplot_overrides,
-    )
-    box_plot = DispersionBoxPlot(box_ctx)
-    balance["boxplot"] = box_plot.run(freq_counts)
+        freq_report = freq_analysis.run(data_input)
+        balance_report = balance_analysis.run(data_input)
 
-    # Rare categories
-    rare_cat_ctx = build_plot_context(
-        BalanceRareCategoriesContext,
-        base=common_base,
-        overrides=plot_balance_rare_categories_overrides,
-    )
-    rare_cat_plot = BalanceRareCategoriesPlot(rare_cat_ctx)
-    balance["rare_categories"] = rare_cat_plot.run(cleaned_series)
-
-    # Chi-square goodness-of-fit against a uniform distribution
-    chi_ctx = build_plot_context(
-        BalanceChiSquareUniformContext,
-        base={**common_base, "xlabel": "Frequency"},
-        overrides=plot_balance_chi_square_uniform_overrides,
-    )
-    chi_plot = BalanceChiSquareUniformPlot(chi_ctx)
-    balance["chi_square_uniform"] = chi_plot.run(cleaned_series)
-
-    # Lorenz curve with Gini index
-    lor_ctx = build_plot_context(
-        BalanceLorenzCurveContext,
-        base=common_base,
-        overrides=plot_balance_lorenz_curve_overrides,
-    )
-    lor_plot = BalanceLorenzCurvePlot(lor_ctx)
-    balance["lorenz_curve"] = lor_plot.run(cleaned_series)
-
-    # compile report
-    distribution_report = {"frequency_distribution": frequency_distribution, "balance": balance}
-
-    full_report = {"metadata": {"version": "1.0.0", "report_name": "categorical_distribution_analysis", "parameters": {"series": cleaned_series.name}}, "data": distribution_report}
-
-    logger.info("Completed categorical_distribution_analysis", extra={"series_name": cleaned_series.name, "report_log_id": report_log_id})
-
-    report_file_name = f"{cleaned_series.name.replace(' ', '_')}_categorical_distribution_analysis_report.json"
-    report_file_path = report_path / report_file_name
-    write_json_report(full_report, report_file_path)
-
-    return {"report_file_path": report_file_name}
+        return {
+            "frequency_distribution": freq_report,
+            "balance": balance_report,
+        }

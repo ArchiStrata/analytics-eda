@@ -21,7 +21,12 @@ from typing import Any
 
 from matplotlib.dates import AutoDateFormatter, AutoDateLocator, DateFormatter
 import matplotlib.pyplot as plt
-from matplotlib.ticker import Formatter, FuncFormatter, PercentFormatter, StrMethodFormatter
+from matplotlib.ticker import (
+    FormatStrFormatter,
+    Formatter,
+    FuncFormatter,
+    PercentFormatter,
+)
 import seaborn as sns
 
 from analytics_eda.core.visualization.context.plot_context import AxisFormat
@@ -60,9 +65,7 @@ class DefaultMatplotlibRenderer(RendererProtocol):
         self._subtitle_queue: list[tuple] = []
         self._headroom_texts: dict = {}
 
-    def _apply_subtitle_below_title(
-        self, show_subtitle: bool, ax, subtitle: str, *, fontsize: int = 10, color: str = "gray", gap_from_axes_pts: float = 1.5
-    ):
+    def _apply_subtitle_below_title(self, show_subtitle: bool, ax, subtitle: str, *, fontsize: int = 10, color: str = "gray", gap_from_axes_pts: float = 1.5):
         if not subtitle:
             return
 
@@ -77,14 +80,14 @@ class DefaultMatplotlibRenderer(RendererProtocol):
         """
         if texts is None:
             return
-        if isinstance(texts, (list, tuple)):
+        if isinstance(texts, list | tuple):
             flat = []
             stack = list(texts)
             while stack:
                 t = stack.pop()
                 if t is None:
                     continue
-                if isinstance(t, (list, tuple)):
+                if isinstance(t, list | tuple):
                     stack.extend(t)
                 else:
                     flat.append(t)
@@ -117,17 +120,17 @@ class DefaultMatplotlibRenderer(RendererProtocol):
             bb = t.get_window_extent(renderer=renderer)
             (x0, y0) = inv.transform((bb.x0, bb.y0))
             (x1, y1) = inv.transform((bb.x1, bb.y1))
-            left, right   = min(x0, x1), max(x0, x1)
-            bottom, top   = min(y0, y1), max(y0, y1)
+            left, right = min(x0, x1), max(x0, x1)
+            bottom, top = min(y0, y1), max(y0, y1)
 
-            if left   < lo_x:
-                left_oh   = max(left_oh,   lo_x - left)
-            if right  > hi_x:
-                right_oh  = max(right_oh,  right - hi_x)
+            if left < lo_x:
+                left_oh = max(left_oh, lo_x - left)
+            if right > hi_x:
+                right_oh = max(right_oh, right - hi_x)
             if bottom < lo_y:
                 bottom_oh = max(bottom_oh, lo_y - bottom)
-            if top    > hi_y:
-                top_oh    = max(top_oh,    top - hi_y)
+            if top > hi_y:
+                top_oh = max(top_oh, top - hi_y)
 
         return left_oh, right_oh, bottom_oh, top_oh
 
@@ -209,16 +212,16 @@ class DefaultMatplotlibRenderer(RendererProtocol):
           - RGBA tuple if alpha is provided (0..1)
         """
         presets = {
-            "light":  "#D0D0D0",  # ~82% gray
+            "light": "#D0D0D0",  # ~82% gray
             "medium": "#B0B0B0",  # ~69% gray (default)
-            "dark":   "#6E6E6E",  # ~43% gray
+            "dark": "#6E6E6E",  # ~43% gray
         }
         hex_color = presets.get(variant, presets["medium"])
         if alpha is None:
             return hex_color
         # Convert hex to normalized RGBA with requested alpha
         h = hex_color.lstrip("#")
-        r, g, b = tuple(int(h[i:i+2], 16)/255.0 for i in (0, 2, 4))
+        r, g, b = tuple(int(h[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
         return (r, g, b, float(alpha))
 
     # ---------- axis format -----------
@@ -252,16 +255,12 @@ class DefaultMatplotlibRenderer(RendererProtocol):
 
             if fmt.kind == "currency":
                 code = (fmt.currency_code or "").strip()
-                axis.set_major_formatter(
-                    FuncFormatter(lambda v, _: f"{code} {base_spec.format(v)}".strip())
-                )
+                axis.set_major_formatter(FuncFormatter(lambda v, _: f"{code} {base_spec.format(v)}".strip()))
             else:
                 if fmt.unit_suffix:
-                    axis.set_major_formatter(
-                        FuncFormatter(lambda v, _: f"{base_spec.format(v)} {fmt.unit_suffix}")
-                    )
+                    axis.set_major_formatter(FuncFormatter(lambda v, _: f"{base_spec.format(v)} {fmt.unit_suffix}"))
                 else:
-                    axis.set_major_formatter(StrMethodFormatter(base_spec))
+                    axis.set_major_formatter(FormatStrFormatter(base_spec))
             return
 
         if fmt.kind == "datetime":
@@ -318,10 +317,13 @@ class DefaultMatplotlibRenderer(RendererProtocol):
             fig.text(0.01, 0.01, f"Source: {ctx.data_source}", ha="left", va="bottom", fontsize="small", color="gray")
 
         saved_name = None
-        if getattr(ctx, "save_path", None):
-            saved_name = getattr(ctx, "file_name", None) or f'{chart_md.get("title","figure")}.png'
-            os.makedirs(ctx.save_path, exist_ok=True)
-            fig.savefig(os.path.join(ctx.save_path, saved_name), bbox_inches="tight", dpi=getattr(ctx, "dpi", None))
+        if getattr(ctx, "base_dir", None):
+            saved_name = getattr(ctx, "file_name", None) or chart_md.get("file_name")
+            if not saved_name and getattr(ctx, "auto_file_name", False):
+                saved_name = f'{chart_md.get("title","figure")}.png'
+            if saved_name:
+                os.makedirs(ctx.base_dir, exist_ok=True)
+                fig.savefig(os.path.join(ctx.base_dir, saved_name), bbox_inches="tight", dpi=getattr(ctx, "dpi", None))
         if getattr(ctx, "show", False):
             plt.show()
         return saved_name

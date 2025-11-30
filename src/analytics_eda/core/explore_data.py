@@ -18,13 +18,10 @@ import os
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 
-from ..core.reporting import write_json_report
+from ..core.reporting.write_json_report import write_json_report
 
 
-def explore_data(
-        df: pd.DataFrame,
-        report_path: str = None,
-        file_name: str = "explore_data_summary.json") -> dict:
+def explore_data(df: pd.DataFrame, report_path: str = None, file_name: str = "explore_data_summary.json") -> dict:
     """
     Create a structured exploratory summary of a DataFrame and save it to a JSON file.
 
@@ -42,22 +39,14 @@ def explore_data(
         - category: unique count and values
         - object: unique count
     """
-    summary = {
-        "overview": {},
-        "columns": {}
-    }
+    summary = {"overview": {}, "columns": {}}
 
     # ----------- Overview -----------
-    summary["overview"]["shape"] = {
-        "rows": df.shape[0],
-        "columns": df.shape[1]
-    }
+    summary["overview"]["shape"] = {"rows": df.shape[0], "columns": df.shape[1]}
 
     summary["overview"]["duplicate_rows"] = int(df.duplicated().sum())
 
-    summary["overview"]["memory_usage_bytes"] = {
-        col: int(mem) for col, mem in df.memory_usage(deep=True).items()
-    }
+    summary["overview"]["memory_usage_bytes"] = {col: int(mem) for col, mem in df.memory_usage(deep=True).items()}
 
     n_rows = df.shape[0]
 
@@ -70,11 +59,11 @@ def explore_data(
         col_summary["missing_values"] = int(col_data.isna().sum())
 
         # Constant column
-        col_summary["is_constant"] = (col_data.nunique(dropna=False) == 1)
+        col_summary["is_constant"] = col_data.nunique(dropna=False) == 1
 
         # High Cardinality column
         unique_ratio = col_data.nunique(dropna=True) / n_rows
-        col_summary["is_high_cardinality"] = (unique_ratio > 0.9)
+        col_summary["is_high_cardinality"] = unique_ratio > 0.9
 
         if is_numeric_dtype(col_data):
             desc = col_data.describe().to_dict()
@@ -91,29 +80,16 @@ def explore_data(
                 "descriptive_stats": desc,
                 "extreme_outliers_4sigma": {
                     "total_count": int(lower_outliers.count() + upper_outliers.count()),
-                    "lower": {
-                        "count": int(lower_outliers.count()),
-                        "min": lower_outliers.min() if not lower_outliers.empty else None,
-                        "max": lower_outliers.max() if not lower_outliers.empty else None
-                    },
-                    "upper": {
-                        "count": int(upper_outliers.count()),
-                        "min": upper_outliers.min() if not upper_outliers.empty else None,
-                        "max": upper_outliers.max() if not upper_outliers.empty else None
-                    }
-                }
+                    "lower": {"count": int(lower_outliers.count()), "min": lower_outliers.min() if not lower_outliers.empty else None, "max": lower_outliers.max() if not lower_outliers.empty else None},
+                    "upper": {"count": int(upper_outliers.count()), "min": upper_outliers.min() if not upper_outliers.empty else None, "max": upper_outliers.max() if not upper_outliers.empty else None},
+                },
             }
 
         elif col_data.dtype == "category":
-            col_summary["category_analysis"] = {
-                "unique_count": int(col_data.nunique()),
-                "unique_values": col_data.dropna().unique().tolist()
-            }
+            col_summary["category_analysis"] = {"unique_count": int(col_data.nunique()), "unique_values": col_data.dropna().unique().tolist()}
 
         elif col_data.dtype == "object":
-            col_summary["object_analysis"] = {
-                "unique_count": int(col_data.nunique())
-            }
+            col_summary["object_analysis"] = {"unique_count": int(col_data.nunique())}
 
         summary["columns"][col] = col_summary
 

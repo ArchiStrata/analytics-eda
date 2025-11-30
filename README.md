@@ -38,12 +38,12 @@ data = rng.normal(loc=0.0, scale=1.0, size=15)
 normal_15_series = pd.Series(data, name="normal_series")
 
 # Analyze numeric series
-report_file_path = univariate_numeric_analysis(
+report_path = univariate_numeric_analysis(
     normal_15_series
 )
 
 # Access json report
-result = json.loads(report_file_path.read_text())
+result = json.loads(report_path.read_text())
 print(json.dumps(result, indent=2))
 
 ```

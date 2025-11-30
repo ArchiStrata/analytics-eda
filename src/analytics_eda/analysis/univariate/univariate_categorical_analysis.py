@@ -11,188 +11,94 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Run EDA for a single categorical variable and emit plots plus a JSON report."""
+"""Univariate categorical analysis built on BaseAnalysis."""
 
-import logging
-from pathlib import Path
+from dataclasses import dataclass, replace
 from typing import Any
-import uuid
 
 import pandas as pd
 
-from analytics_eda.core.visualization.context import build_plot_context
+from analytics_eda.core.categorical.categorical_distribution_analysis import (
+    CategoricalDistributionAnalysis,
+    CategoricalDistributionAnalysisContext,
+)
+from analytics_eda.core.data_quality import (
+    SeriesDataQualityAnalysis,
+    SeriesDataQualityAnalysisContext,
+)
+from analytics_eda.core.reporting.analysis_context import AnalysisContext
+from analytics_eda.core.reporting.base_analysis import BaseAnalysis
 from analytics_eda.core.visualization.validation import categorical_validator
 
-from ...core.categorical import categorical_distribution_analysis
-from ...core.data_quality import (
-    CategoricalCleanlinessBarContext,
-    CategoricalCleanlinessBarPlot,
-    MissingDataBarContext,
-    MissingDataBarPlot,
-)
-from ...core.numeric import CardinalityBarContext, CardinalityBarPlot
-from ...core.reporting import write_json_report
 
-logger = logging.getLogger(__name__)
+@dataclass
+class UnivariateCategoricalAnalysisContext(AnalysisContext):
+    """Context for univariate categorical analysis."""
 
-def univariate_categorical_analysis(
-    series: pd.Series,
-    report_root: str = 'reports/eda/univariate/categorical',
-    report_log_id: str | None = None,
-    data_source: str | None = None,
-    filter_desc: str | None = None,
-    plot_frequency_pareto_overrides: dict[str, Any] | None = None,
-    plot_distribution_density_overrides: dict[str, Any] | None = None,
-    plot_dispersion_boxplot_overrides: dict[str, Any] | None = None,
-    plot_balance_chi_square_uniform_overrides: dict[str, Any] | None = None,
-    plot_balance_lorenz_curve_overrides: dict[str, Any] | None = None,
-    plot_balance_rare_categories_overrides: dict[str, Any] | None = None,
+    report_name: str = "univariate_categorical_analysis"
+    report_relative_path: str = "univariate/categorical"
+    report_file_name: str = "univariate_categorical_analysis.json"
+    save_json_report: bool = True
+    return_full_report: bool = False
 
-    plot_missing_data_bar_overrides: dict[str, Any] | None = None,
-    plot_categorical_cleanliness_bar_overrides: dict[str, Any] | None = None,
-    plot_cardinality_bar_overrides: dict[str, Any] | None = None,
-) -> Path:
+    # Nested contexts (optional overrides)
+    data_quality_context: SeriesDataQualityAnalysisContext | None = None
+    distribution_context: CategoricalDistributionAnalysisContext | None = None
+
+
+class UnivariateCategoricalAnalysis(BaseAnalysis):
     """
-    Perform a comprehensive univariate analysis of a categorical pandas Series and save a JSON report.
+    Run a categorical univariate analysis covering data quality and distribution.
 
-    This analysis is designed for exploratory data analysis (EDA) and includes:
-        • Missing data profiling — counts, percentages, and a visual barchart.
-        • Cardinality assessment — number of distinct categories and frequency distribution.
-        • Distribution analysis — frequency/Pareto plots, statistical tests, and balance metrics.
-
-    All outputs are saved to the specified report directory, with key results aggregated
-    into a single JSON file for integration into automated reporting pipelines.
-
-    Args:
-        series (pd.Series): Named categorical Series (dtype 'category' or 'object').
-        report_root (str, optional): Base directory for saving plots and the report.
-        report_log_id (str, optional): Unique identifier for logging/report tracking.
-        data_source (str, optional): Optional label for the dataset's origin.
-        plot_frequency_pareto_overrides, plot_distribution_density_overrides,
-        plot_dispersion_boxplot_overrides, plot_balance_chi_square_uniform_overrides,
-        plot_balance_rare_categories_overrides, plot_balance_lorenz_curve_overrides (dict, optional):
-            Per-plot configuration overrides.
-
-    Returns
-    -------
-    dict
-        {'report_file_path': Path to the saved JSON report}
-
-    JSON report structure:
-        {
-            'metadata': { ... },
-            'data': {
-                'data_quality': {...},
-                'cardinality': {...},
-                'distribution': {...}
-            }
-        }
+    Big idea:
+        Deliver a single report that covers the core data-quality pillars plus
+        frequency/balance distribution views for a categorical series.
     """
-    if report_log_id is None:
-        report_log_id = str(uuid.uuid4())
 
-    # 1. Validation (Named, Typed)
-    series_copy = categorical_validator(dropna=False, cast_str=False).validate(series)
+    semantic_version = "1.0.0"
+    context: UnivariateCategoricalAnalysisContext
 
-    logger.info(
-        "Starting univariate_categorical_analysis",
-        extra={
-            'series_name': series_copy.name,
-            'report_log_id': report_log_id
+    def __init__(self, context: UnivariateCategoricalAnalysisContext) -> None:
+        super().__init__(context)
+
+    def validate(self, data_input: pd.Series | pd.DataFrame) -> pd.Series:
+        """Validate the categorical series; preserve nulls and name."""
+        cleaned = categorical_validator(dropna=False, cast_str=False).validate(data_input)
+        sanitized_name = cleaned.name.replace(" ", "_")
+        self.context.report_file_name = f"{sanitized_name}_univariate_categorical_analysis.json"
+        return cleaned
+
+    def _resolve_data_quality_context(self) -> SeriesDataQualityAnalysisContext:
+        proto = self.context.data_quality_context or SeriesDataQualityAnalysisContext()
+        return replace(
+            proto,
+            base_dir=self.report_dir(),
+            data_source=proto.data_source or self.context.data_source,
+            filter_desc=proto.filter_desc or self.context.filter_desc,
+            return_full_report=True,
+            save_json_report=False,
+        )
+
+    def _resolve_distribution_context(self) -> CategoricalDistributionAnalysisContext:
+        proto = self.context.distribution_context or CategoricalDistributionAnalysisContext()
+        return replace(
+            proto,
+            base_dir=self.report_dir(),
+            data_source=proto.data_source or self.context.data_source,
+            filter_desc=proto.filter_desc or self.context.filter_desc,
+            return_full_report=True,
+            save_json_report=False,
+        )
+
+    def build_artifacts(self, data_input: pd.Series | pd.DataFrame) -> dict[str, Any]:
+        """Run data-quality and distribution analyses and assemble the report."""
+        dq_ctx = self._resolve_data_quality_context()
+        dist_ctx = self._resolve_distribution_context()
+
+        dq_report = SeriesDataQualityAnalysis(dq_ctx).run(data_input)
+        dist_report = CategoricalDistributionAnalysis(dist_ctx).run(data_input)
+
+        return {
+            "data_quality": dq_report,
+            "distribution": dist_report,
         }
-    )
-
-    # Prepare save directory
-    report_path = Path(report_root) / series_copy.name.replace(' ', '_')
-    report_path.mkdir(parents=True, exist_ok=True)
-
-    # Convenience: base context kwargs shared by all plots
-    common_base = {
-        "save_path": report_path,
-        "data_source": data_source,
-        "filter_desc": filter_desc,
-    }
-
-    # 1. Data Quality & Standardization / categorical_variable_profiling
-    data_quality = {}
-    # Missing Data Analysis - Detect missingness
-    md_ctx = build_plot_context(
-        MissingDataBarContext,
-        base=common_base,
-        overrides=plot_missing_data_bar_overrides,
-    )
-    md_plot = MissingDataBarPlot(md_ctx)
-    data_quality['missing_data_barchart'] = md_plot.run(series_copy)
-
-    # Check categorical cleanliness
-    cat_clean_ctx = build_plot_context(
-        CategoricalCleanlinessBarContext,
-        base=common_base,
-        overrides=plot_categorical_cleanliness_bar_overrides,
-    )
-    cat_clean_plot = CategoricalCleanlinessBarPlot(cat_clean_ctx)
-    data_quality['categorical_cleanliness_barchart'] = cat_clean_plot.run(series_copy)
-    cleaned, category_clean_meta = cat_clean_plot.clean_series(series_copy)
-    data_quality['categorical_cleanliness_barchart']['cleaning_meta'] = category_clean_meta
-
-    # Detect cardinality
-    cardinality = {}
-
-    card_ctx = build_plot_context(
-        CardinalityBarContext,
-        base=common_base,
-        overrides=plot_cardinality_bar_overrides,
-    )
-    card_plot = CardinalityBarPlot(card_ctx)
-    freq_counts = cleaned.copy().dropna().value_counts()
-    cardinality['barchart'] = card_plot.run(freq_counts)
-
-    # TODO: Detect ordinality / monotonicity - Is the variable nominal (unordered) or ordinal (has natural order)?
-
-    # 2. Distribution Analysis
-    distribution_result = categorical_distribution_analysis(
-        cleaned,
-        report_path=report_path,
-        report_log_id=report_log_id,
-        data_source=data_source,
-        filter_desc=filter_desc,
-        plot_frequency_pareto_overrides=plot_frequency_pareto_overrides,
-        plot_distribution_density_overrides=plot_distribution_density_overrides,
-        plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
-        plot_balance_chi_square_uniform_overrides=plot_balance_chi_square_uniform_overrides,
-        plot_balance_lorenz_curve_overrides=plot_balance_lorenz_curve_overrides,
-        plot_balance_rare_categories_overrides=plot_balance_rare_categories_overrides
-    )
-
-    # Generate report
-    eda_report = {
-        'data_quality': data_quality,
-        "cardinality": cardinality,
-        'distribution': distribution_result
-    }
-
-    full_report = {
-        'metadata': {
-            'version': '0.1.0',
-            'report_name': 'univariate_categorical_analysis',
-            'parameters': {
-                'series': cleaned.name
-            }
-        },
-        'data': eda_report
-    }
-
-    report_file_path = report_path / f"{cleaned.name.replace(' ', '_')}_univariate_analysis_report.json"
-    write_json_report(full_report, report_file_path)
-
-    logger.info(
-        "Completed univariate_categorical_analysis",
-        extra={
-            'series_name': cleaned.name,
-            'report_log_id': report_log_id
-        }
-    )
-
-    return {
-        'report_file_path': report_file_path
-    }

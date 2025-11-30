@@ -1,21 +1,48 @@
 """Numeric EDA components: plots, rules, and helpers for univariate analysis."""
 
-from .cardinality_bar_plot import CardinalityBarContext, CardinalityBarPlot
-from .central_tendency_histogram_plot import (
+from .central_tendency import (
+    CentralTendencyAnalysis,
+    CentralTendencyAnalysisContext,
     CentralTendencyHistogramContext,
     CentralTendencyHistogramPlot,
+    CentralTendencyMeanPointCIContext,
+    CentralTendencyMeanPointCIPlot,
+    CentralTendencyMedianPointCIContext,
+    CentralTendencyMedianPointCIPlot,
 )
-from .central_tendency_mean_point_ci_plot import CentralTendencyMeanPointCIContext, CentralTendencyMeanPointCIPlot
-from .central_tendency_median_point_ci_plot import CentralTendencyMedianPointCIContext, CentralTendencyMedianPointCIPlot
-from .dispersion_box_plot import DispersionBoxPlot, DispersionBoxPlotContext
-from .dispersion_percentile_plot import DispersionPercentilePlot, DispersionPercentilePlotContext
-from .dispersion_sigma_bands_plot import DispersionSigmaBandsPlot, DispersionSigmaBandsPlotContext
-from .distribution_density_plot import DistributionDensityContext, DistributionDensityPlot
-from .distribution_ecdf_gap_plot import DistributionECDFGapContext, DistributionECDFGapPlot
-from .distribution_ecdf_vs_cdf_plot import DistributionECDFvsCDFContext, DistributionECDFvsCDFPlot
-from .distribution_probability_function_plot import (
-    DistributionProbabilityFunctionContext,
-    DistributionProbabilityFunctionPlot,
+from .dispersion import (
+    DispersionAnalysis,
+    DispersionAnalysisContext,
+    DispersionBoxPlot,
+    DispersionBoxPlotContext,
+    DispersionDecilePlot,
+    DispersionDecilePlotContext,
+    DispersionSigmaBandsPlot,
+    DispersionSigmaBandsPlotContext,
 )
-from .distribution_qq_fit_plot import DistributionQqFitContext, DistributionQqFitPlot
-from .numeric_distribution_analysis import numeric_distribution_analysis
+from .numeric_distribution_analysis import (
+    NumericDistributionAnalysis,
+    NumericDistributionAnalysisContext,
+)
+from .shape import (
+    ShapeAnalysis,
+    ShapeAnalysisContext,
+    ShapeDensityContext,
+    ShapeDensityPlot,
+    ShapeDistributionFitAnalysis,
+    ShapeDistributionFitAnalysisContext,
+    ShapeECDFGapContext,
+    ShapeECDFGapPlot,
+    ShapeECDFvsCDFContext,
+    ShapeECDFvsCDFPlot,
+    ShapeProbabilityFunctionContext,
+    ShapeProbabilityFunctionPlot,
+    ShapeQqFitContext,
+    ShapeQqFitPlot,
+)
+from .transforms import (
+    TransformEvaluationAnalysis,
+    TransformEvaluationAnalysisContext,
+    select_transforms,
+    transform_series,
+)

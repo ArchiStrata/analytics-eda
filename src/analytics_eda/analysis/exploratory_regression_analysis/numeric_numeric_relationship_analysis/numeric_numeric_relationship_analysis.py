@@ -11,175 +11,101 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Numeric–numeric relationship analysis: structure, magnitude, and direction.
+"""Bundle numeric–numeric relationship pillars: structure, magnitude, and direction."""
 
-This module orchestrates several plots (raw scatter, LOWESS smooth, OLS,
-residuals, trend overlay) and writes a bundled JSON report with their payloads.
-"""
-
-import logging
-from pathlib import Path
+from dataclasses import dataclass, replace
 from typing import Any
-import uuid
 
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 
-from analytics_eda.core.visualization.context import build_plot_context
+from analytics_eda.core.reporting.analysis_context import AnalysisContext
+from analytics_eda.core.reporting.base_analysis import BaseAnalysis
 
-from ....core.reporting import write_json_report
-from .direction_association_scatter_ols_trend_plot import (
-    DirectionAssociationScatterOLSTrendContext,
-    DirectionAssociationScatterOLSTrendPlot,
+from .direction_of_association.direction_of_association_analysis import (
+    DirectionOfAssociationAnalysis,
+    DirectionOfAssociationAnalysisContext,
 )
-from .magnitude_association_residual_plot import (
-    MagnitudeAssociationResidualContext,
-    MagnitudeAssociationResidualPlot,
+from .magnitude_of_association.magnitude_of_association_analysis import (
+    MagnitudeOfAssociationAnalysis,
+    MagnitudeOfAssociationAnalysisContext,
 )
-from .magnitude_association_scatter_ols_plot import (
-    MagnitudeAssociationScatterOLSContext,
-    MagnitudeAssociationScatterOLSPlot,
-)
-from .relationship_structure_scatter_lowess_plot import (
-    RelationshipStructureScatterLowessContext,
-    RelationshipStructureScatterLowessPlot,
-)
-from .relationship_structure_scatter_plot import (
-    RelationshipStructureScatterContext,
-    RelationshipStructureScatterPlot,
+from .relationship_structure.relationship_structure_analysis import (
+    RelationshipStructureAnalysis,
+    RelationshipStructureAnalysisContext,
 )
 
-logger = logging.getLogger(__name__)
+
+@dataclass
+class NumericNumericRelationshipAnalysisContext(AnalysisContext):
+    """Context for numeric↔numeric relationship analysis (structure, magnitude, direction)."""
+
+    report_name: str = "numeric_numeric_relationship_analysis"
+    report_relative_path: str = "numeric_numeric_relationship_analysis"
+    report_file_name: str = "numeric_numeric_relationship_analysis_report.json"
+    save_json_report: bool = True
+    return_full_report: bool = False
+
+    x_col: str | None = None
+    y_col: str | None = None
+
+    relationship_structure_context: RelationshipStructureAnalysisContext | None = None
+    magnitude_of_association_context: MagnitudeOfAssociationAnalysisContext | None = None
+    direction_of_association_context: DirectionOfAssociationAnalysisContext | None = None
 
 
-def numeric_numeric_relationship_analysis(
-    df: pd.DataFrame,
-    x_col: str,
-    y_col: str,
-    report_root: str = "reports/eda/bivariate/numeric_numeric_relationship_analysis",
-    report_log_id: str | None = None,
-    data_source: str | None = None,
-    # per‑plot override dicts
-    plot_relationship_structure_scatter_overrides: dict[str, Any] | None = None,
-    plot_relationship_structure_scatter_lowess_overrides: dict[str, Any] | None = None,
-    plot_magnitude_scatter_ols_overrides: dict[str, Any] | None = None,
-    plot_magnitude_residual_overrides: dict[str, Any] | None = None,
-    plot_direction_scatter_ols_trend_overrides: dict[str, Any] | None = None,
-) -> dict:
-    """Run numeric↔numeric relationship analysis and write a JSON report.
+class NumericNumericRelationshipAnalysis(BaseAnalysis):
+    """Bundle structure, magnitude, and direction pillar analyses for two numeric columns."""
 
-    This bundles three facets of the X–Y relationship:
-    structure (scatter; LOWESS), magnitude (OLS; residuals), and direction
-    (OLS with trend overlay). Each plot’s payload is included in a single
-    report for downstream use.
+    semantic_version = "1.0.0"
+    context: NumericNumericRelationshipAnalysisContext
 
-    Returns
-    -------
-    dict
-        A dictionary containing 'report_file_path' pointing to the saved JSON report.
-    """
-    # generate an id only if one wasn’t provided
-    if report_log_id is None:
-        report_log_id = str(uuid.uuid4())
-    logger.info(
-        "Starting numeric_numeric_relationship_analysis",
-        extra={"x_col": x_col, "y_col": y_col, "report_root": report_root, "report_log_id": report_log_id},
-    )
+    def __init__(self, context: NumericNumericRelationshipAnalysisContext) -> None:
+        super().__init__(context)
 
-    # ---- validate inputs ----
-    if x_col not in df.columns:
-        raise KeyError(f"X column '{x_col}' not found.")
-    if y_col not in df.columns:
-        raise KeyError(f"Y column '{y_col}' not found.")
-    if not is_numeric_dtype(df[x_col]):
-        raise TypeError(f"Column '{x_col}' must be numeric.")
-    if not is_numeric_dtype(df[y_col]):
-        raise TypeError(f"Column '{y_col}' must be numeric.")
+    def validate(self, data_input: pd.DataFrame | pd.Series) -> pd.DataFrame:
+        """Validate DataFrame and numeric columns once for all pillar analyses."""
+        if not isinstance(data_input, pd.DataFrame):
+            raise TypeError("Input must be a pandas DataFrame.")
+        x_col = self.context.x_col or ""
+        y_col = self.context.y_col or ""
+        if x_col not in data_input.columns:
+            raise KeyError(f"X column '{x_col}' not found.")
+        if y_col not in data_input.columns:
+            raise KeyError(f"Y column '{y_col}' not found.")
+        if not is_numeric_dtype(data_input[x_col]):
+            raise TypeError(f"Column '{x_col}' must be numeric.")
+        if not is_numeric_dtype(data_input[y_col]):
+            raise TypeError(f"Column '{y_col}' must be numeric.")
+        return data_input.copy()
 
-    # ---- paths & shared context ----
-    report_path = Path(report_root) / f"numeric_{x_col}_numeric_{y_col}_relationship_analysis"
-    report_path.mkdir(parents=True, exist_ok=True)
+    def _ctx_with_pair(self, ctx_obj: AnalysisContext | None, default_cls):
+        if ctx_obj is None:
+            ctx_obj = default_cls()
+        return replace(
+            ctx_obj,
+            base_dir=self.report_dir(),
+            data_source=self.context.data_source,
+            filter_desc=self.context.filter_desc,
+            report_relative_path="",
+            return_full_report=True,
+            save_json_report=False,
+            x_col=self.context.x_col,
+            y_col=self.context.y_col,
+        )
 
-    df_copy = df.copy()
-    common_base = {"save_path": report_path, "data_source": data_source}
+    def build_artifacts(self, data_input: pd.DataFrame) -> dict[str, Any]:
+        """Run pillar analyses and merge their payloads."""
+        structure_ctx = self._ctx_with_pair(self.context.relationship_structure_context, RelationshipStructureAnalysisContext)
+        magnitude_ctx = self._ctx_with_pair(self.context.magnitude_of_association_context, MagnitudeOfAssociationAnalysisContext)
+        direction_ctx = self._ctx_with_pair(self.context.direction_of_association_context, DirectionOfAssociationAnalysisContext)
 
-    # =========================
-    # Relationship Structure
-    # =========================
-    relationship_structure: dict[str, Any] = {}
+        structure = RelationshipStructureAnalysis(structure_ctx).run(data_input)
+        magnitude = MagnitudeOfAssociationAnalysis(magnitude_ctx).run(data_input)
+        direction = DirectionOfAssociationAnalysis(direction_ctx).run(data_input)
 
-    rs_scatter_ctx = build_plot_context(
-        RelationshipStructureScatterContext,
-        base=common_base,
-        overrides=plot_relationship_structure_scatter_overrides,
-    )
-    rs_scatter_plot = RelationshipStructureScatterPlot(rs_scatter_ctx)
-    relationship_structure["scatter"] = rs_scatter_plot.run(df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col})
-
-    rs_lowess_ctx = build_plot_context(
-        RelationshipStructureScatterLowessContext,
-        base=common_base,
-        overrides=plot_relationship_structure_scatter_lowess_overrides,
-    )
-    rs_lowess_plot = RelationshipStructureScatterLowessPlot(rs_lowess_ctx)
-    relationship_structure["scatter_lowess"] = rs_lowess_plot.run(df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col})
-
-    # =========================
-    # Magnitude of Association
-    # =========================
-    magnitude_of_association: dict[str, Any] = {}
-
-    mag_scatter_ols_ctx = build_plot_context(
-        MagnitudeAssociationScatterOLSContext,
-        base=common_base,
-        overrides=plot_magnitude_scatter_ols_overrides,
-    )
-    mag_scatter_ols_plot = MagnitudeAssociationScatterOLSPlot(mag_scatter_ols_ctx)
-    magnitude_of_association["scatter_ols"] = mag_scatter_ols_plot.run(df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col})
-
-    mag_resid_ctx = build_plot_context(
-        MagnitudeAssociationResidualContext,
-        base=common_base,
-        overrides=plot_magnitude_residual_overrides,
-    )
-    mag_resid_plot = MagnitudeAssociationResidualPlot(mag_resid_ctx)
-    magnitude_of_association["residuals"] = mag_resid_plot.run(df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col})
-
-    # =========================
-    # Direction of Association
-    # =========================
-    direction_of_association: dict[str, Any] = {}
-
-    dir_trend_ctx = build_plot_context(
-        DirectionAssociationScatterOLSTrendContext,
-        base=common_base,
-        overrides=plot_direction_scatter_ols_trend_overrides,
-    )
-    dir_trend_plot = DirectionAssociationScatterOLSTrendPlot(dir_trend_ctx)
-    direction_of_association["scatter_ols_trend"] = dir_trend_plot.run(df_copy, cols=[x_col, y_col], role_map={"x": x_col, "y": y_col})
-
-    # ---- bundle report ----
-    eda_report = {
-        "relationship_structure": relationship_structure,
-        "magnitude_of_association": magnitude_of_association,
-        "direction_of_association": direction_of_association,
-    }
-
-    full_report = {
-        "metadata": {
-            "version": "0.1.0",
-            "report_name": "numeric_numeric_relationship_analysis",
-            "parameters": {"x_col": x_col, "y_col": y_col},
-        },
-        "data": eda_report,
-    }
-
-    report_file_path = report_path / f"numeric_{x_col}_numeric_{y_col}_relationship_analysis_report.json"
-    write_json_report(full_report, report_file_path)
-
-    logger.info(
-        "Completed numeric_numeric_relationship_analysis",
-        extra={"x_col": x_col, "y_col": y_col, "report_log_id": report_log_id, "report_file_path": str(report_file_path)},
-    )
-
-    return {"report_file_path": report_file_path}
+        return {
+            "relationship_structure": structure.get("data", structure),
+            "magnitude_of_association": magnitude.get("data", magnitude),
+            "direction_of_association": direction.get("data", direction),
+        }

@@ -15,6 +15,7 @@ from tests.analytics_eda.utils_internal.load_and_validate_report import (
 def load_and_validate_report():
     return _load_and_validate_report
 
+
 @pytest.fixture
 def assert_plot_metadata():
     """
@@ -39,26 +40,27 @@ def assert_plot_metadata():
       • If 'file_name' is NOT specified in expectations, we still verify the file
         if the payload provides a non-empty file_name.
     """
+
     def _to_jsonable(obj):
         # Make payload serializable (NumPy/Pandas aware).
-        if isinstance(obj, (str, int, float, bool)) or obj is None:
+        if isinstance(obj, str | int | float | bool) or obj is None:
             return obj
-        if isinstance(obj, (np.integer,)):
+        if isinstance(obj, np.integer):
             return int(obj)
-        if isinstance(obj, (np.floating,)):
+        if isinstance(obj, np.floating):
             return float(obj)
-        if isinstance(obj, (np.bool_,)):
+        if isinstance(obj, np.bool_):
             return bool(obj)
-        if isinstance(obj, (np.ndarray,)):
+        if isinstance(obj, np.ndarray):
             return obj.tolist()
-        if isinstance(obj, (pd.Series,)):
+        if isinstance(obj, pd.Series):
             # Prefer values; include index only when helpful
             return obj.astype(object).tolist()
-        if isinstance(obj, (pd.DataFrame,)):
+        if isinstance(obj, pd.DataFrame):
             return obj.to_dict(orient="list")
         if isinstance(obj, Mapping):
             return {str(k): _to_jsonable(v) for k, v in obj.items()}
-        if isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
+        if isinstance(obj, Sequence) and not isinstance(obj, str | bytes | bytearray):
             return [_to_jsonable(v) for v in obj]
         # Fallback to string
         return str(obj)
@@ -92,12 +94,12 @@ def assert_plot_metadata():
     # -------- assertion helpers -----------------------------
     def _handle_callable(actual_value, func, path_label: str):
         res = func(actual_value)
-        if isinstance(res, (bool, np.bool_)) or res is None:
+        if isinstance(res, bool | np.bool_) or res is None:
             assert bool(res), f"{path_label} predicate failed; got {actual_value!r}"
         elif isinstance(res, dict):
             # Allow returning a nested expected dict
             _assert_mapping(actual_value, res, path_label)
-        elif isinstance(res, (list, tuple)):
+        elif isinstance(res, list | tuple):
             # Allow returning a sequence to compare to
             assert actual_value == res, f"{path_label} expected {res!r}, got {actual_value!r}"
         else:
@@ -105,7 +107,7 @@ def assert_plot_metadata():
             assert actual_value == res, f"{path_label} expected {res!r}, got {actual_value!r}"
 
     def _assert_sequence(actual_seq, expected_seq, path_label: str):
-        assert isinstance(actual_seq, (list, tuple)), f"{path_label} should be a sequence"
+        assert isinstance(actual_seq, list | tuple), f"{path_label} should be a sequence"
         assert len(actual_seq) == len(expected_seq), f"{path_label} length mismatch"
         for i, (ai, ei) in enumerate(zip(actual_seq, expected_seq, strict=True)):
             item_label = f"{path_label}[{i}]"
@@ -114,7 +116,7 @@ def assert_plot_metadata():
                 _assert_mapping(ai, ei, item_label)
             elif callable(ei):
                 _handle_callable(ai, ei, item_label)
-            elif isinstance(ei, (list, tuple)):
+            elif isinstance(ei, list | tuple):
                 _assert_sequence(ai, ei, item_label)
             else:
                 assert ai == ei, f"{item_label} expected {ei!r}, got {ai!r}"
@@ -129,16 +131,22 @@ def assert_plot_metadata():
                 _assert_mapping(av, v, key_label)
             elif callable(v):
                 _handle_callable(av, v, key_label)
-            elif isinstance(v, (list, tuple)):
+            elif isinstance(v, list | tuple):
                 _assert_sequence(av, v, key_label)
             else:
                 assert av == v, f"{key_label} expected {v!r}, got {av!r}"
 
-
-    def _assert(payload: dict, expect: dict, tmp_path: Path, *, stem: str = "plot", dump: bool = True):
+    def _assert(
+        payload: dict,
+        expect: dict,
+        tmp_path: Path,
+        *,
+        stem: str = "plot",
+        dump: bool = True,
+        asset_dir: Path | None = None,
+    ):
         assert isinstance(payload, dict), "payload must be a dict"
-        assert "chart_metadata" in payload and "descriptive_stats" in payload, \
-            "payload must contain 'chart_metadata' and 'descriptive_stats'"
+        assert "chart_metadata" in payload and "descriptive_stats" in payload, "payload must contain 'chart_metadata' and 'descriptive_stats'"
 
         debug_dir = tmp_path / "assert_plot_metadata" / stem
         # Always dump full payload & expect first (helps even when the assertion later fails)
@@ -147,7 +155,6 @@ def assert_plot_metadata():
             _dump_json(debug_dir, "expect", expect)
 
         try:
-
             for key in ("chart_metadata", "descriptive_stats", "inferential_stats", "draft_descriptive_findings", "draft_inferential_findings"):
                 if key in expect:
                     assert key in payload, f"payload must contain '{key}'"
@@ -156,6 +163,7 @@ def assert_plot_metadata():
 
             # File check logic
             cm = payload["chart_metadata"]
+            assets_root = Path(asset_dir) if asset_dir is not None else tmp_path
             exp_file_in_expect = "file_name" in (expect.get("chart_metadata") or {})
             file_name = cm.get("file_name")
 
@@ -166,12 +174,12 @@ def assert_plot_metadata():
                     return
                 # explicit file name required
                 assert file_name == exp_file, "file_name mismatch"
-                saved = tmp_path / exp_file
+                saved = assets_root / exp_file
             else:
                 # not specified → if present, verify it; if absent, do nothing
                 if not file_name:
                     return
-                saved = tmp_path / file_name
+                saved = assets_root / file_name
 
             # Verify PNG exists and signature
             assert saved.exists() and saved.is_file(), f"Missing saved file: {saved}"
@@ -203,7 +211,7 @@ def assert_report_data(load_and_validate_report, assert_plot_metadata):
 
     Usage patterns:
 
-        # 1) Start from a response that has "report_file_path", validate whole "data"
+        # 1) Start from a response that has "report_path", validate whole "data"
         assert_report_data(out, expected_distribution, tmp_path)
 
         # 2) Start from an already-loaded report dict (or any nested dict),
@@ -214,7 +222,7 @@ def assert_report_data(load_and_validate_report, assert_plot_metadata):
     Notes:
       • For each (key -> expected) in the expected mapping:
           - Asserts `key` is present in the actual mapping.
-          - If the actual node has "report_file_path": calls load_and_validate_report(node, tmp_path) and stops there.
+          - If the actual node has "report_path": calls load_and_validate_report(node, tmp_path) and stops there.
           - Else if the actual node looks like a plot (has "chart_metadata" & "descriptive_stats"):
               calls assert_plot_metadata(actual_node, expected, tmp_path).
           - Else if both expected & actual are dicts: recurses into that subsection.
@@ -224,66 +232,74 @@ def assert_report_data(load_and_validate_report, assert_plot_metadata):
       • Empty dict `{}` in expectations simply asserts presence (and, if the actual node is a sub‑report,
         it will still verify that the report file exists).
     """
-    def _assert_sequence(actual_seq, expected_seq, tmp_path: Path, path_label: str):
-        assert isinstance(actual_seq, (list, tuple)), f"{path_label} should be a sequence"
+
+    def _assert_sequence(actual_seq, expected_seq, tmp_path: Path, path_label: str, base_dir: Path):
+        assert isinstance(actual_seq, list | tuple), f"{path_label} should be a sequence"
         assert len(actual_seq) == len(expected_seq), f"{path_label} length mismatch"
         for i, (ai, ei) in enumerate(zip(actual_seq, expected_seq, strict=True)):
             item_label = f"{path_label}[{i}]"
             if isinstance(ei, dict):
                 assert isinstance(ai, dict), f"{item_label} should be a dict"
-                _assert_mapping(ai, ei, tmp_path, item_label)
+                _assert_mapping(ai, ei, tmp_path, item_label, base_dir)
             elif callable(ei):
-                _handle_callable(ai, ei, tmp_path, item_label)
-            elif isinstance(ei, (list, tuple)):
-                _assert_sequence(ai, ei, tmp_path, item_label)
+                _handle_callable(ai, ei, tmp_path, item_label, base_dir)
+            elif isinstance(ei, list | tuple):
+                _assert_sequence(ai, ei, tmp_path, item_label, base_dir)
             else:
                 assert ai == ei, f"{item_label} expected {ei!r}, got {ai!r}"
 
-    def _handle_callable(actual_value, func, tmp_path: Path, path_label: str):
+    def _handle_callable(actual_value, func, tmp_path: Path, path_label: str, base_dir: Path):
         res = func(actual_value)
-        if isinstance(res, (bool, np.bool_)) or res is None:
+        if isinstance(res, bool | np.bool_) or res is None:
             assert bool(res), f"{path_label} predicate failed; got {actual_value!r}"
         elif isinstance(res, dict):
-            _assert_mapping(actual_value, res, tmp_path, path_label)
-        elif isinstance(res, (list, tuple)):
-            _assert_sequence(actual_value, res, tmp_path, path_label)
+            _assert_mapping(actual_value, res, tmp_path, path_label, base_dir)
+        elif isinstance(res, list | tuple):
+            _assert_sequence(actual_value, res, tmp_path, path_label, base_dir)
         else:
             assert actual_value == res, f"{path_label} expected {res!r}, got {actual_value!r}"
 
     def _looks_like_plot(node: dict) -> bool:
         return isinstance(node, dict) and ("chart_metadata" in node and "descriptive_stats" in node)
 
-    def _assert_mapping(actual: dict, expected: dict, tmp_path: Path, label: str):
+    def _assert_mapping(actual: dict, expected: dict, tmp_path: Path, label: str, base_dir: Path):
         assert isinstance(actual, dict), f"{label} should be a dict"
+        metadata = actual.get("metadata")
+        node_base_dir = base_dir
+        if isinstance(metadata, Mapping):
+            rel_path = metadata.get("report_relative_path")
+            if rel_path:
+                node_base_dir = base_dir / Path(rel_path)
+
         for k, vexp in (expected or {}).items():
             assert k in actual, f"{label} missing key: {k!r}"
             aval = actual[k]
             key_label = f"{label}.{k}"
 
             # 1) If this node links to a nested report, only verify it exists.
-            if isinstance(aval, dict) and "report_file_path" in aval:
+            if isinstance(aval, dict) and "report_path" in aval:
                 load_and_validate_report(aval, tmp_path)  # do not recurse or assert plot metadata
                 continue
 
             # 2) Plot payloads → use existing plot validator
             if isinstance(aval, dict) and _looks_like_plot(aval):
                 assert isinstance(vexp, dict), f"{key_label} expectations must be a dict for plot nodes"
-                assert_plot_metadata(aval, vexp, tmp_path)
+                assert_plot_metadata(aval, vexp, tmp_path, asset_dir=node_base_dir)
                 continue
 
             # 3) Sections → recurse
             if isinstance(vexp, dict) and isinstance(aval, dict):
-                _assert_mapping(aval, vexp, tmp_path, key_label)
+                _assert_mapping(aval, vexp, tmp_path, key_label, node_base_dir)
                 continue
 
             # 4) Callable predicate on the whole node
             if callable(vexp):
-                _handle_callable(aval, vexp, tmp_path, key_label)
+                _handle_callable(aval, vexp, tmp_path, key_label, node_base_dir)
                 continue
 
             # 5) Sequences
-            if isinstance(vexp, (list, tuple)):
-                _assert_sequence(aval, vexp, tmp_path, key_label)
+            if isinstance(vexp, list | tuple):
+                _assert_sequence(aval, vexp, tmp_path, key_label, node_base_dir)
                 continue
 
             # 6) Fallback: equality
@@ -291,19 +307,36 @@ def assert_report_data(load_and_validate_report, assert_plot_metadata):
 
         # If expected is empty {}, we still want to verify a direct report link if present.
         # (This covers cases like transforms: {"yeo-johnson": {}, ...} where actual holds a report link.)
-        if (expected == {} or expected is None) and isinstance(actual, dict) and "report_file_path" in actual:
+        if (expected == {} or expected is None) and isinstance(actual, dict) and "report_path" in actual:
             load_and_validate_report(actual, tmp_path)
+
+    def _extend_base_dir(base_dir: Path, metadata: Mapping | None) -> Path:
+        if isinstance(metadata, Mapping):
+            rel_path = metadata.get("report_relative_path")
+            if rel_path:
+                rel_parts = Path(rel_path).parts
+                base_parts = base_dir.parts
+                if len(rel_parts) <= len(base_parts) and tuple(base_parts[-len(rel_parts) :]) == rel_parts:
+                    return base_dir
+                return base_dir / Path(rel_path)
+        return base_dir
 
     def _entry_point(response_or_mapping, expected: dict, tmp_path: Path, root_key: str | None):
         # If we were handed a response with a file pointer, load it.
-        if isinstance(response_or_mapping, dict) and "report_file_path" in response_or_mapping:
-            loaded = load_and_validate_report(response_or_mapping, tmp_path)
-            root = loaded.get(root_key, loaded) if root_key else loaded
+        if isinstance(response_or_mapping, dict) and "report_path" in response_or_mapping:
+            source = load_and_validate_report(response_or_mapping, tmp_path)
         else:
-            root = response_or_mapping.get(root_key, response_or_mapping) if isinstance(response_or_mapping, dict) else response_or_mapping
+            source = response_or_mapping
+
+        if isinstance(source, dict):
+            root = source.get(root_key, source) if root_key else source
+        else:
+            root = source
 
         assert isinstance(root, dict), f"Root to validate must be a dict; got {type(root).__name__}"
-        _assert_mapping(root, expected, tmp_path, root_key or "<root>")
+
+        base_dir = _extend_base_dir(Path(tmp_path), source.get("metadata") if isinstance(source, dict) else None)
+        _assert_mapping(root, expected, tmp_path, root_key or "<root>", base_dir)
 
     def _fixture(response_or_mapping, expected: dict, tmp_path: Path, root_key: str = "data"):
         _entry_point(response_or_mapping, expected, tmp_path, root_key)

@@ -3,58 +3,77 @@ from math import isclose
 import pandas as pd
 import pytest
 
-from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis.categorical_numeric_relationship_analysis import (
-    categorical_numeric_relationship_analysis,
+from analytics_eda.analysis.exploratory_regression_analysis.categorical_numeric_relationship_analysis import (
+    CategoricalNumericRelationshipAnalysis,
+    CategoricalNumericRelationshipAnalysisContext,
 )
 
 
 @pytest.fixture
 def sample_df():
-    return pd.DataFrame({
-        'category': ['A', 'A', 'B', 'B'],
-        'value': [1.0, 2.0, 3.0, 4.0]
-    })
+    return pd.DataFrame(
+        {
+            "category": ["A", "A", "B", "B"],
+            "value": [1.0, 2.0, 3.0, 4.0],
+        }
+    )
 
-def test_missing_categorical_column(sample_df):
-    df = sample_df.drop(columns=['category'])
+
+def _build_analysis(tmp_path, categorical_col="category", numeric_col="value"):
+    ctx = CategoricalNumericRelationshipAnalysisContext(
+        base_dir=tmp_path,
+        categorical_col=categorical_col,
+        numeric_col=numeric_col,
+        save_json_report=True,
+        return_full_report=False,
+    )
+    return CategoricalNumericRelationshipAnalysis(ctx)
+
+
+def test_missing_categorical_column(sample_df, tmp_path):
+    analysis = _build_analysis(tmp_path)
+    df = sample_df.drop(columns=["category"])
     with pytest.raises(KeyError) as exc:
-        categorical_numeric_relationship_analysis(df, 'value', 'category')
+        analysis.run(df)
     assert "Categorical column 'category' not found." in str(exc.value)
 
-def test_missing_numeric_column(sample_df):
-    df = sample_df.drop(columns=['value'])
+
+def test_missing_numeric_column(sample_df, tmp_path):
+    analysis = _build_analysis(tmp_path)
+    df = sample_df.drop(columns=["value"])
     with pytest.raises(KeyError) as exc:
-        categorical_numeric_relationship_analysis(df, 'value', 'category')
+        analysis.run(df)
     assert "Numeric column 'value' not found." in str(exc.value)
 
-def test_invalid_categorical_dtype(sample_df):
-    # category as numeric dtype should fail
+
+def test_invalid_categorical_dtype(sample_df, tmp_path):
+    analysis = _build_analysis(tmp_path)
     df = sample_df.copy()
-    df['category'] = df['category'].map({'A': 1, 'B': 2})
+    df["category"] = df["category"].map({"A": 1, "B": 2})
     with pytest.raises(TypeError) as exc:
-        categorical_numeric_relationship_analysis(df, 'value', 'category')
+        analysis.run(df)
     assert "must be categorical or object" in str(exc.value)
 
-def test_invalid_numeric_dtype(sample_df):
-    # value as object dtype should fail
+
+def test_invalid_numeric_dtype(sample_df, tmp_path):
+    analysis = _build_analysis(tmp_path)
     df = sample_df.copy()
-    df['value'] = df['value'].astype(str)
+    df["value"] = df["value"].astype(str)
     with pytest.raises(TypeError) as exc:
-        categorical_numeric_relationship_analysis(df, 'value', 'category')
+        analysis.run(df)
     assert "must be numeric" in str(exc.value)
 
+
 @pytest.mark.parametrize(
-    "make_df, kwargs, expected_report_data",
+    "make_df, expected_report_data",
     [
         (
-            # Simple, deterministic 2-group example
             lambda: pd.DataFrame(
                 {
                     "category": ["A", "A", "B", "B"],
-                    "value":    [1.0, 2.0, 3.0, 4.0],
+                    "value": [1.0, 2.0, 3.0, 4.0],
                 }
             ),
-            {"data_source": None},
             {
                 "relationship_structure": {
                     "group_size_barchart": {
@@ -67,7 +86,6 @@ def test_invalid_numeric_dtype(sample_df):
                             "title": "Group Sizes for value by category",
                             "xlabel": "Group",
                             "ylabel": "Total",
-                            # verify PNG exists
                             "file_name": "Group Sizes for value by category.png",
                         },
                     },
@@ -77,9 +95,8 @@ def test_invalid_numeric_dtype(sample_df):
                             "group_ns": [2, 2],
                         },
                         "inferential_stats": {
-                            # keep statistical expectations light & structural
                             "bartlett": {"alpha": 0.05, "reject": lambda v: isinstance(v, bool)},
-                            "levene":   {"alpha": 0.05, "reject": lambda v: isinstance(v, bool)},
+                            "levene": {"alpha": 0.05, "reject": lambda v: isinstance(v, bool)},
                         },
                         "chart_metadata": {
                             "title": "Variance Homogeneity for value by category",
@@ -88,9 +105,8 @@ def test_invalid_numeric_dtype(sample_df):
                             "file_name": "Variance Homogeneity for value by category.png",
                         },
                     },
-                    # Each category should reference a nested univariate numeric report
                     "numeric_distribution_by_category": {
-                        "A": {},  # just verify report_file_path exists & is a JSON file
+                        "A": {},
                         "B": {},
                     },
                 },
@@ -112,11 +128,10 @@ def test_invalid_numeric_dtype(sample_df):
                         "descriptive_stats": {
                             "n_groups": 2,
                             "group_ns": [2, 2],
-                            # means are deterministic for this dataset
                             "means": [1.5, 3.5],
                         },
                         "inferential_stats": {
-                            "anova":   {"alpha": 0.05, "reject": lambda v: isinstance(v, bool)},
+                            "anova": {"alpha": 0.05, "reject": lambda v: isinstance(v, bool)},
                             "kruskal": {"alpha": 0.05, "reject": lambda v: isinstance(v, bool)},
                         },
                         "chart_metadata": {
@@ -131,10 +146,9 @@ def test_invalid_numeric_dtype(sample_df):
                             "n_groups": 2,
                             "group_labels": ["A", "B"],
                             "effect_sizes": {
-                                # keep the checks tolerant but meaningful
-                                "eta_squared":       lambda v: 0.0 <= v <= 1.0,
-                                "omega_squared":     lambda v: 0.0 <= v <= 1.0,
-                                "epsilon_squared":   lambda v: 0.0 <= v <= 1.0,
+                                "eta_squared": lambda v: 0.0 <= v <= 1.0,
+                                "omega_squared": lambda v: 0.0 <= v <= 1.0,
+                                "epsilon_squared": lambda v: 0.0 <= v <= 1.0,
                             },
                         },
                         "chart_metadata": {
@@ -154,7 +168,6 @@ def test_invalid_numeric_dtype(sample_df):
                                 {
                                     "g1": "A",
                                     "g2": "B",
-                                    # mean difference for our data is exactly 2.0
                                     "diff": lambda v: isclose(v, 2.0, rel_tol=0, abs_tol=1e-12),
                                     "reject": lambda v: isinstance(v, bool),
                                 }
@@ -177,22 +190,14 @@ def test_categorical_numeric_relationship_analysis_report_data_driven(
     tmp_path,
     assert_report_data,
     make_df,
-    kwargs,
     expected_report_data,
 ):
-    # Arrange
     df = make_df()
-    numeric_col="value"
-    categorical_col="category"
+    categorical_col = "category"
+    numeric_col = "value"
 
-    # Act
-    out = categorical_numeric_relationship_analysis(
-        df,
-        numeric_col=numeric_col,
-        categorical_col=categorical_col,
-        report_root=str(tmp_path),
-        **kwargs,
-    )
+    analysis = _build_analysis(tmp_path, categorical_col, numeric_col)
+    out = analysis.run(df)
 
-    # Assert (start from the response that has 'report_file_path')
-    assert_report_data(out, expected_report_data, tmp_path / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis")
+    asset_root = tmp_path / f"categorical_{categorical_col}_numeric_{numeric_col}_relationship_analysis"
+    assert_report_data(out, expected_report_data, asset_root)

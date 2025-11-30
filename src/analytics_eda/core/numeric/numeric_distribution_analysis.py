@@ -11,256 +11,99 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""End-to-end univariate numeric distribution analysis: stats, fits, plots, and optional transform evaluation."""
+"""Numeric distribution analysis built on BaseAnalysis (central tendency, dispersion, shape)."""
 
-from collections.abc import Callable, Sequence
-import logging
-from pathlib import Path
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
-import uuid
 
 import pandas as pd
 
+from analytics_eda.core.numeric.central_tendency import (
+    CentralTendencyAnalysis,
+    CentralTendencyAnalysisContext,
+)
+from analytics_eda.core.numeric.dispersion import (
+    DispersionAnalysis,
+    DispersionAnalysisContext,
+)
+from analytics_eda.core.numeric.shape import ShapeAnalysis, ShapeAnalysisContext
+from analytics_eda.core.reporting.analysis_context import AnalysisContext
+from analytics_eda.core.reporting.base_analysis import BaseAnalysis
 from analytics_eda.core.visualization.validation import numeric_validator
 
-from ..reporting import write_json_report
-from ..visualization.context.build_plot_context import build_plot_context
-from .central_tendency_histogram_plot import (
-    CentralTendencyHistogramContext,
-    CentralTendencyHistogramPlot,
-)
-from .central_tendency_mean_point_ci_plot import CentralTendencyMeanPointCIContext, CentralTendencyMeanPointCIPlot
-from .central_tendency_median_point_ci_plot import CentralTendencyMedianPointCIContext, CentralTendencyMedianPointCIPlot
-from .dispersion_box_plot import DispersionBoxPlot, DispersionBoxPlotContext
-from .dispersion_percentile_plot import DispersionPercentilePlot, DispersionPercentilePlotContext
-from .dispersion_sigma_bands_plot import DispersionSigmaBandsPlot, DispersionSigmaBandsPlotContext
-from .distribution_density_plot import DistributionDensityContext, DistributionDensityPlot
-from .distribution_ecdf_gap_plot import DistributionECDFGapContext, DistributionECDFGapPlot
-from .distribution_ecdf_vs_cdf_plot import DistributionECDFvsCDFContext, DistributionECDFvsCDFPlot
-from .distribution_probability_function_plot import (
-    DistributionProbabilityFunctionContext,
-    DistributionProbabilityFunctionPlot,
-)
-from .distribution_qq_fit_plot import DistributionQqFitContext, DistributionQqFitPlot
 
-logger = logging.getLogger(__name__)
+@dataclass
+class NumericDistributionAnalysisContext(AnalysisContext):
+    """Context bundling central tendency, dispersion, and shape analyses."""
+
+    report_name: str = "numeric_distribution_analysis"
+    report_relative_path: str = "numeric_distribution_analysis"
+    report_file_name: str = "numeric_distribution_analysis_report.json"
+    save_json_report: bool = False
+    return_full_report: bool = True
+
+    distribution_names: Sequence[str] = ("norm", "lognorm", "gamma", "expon")
+    central_tendency_context: CentralTendencyAnalysisContext | None = None
+    dispersion_context: DispersionAnalysisContext | None = None
+    shape_context: ShapeAnalysisContext | None = None
 
 
-def numeric_distribution_analysis(
-    series: pd.Series,
-    is_discrete: bool,
-    report_path: Path,
-    report_log_id: str = str(uuid.uuid4()),
-    distribution_names: Sequence[str] = ("norm", "lognorm", "gamma", "expon"),
-    evaluate_transforms_fn: Callable[[pd.Series, dict, dict, Path], dict] | None = None,
-    data_source: str | None = None,
-    filter_desc: str | None = None,
-    transform_desc: str | None = None,
-    plot_central_tendency_histogram_overrides: dict[str, Any] | None = None,
-    plot_central_tendency_mean_point_ci_overrides: dict[str, Any] | None = None,
-    plot_central_tendency_median_point_ci_overrides: dict[str, Any] | None = None,
-    plot_dispersion_boxplot_overrides: dict[str, Any] | None = None,
-    plot_dispersion_sigma_bands_overrides: dict[str, Any] | None = None,
-    plot_dispersion_percentile_overrides: dict[str, Any] | None = None,
-    plot_distribution_ecdf_gap_overrides: dict[str, Any] | None = None,
-    plot_distribution_ecdf_vs_cdf_overrides: dict[str, Any] | None = None,
-    plot_distribution_density_overrides: dict[str, Any] | None = None,
-    plot_distribution_qq_fit_overrides: dict[str, Any] | None = None,
-    plot_distribution_probability_overrides: dict[str, Any] | None = None,
-) -> dict:
-    """Compute univariate stats, fit common distributions, plot shape, and (optionally) evaluate transforms.
-
-    Why:
-        Provides a one-stop univariate EDA:
-        - central tendency and dispersion,
-        - shape & tail characteristics,
-        - formal goodness-of-fit to theoretical distributions,
-        and—if requested—transform suggestions to improve normality.
-
-    What:
-        • Central-tendency histogram via `plot_central_tendency_histogram`
-        • Dispersion diagnostics via `plot_dispersion_boxplot`, `plot_dispersion_sigma_bands`, and `plot_dispersion_percentile`
-        • ECDF gap analysis via `plot_distribution_ecdf_gap`
-        • Density (histogram + KDE) via `plot_distribution_density`
-        • ECDF vs. theoretical CDF for each in `distribution_names` via `plot_distribution_ecdf_vs_cdf`
-        • Q–Q plot vs. each distribution via `plot_distribution_qq_fit`
-        • Optional transform evaluation via `evaluate_transforms_fn`
-
-    How:
-        1. Validate and clean data (`validate_numeric_named_series`).
-        2. Call each `plot_*` function with `call_plot_with_overrides`, saving results under `report_path`.
-        3. Loop over `distribution_names`, fitting and plotting:
-           - ECDF vs. CDF (`plot_distribution_ecdf_vs_cdf`)
-           - Q–Q fit (`plot_distribution_qq_fit`)
-        4. If `evaluate_transforms_fn` is provided, extract the 'norm' Q–Q stats/tests
-           and invoke it to generate per-transform analyses.
-        5. Return a nested dict with three top‐level keys:
-           `'central_tendency'`, `'dispersion'`, and `'shape'`, each containing
-           plot metadata and descriptive statistics.
+class NumericDistributionAnalysis(BaseAnalysis):
     """
-    cleaned_series = numeric_validator().validate(series)
+    Run numeric distribution analysis covering central tendency, dispersion, and shape.
 
-    logger.info("Starting numeric_distribution_analysis", extra={"series_name": cleaned_series.name, "report_log_id": report_log_id})
+    Big idea:
+        Provide a cohesive report of location, spread, and shape/fit diagnostics for a numeric series.
+    """
 
-    # Convenience: base context kwargs shared by all plots
-    common_base = {
-        "save_path": report_path,
-        "data_source": data_source,
-        "filter_desc": filter_desc,
-        "transform_desc": transform_desc,
-    }
+    semantic_version = "1.0.0"
+    context: NumericDistributionAnalysisContext
 
-    # Central Tendency
-    central_tendency = {}
+    def __init__(self, context: NumericDistributionAnalysisContext) -> None:
+        super().__init__(context)
 
-    hist_ctx = build_plot_context(
-        CentralTendencyHistogramContext,
-        base=common_base,
-        overrides=plot_central_tendency_histogram_overrides,
-    )
-    central_tendency["histogram"] = CentralTendencyHistogramPlot(hist_ctx).run(cleaned_series)
+    def validate(self, data_input: pd.Series | pd.DataFrame) -> pd.Series:
+        """Ensure a named numeric series; preserve nulls for plotting."""
+        return numeric_validator(dropna=False, coerce_numeric=False).validate(data_input)
 
-    # Mean: point + CI
-    mean_ctx = build_plot_context(
-        CentralTendencyMeanPointCIContext,
-        base=common_base,
-        overrides=plot_central_tendency_mean_point_ci_overrides,
-    )
-    central_tendency["mean_point_ci"] = CentralTendencyMeanPointCIPlot(mean_ctx).run(cleaned_series)
+    def _merge_ctx(self, ctx_obj, default_cls):
+        if ctx_obj is None:
+            ctx_obj = default_cls()
+        ctx_obj = ctx_obj.__class__(**{**ctx_obj.__dict__})
+        ctx_obj.base_dir = self.report_dir()
+        ctx_obj.data_source = ctx_obj.data_source or self.context.data_source
+        ctx_obj.filter_desc = ctx_obj.filter_desc or self.context.filter_desc
+        ctx_obj.return_full_report = True
+        ctx_obj.save_json_report = False
+        return ctx_obj
 
-    # Median: point + CI
-    median_ctx = build_plot_context(
-        CentralTendencyMedianPointCIContext,
-        base=common_base,
-        overrides=plot_central_tendency_median_point_ci_overrides,
-    )
-    central_tendency["median_point_ci"] = CentralTendencyMedianPointCIPlot(median_ctx).run(cleaned_series)
+    def build_artifacts(self, data_input: pd.Series | pd.DataFrame) -> dict[str, Any]:
+        """Run central tendency, dispersion, and shape analyses."""
+        ct_ctx = self._merge_ctx(self.context.central_tendency_context, CentralTendencyAnalysisContext)
+        disp_ctx = self._merge_ctx(self.context.dispersion_context, DispersionAnalysisContext)
+        shape_ctx = self._merge_ctx(self.context.shape_context, ShapeAnalysisContext)
+        # pass distribution names into shape fit context if provided
+        if getattr(shape_ctx, "distribution_fit_context", None):
+            shape_ctx.distribution_fit_context.distribution_names = self.context.distribution_names
+        else:
+            from analytics_eda.core.numeric.shape import ShapeDistributionFitAnalysisContext
 
-    # TODO: Central Tendency time series analysis
-    # * Trend Direction
-    # * Peaks & Troughs
-    # * Volatility / Stability
-    # * Seasonal Patterns / Cycles
-    # * Change Magnitude
+            shape_ctx.distribution_fit_context = ShapeDistributionFitAnalysisContext(
+                distribution_names=self.context.distribution_names,
+                base_dir=self.report_dir(),
+                data_source=shape_ctx.data_source,
+                filter_desc=shape_ctx.filter_desc,
+                return_full_report=True,
+                save_json_report=False,
+            )
 
-    # Dispersion
-    dispersion = {}
-    box_ctx = build_plot_context(
-        DispersionBoxPlotContext,
-        base=common_base,
-        overrides=plot_dispersion_boxplot_overrides,
-    )
-    dispersion["boxplot"] = DispersionBoxPlot(box_ctx).run(cleaned_series)
+        ct_report = CentralTendencyAnalysis(ct_ctx).run(data_input)
+        disp_report = DispersionAnalysis(disp_ctx).run(data_input)
+        shape_report = ShapeAnalysis(shape_ctx).run(data_input)
 
-    sigma_ctx = build_plot_context(
-        DispersionSigmaBandsPlotContext,
-        base=common_base,
-        overrides=plot_dispersion_sigma_bands_overrides,
-    )
-    dispersion["sigma_bands"] = DispersionSigmaBandsPlot(sigma_ctx).run(cleaned_series)
-
-    percentile_ctx = build_plot_context(
-        DispersionPercentilePlotContext,
-        base=common_base,
-        overrides=plot_dispersion_percentile_overrides,
-    )
-    dispersion["percentiles"] = DispersionPercentilePlot(percentile_ctx).run(cleaned_series)
-
-    # TODO: plot for var and cv descriptive stats
-
-    # TODO: DispersionZScoreHistogramPlot
-    # TODO: DispersionRobustZScoreHistogramPlot
-
-    # TODO: Dispersion time series analysis
-
-    # Shape
-    shape = {}
-
-    # TODO: Shape time series analysis
-
-    # ECDF gap plot
-    ecdf_gap_ctx = build_plot_context(
-        DistributionECDFGapContext,
-        base=common_base,
-        overrides=plot_distribution_ecdf_gap_overrides,
-    )
-    shape["ecdf_gap"] = DistributionECDFGapPlot(ecdf_gap_ctx).run(cleaned_series)
-
-    # Density plot
-    dens_ctx = build_plot_context(
-        DistributionDensityContext,
-        base=common_base,
-        overrides=plot_distribution_density_overrides,
-    )
-    shape["density"] = DistributionDensityPlot(dens_ctx).run(cleaned_series)
-
-    # probability
-    prob_ctx = build_plot_context(
-        DistributionProbabilityFunctionContext,
-        base=common_base,
-        overrides=plot_distribution_probability_overrides,
-    )
-    shape["probability"] = DistributionProbabilityFunctionPlot(prob_ctx).run(cleaned_series)
-
-    # Fit each theoretical distribution
-    distribution_fits = {}
-    for dist in distribution_names:
-        ecdf_vs_cdf_ctx = build_plot_context(
-            DistributionECDFvsCDFContext,
-            base={**common_base, "distribution_name": dist},
-            overrides=plot_distribution_ecdf_vs_cdf_overrides,
-        )
-        qq_ctx = build_plot_context(
-            DistributionQqFitContext,
-            base={**common_base, "distribution_name": dist},
-            overrides=plot_distribution_qq_fit_overrides,
-        )
-
-        distribution_fits[dist] = {
-            "ecdf_vs_cdf": DistributionECDFvsCDFPlot(ecdf_vs_cdf_ctx).run(cleaned_series),
-            "qq_fit": DistributionQqFitPlot(qq_ctx).run(cleaned_series),
+        return {
+            "central_tendency": ct_report,
+            "dispersion": disp_report,
+            "shape": shape_report,
         }
-
-    shape["distribution_fits"] = distribution_fits
-
-    # optionally evaluate transforms on the 'norm' residuals
-    if evaluate_transforms_fn and "norm" in distribution_fits:
-        norm_qq = distribution_fits["norm"]["qq_fit"]
-        descriptive_stats = norm_qq["descriptive_stats"]
-        inferential_stats = norm_qq.get("inferential_stats", {})
-        transforms_meta = evaluate_transforms_fn(
-            series=cleaned_series,
-            is_discrete=is_discrete,
-            descriptive_stats=descriptive_stats,
-            normality_tests=inferential_stats,
-            report_path=report_path,
-            report_log_id=report_log_id,
-            data_source=data_source,
-            filter_desc=filter_desc,
-            distribution_names=distribution_names,
-            plot_central_tendency_histogram_overrides=plot_central_tendency_histogram_overrides,
-            plot_central_tendency_mean_point_ci_overrides=plot_central_tendency_mean_point_ci_overrides,
-            plot_central_tendency_median_point_ci_overrides=plot_central_tendency_median_point_ci_overrides,
-            plot_dispersion_boxplot_overrides=plot_dispersion_boxplot_overrides,
-            plot_dispersion_sigma_bands_overrides=plot_dispersion_sigma_bands_overrides,
-            plot_dispersion_percentile_overrides=plot_dispersion_percentile_overrides,
-            plot_distribution_ecdf_gap_overrides=plot_distribution_ecdf_gap_overrides,
-            plot_distribution_ecdf_vs_cdf_overrides=plot_distribution_ecdf_vs_cdf_overrides,
-            plot_distribution_density_overrides=plot_distribution_density_overrides,
-            plot_distribution_qq_fit_overrides=plot_distribution_qq_fit_overrides,
-            plot_distribution_probability_overrides=plot_distribution_probability_overrides,
-        )
-        # expose only the inner mapping of name → analysis
-        shape["transforms"] = transforms_meta.get("transforms", {})
-
-    logger.info("Completed numeric_distribution_analysis", extra={"series_name": cleaned_series.name, "report_log_id": report_log_id})
-
-    distribution_report = {"central_tendency": central_tendency, "dispersion": dispersion, "shape": shape}
-
-    full_report = {"metadata": {"version": "1.0.0", "report_name": "numeric_distribution_analysis", "parameters": {"series": cleaned_series.name, "distribution_names": distribution_names}}, "data": distribution_report}
-
-    report_file_name = f"{cleaned_series.name.replace(' ', '_')}_numeric_distribution_analysis_report.json"
-    report_file_path = report_path / report_file_name
-    write_json_report(full_report, report_file_path)
-
-    return {"report_file_path": report_file_name}

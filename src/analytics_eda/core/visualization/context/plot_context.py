@@ -75,8 +75,9 @@ class PlotContext:
 
     figsize: tuple[int, int] = (14, 9)
     dpi: int = 200
-    save_path: str | None = None
+    base_dir: str | None = None
     file_name: str | None = None
+    auto_file_name: bool = False
     show: bool = False
 
     enable_legend: bool = False  # draw a legend when True
