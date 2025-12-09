@@ -51,6 +51,8 @@ class CompletenessIssuesAnalysis(BaseAnalysis):
     Big idea:
         Surface how often values are missing, null, blank, or encoded as
         missing so data quality risk is explicit.
+    
+    Answers: Are values present?
 
     What this analysis does:
         Runs the completeness issues bar plot to tally gap types, report

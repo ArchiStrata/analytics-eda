@@ -59,10 +59,7 @@ class ShapeProbabilityFunctionPlot(BasePlot):
       {
         "descriptive_stats": {
           "n", "mean", "median", "mode", "variance", "std",
-          "iqr", "skewness", "kurtosis", "min", "max",
-          # payload for draw:
-          "x_pmf","y_pmf"   (if discrete) OR
-          "x_pdf","y_pdf"   (if continuous)
+          "iqr", "skewness", "kurtosis", "min", "max"
         },
         "inferential_stats": {},
         "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
@@ -166,7 +163,7 @@ class ShapeProbabilityFunctionPlot(BasePlot):
             "max": max_val,
         }
 
-        # Payload for draw
+        # TODO: payload for drawing
         if n == 0:
             # defaults already cover payload
             desc.update(

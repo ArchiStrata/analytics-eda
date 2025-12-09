@@ -156,7 +156,8 @@ class ShapeDensityPlot(BasePlot):
             "pct_50": float(q2),
             "pct_75": float(q3),
             "pct_90": float(pct_90),
-            # payload for draw:
+            # TODO: payload for drawing
+
             "bins_resolved": chosen_bins,
             "grid": grid,
             "density": density,

@@ -92,6 +92,8 @@ class ConsistencyTypeAnalysis(BaseAnalysis):
     Big idea:
         Infer the column's type mix and quantify format fragmentation so inconsistencies are
         surfaced before downstream modeling or validation.
+    
+    Answers:  Are values consistently formatted and typed?
 
     What this analysis does:
         Runs the type composition bar plot (dominant type vs. mixed) and the format consistency

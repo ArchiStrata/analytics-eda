@@ -137,7 +137,7 @@ class ShapeECDFGapPlot(BasePlot):
             "n_gaps_above_thr": n_gaps_above,
             "total_gap_prop": total_gap_prop,
             "max_gap_loc": max_gap_loc,
-            # payload for draw:
+            # TODO: payload for drawing
             "unique_vals": unique_vals,
             "max_gap_idx": max_idx,
         }

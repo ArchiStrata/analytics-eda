@@ -136,7 +136,7 @@ class ShapeECDFvsCDFPlot(BasePlot):
 
         if n == 0:
             desc["params"]["distribution_fit"] = None
-            # payload for draw (unused)
+            # TODO: payload for drawing
             desc.update({"x": np.array([]), "ecdf": np.array([]), "cdf_theo": np.array([]), "ks_D": np.nan})
             return desc
 
@@ -144,7 +144,7 @@ class ShapeECDFvsCDFPlot(BasePlot):
             desc["params"]["distribution_fit"] = None
             desc["error"] = err
             desc["skip_plot"] = True
-            # payload for draw (unused)
+            # TODO: payload for drawing
             desc.update({"x": np.array([]), "ecdf": np.array([]), "cdf_theo": np.array([]), "ks_D": np.nan})
             return desc
 
@@ -161,8 +161,7 @@ class ShapeECDFvsCDFPlot(BasePlot):
         # Theoretical CDF
         cdf_theo = dist.cdf(x, *fit_params)
 
-        # payload for drawing
-        # TODO: BasePlot support caching descriptive stats calculated specifically for drawing
+        # TODO: payload for drawing
         ks_D = float(np.max(np.abs(ecdf - cdf_theo)))
         desc.update({"x": x, "ecdf": ecdf, "cdf_theo": cdf_theo, "ks_D": ks_D})
         return desc

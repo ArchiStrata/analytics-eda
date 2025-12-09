@@ -58,6 +58,8 @@ class UniquenessAnalysis(BaseAnalysis):
     Big idea:
         Surface how many unique values exist, how concentrated the values are,
         and what share of the column is duplicated.
+    
+    Answers: How many distinct values exist?
 
     What this analysis does:
         Runs the cardinality bar chart and duplicate summary plot, saving both

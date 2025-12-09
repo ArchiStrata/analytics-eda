@@ -54,6 +54,8 @@ class ValidityValueComplianceAnalysis(BaseAnalysis):
         Highlight invalid categories and show how distinct counts change after removing them; provide
         a scaffold for future numeric validity checks.
 
+    Answers: Are the values allowed?
+
     What this analysis does:
         For categorical/object/string series, runs the allowed-categories bar plot. For other dtypes,
         returns a skip stub (until numeric validity plots are added).

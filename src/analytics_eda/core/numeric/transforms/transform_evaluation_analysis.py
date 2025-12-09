@@ -88,6 +88,8 @@ class TransformEvaluationAnalysis(BaseAnalysis):
 
     def build_artifacts(self, data_input: pd.Series | pd.DataFrame) -> dict[str, Any]:
         """Evaluate transforms and run numeric distribution analysis on each."""
+
+        # TODO: Support Winsorization
         transforms: dict[str, Any] = {}
         candidates = self._resolve_transforms()
         numeric_ctx = self._build_numeric_context()
