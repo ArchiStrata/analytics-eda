@@ -65,6 +65,7 @@ class DispersionSigmaBandsPlot(BasePlot):
             "n": 0,
             "mean": None,
             "std": None,
+            "cv": None,
             "sigma_1_lower": None,
             "sigma_1_upper": None,
             "sigma_2_lower": None,
@@ -95,6 +96,11 @@ class DispersionSigmaBandsPlot(BasePlot):
 
         desc = self.default_descriptive()
         desc.update({"n": n, "mean": mean, "std": std_finite, "params": {"std_outlier_multiplier": m}})
+
+        cv_value: float | None = None
+        if self.is_finite(mean) and mean != 0 and self.is_finite(std_finite):
+            cv_value = std_finite / mean
+        desc["cv"] = cv_value
 
         if not (std_finite and std_finite > 0):
             # Degenerate dispersion; everything collapses to the mean
@@ -151,6 +157,7 @@ class DispersionSigmaBandsPlot(BasePlot):
 
         mean = desc.get("mean")
         std = desc.get("std")
+        cv_value = desc.get("cv")
         params = desc.get("params") or {}
         m = params.get("std_outlier_multiplier")
 
@@ -159,6 +166,8 @@ class DispersionSigmaBandsPlot(BasePlot):
             context_parts.append(f"mean {self.formatter.format_numeric_value(mean, decimals=2)}")
         if self.is_finite(std):
             context_parts.append(f"σ {self.formatter.format_numeric_value(std, decimals=2)}")
+        if self.is_finite(cv_value):
+            context_parts.append(f"CV {self.formatter.format_numeric_value(cv_value, decimals=2)}")
         if m:
             context_parts.append(f"Outliers beyond ±{m}σ")
         context = " • ".join(context_parts)
@@ -167,7 +176,14 @@ class DispersionSigmaBandsPlot(BasePlot):
         between_1_2 = int(desc.get("count_between_1_2_sigma", 0) or 0)
         share_1 = within_1 / n
         share_2 = (within_1 + between_1_2) / n
-        primary = f"{self.formatter.format_percent(share_1)} of observations fall within ±1σ; " f"{self.formatter.format_percent(share_2)} stay within ±2σ."
+        primary_parts = []
+        if self.is_finite(cv_value):
+            primary_parts.append(f"CV {self.formatter.format_numeric_value(cv_value, decimals=2)}")
+        primary_parts.append(
+            f"{self.formatter.format_percent(share_1)} of observations fall within ±1σ; "
+            f"{self.formatter.format_percent(share_2)} stay within ±2σ."
+        )
+        primary = " • ".join(primary_parts)
 
         outliers = int(desc.get("count_beyond_outlier_threshold", 0) or 0)
         secondary: str | None = None
@@ -193,6 +209,9 @@ class DispersionSigmaBandsPlot(BasePlot):
         std_value = desc.get("std")
         if self.is_finite(std_value):
             parts.append(f"σ = {self.formatter.format_numeric_value(std_value, decimals=2)}")
+        cv_value = desc.get("cv")
+        if self.is_finite(cv_value):
+            parts.append(f"CV = {self.formatter.format_numeric_value(cv_value, decimals=2)}")
 
         m = desc.get("params", {}).get("std_outlier_multiplier")
         if m:

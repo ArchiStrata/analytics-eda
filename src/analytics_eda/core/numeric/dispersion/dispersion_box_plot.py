@@ -47,7 +47,7 @@ class DispersionBoxPlot(BasePlot):
     Accepts a numeric Series, optionally overlays a subtle violin silhouette,
     renders a box plot (median, quartiles, whiskers), flags observations beyond
     classical IQR fences, and returns descriptive stats centered on the quartile
-    story (n, mean, quartiles, IQR, fences, min, max, range).
+    story (n, mean, quartiles, IQR, fences, min, max, range (R)).
     """
 
     def __init__(self, ctx):

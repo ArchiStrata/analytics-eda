@@ -85,16 +85,12 @@ class DispersionAnalysis(BaseAnalysis):
             overrides=base_kwargs,
         )
 
-        # TODO: plot for var and cv descriptive stats
-
-        # TODO: DispersionZScoreHistogramPlot
-        # TODO: DispersionRobustZScoreHistogramPlot
-
         # TODO: population variance
         # TODO: population standard deviation
         # TODO: Coefficient of variation
 
         # TODO: Dispersion time series analysis
+        # * variance
 
         return {
             "boxplot": DispersionBoxPlot(box_ctx).run(data_input),
