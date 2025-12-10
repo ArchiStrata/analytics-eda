@@ -28,7 +28,6 @@ from .shape_distribution_fit_analysis import (
     ShapeDistributionFitAnalysis,
     ShapeDistributionFitAnalysisContext,
 )
-from .shape_ecdf_gap_plot import ShapeECDFGapContext, ShapeECDFGapPlot
 from .shape_probability_function_plot import (
     ShapeProbabilityFunctionContext,
     ShapeProbabilityFunctionPlot,
@@ -43,7 +42,6 @@ class ShapeAnalysisContext(AnalysisContext):
     report_relative_path: str = "shape"
     report_file_name: str = "shape_analysis.json"
 
-    ecdf_gap_context: ShapeECDFGapContext | None = None
     density_context: ShapeDensityContext | None = None
     probability_function_context: ShapeProbabilityFunctionContext | None = None
     distribution_fit_context: ShapeDistributionFitAnalysisContext | None = None
@@ -74,11 +72,6 @@ class ShapeAnalysis(BaseAnalysis):
         series_name = data_input.name or "series"
         base_kwargs = {**self.base_kwargs(), "name": series_name}
 
-        ecdf_gap_ctx = build_plot_context(
-            ShapeECDFGapContext,
-            base=self.context.ecdf_gap_context,
-            overrides=base_kwargs,
-        )
         density_ctx = build_plot_context(
             ShapeDensityContext,
             base=self.context.density_context,
@@ -96,7 +89,6 @@ class ShapeAnalysis(BaseAnalysis):
         # TODO: Shape time series analysis
 
         return {
-            "ecdf_gap": ShapeECDFGapPlot(ecdf_gap_ctx).run(data_input),
             "density": ShapeDensityPlot(density_ctx).run(data_input),
             "probability_function": ShapeProbabilityFunctionPlot(prob_ctx).run(data_input),
             "distribution_fits": self._run_distribution_fits(data_input),

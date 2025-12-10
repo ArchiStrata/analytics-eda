@@ -26,7 +26,7 @@ def test_numeric_distribution_analysis_runs(tmp_path, assert_report_data):
         "dispersion": {"data": {"boxplot": {"chart_metadata": {"title": lambda v: isinstance(v, str)}}}},
         "shape": {
             "data": {
-                "ecdf_gap": {"chart_metadata": {"title": lambda v: isinstance(v, str)}},
+                "density": {"chart_metadata": {"title": lambda v: isinstance(v, str)}},
                 "distribution_fits": lambda v: (isinstance(v, dict) and isinstance(v.get("data"), dict) and "distribution_fits" in v["data"] and "norm" in v["data"]["distribution_fits"]),
             },
         },

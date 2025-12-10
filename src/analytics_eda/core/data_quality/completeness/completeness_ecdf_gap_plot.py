@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""ECDF gap analysis plot and summary statistics."""
+"""ECDF gap analysis plot and summary statistics (completeness-focused)."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -25,7 +25,7 @@ from analytics_eda.core.visualization.validation import numeric_validator
 
 
 @dataclass
-class ShapeECDFGapContext(PlotContext):
+class CompletenessECDFGapContext(PlotContext):
     """Context for ECDF gap analysis plots (labels, legend, threshold)."""
 
     title_template: str = "ECDF Gap Analysis of {name}{modifiers}"
@@ -37,43 +37,24 @@ class ShapeECDFGapContext(PlotContext):
     threshold: float | None = None
 
 
-class ShapeECDFGapPlot(BasePlot):
+class CompletenessECDFGapPlot(BasePlot):
     """
-    Generate an Empirical Cumulative Distribution Function (ECDF) plot that highlights and quantifies gaps in a numeric distribution.
+    Show where a numeric distribution leaves holes by pairing an ECDF with gap stats.
 
-    Why:
-        Gaps—intervals with no observations—reveal holes in your data range.
-        Understanding their size, frequency, and location is critical for sampling
-        strategies, imputation decisions, and recognizing subpopulation boundaries.
+    Why this matters:
+    Empty stretches in a numeric range signal missing coverage and can bias downstream analysis; surfacing them early guides sampling, remediation, and guardrails.
 
-    What:
-        - Computes sorted-value gaps between each pair of unique consecutive values.
-        - Summarizes:
-          • max_gap, median_gap, gap percentiles (P10, P50, P90)
-          • count of gaps above a given threshold
-          • total_gap_prop (fraction of range with no data)
-          • max_gap_loc (midpoint of the largest gap)
-        - Plots the ECDF (step function) of all observations.
-        - Annotates the largest gap with a double-headed arrow and label.
-        - Optionally annotates data source, and saves the figure.
-        - Returns both the gap metrics and chart metadata.
-
-    Returns BasePlot.run() schema:
-      {
-        "descriptive_stats": {
-          "params": {"threshold": float|None},
-          "n","n_unique","gaps","max_gap","median_gap",
-          "pct10_gap","pct50_gap","pct90_gap",
-          "n_gaps_above_thr","total_gap_prop","max_gap_loc"
-        },
-        "inferential_stats": {},
-        "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
-      }
+    What this plot does:
+    Computes gaps between consecutive unique values, summarizes their size and percentiles (plus threshold exceeders), overlays an ECDF, and annotates the largest gap so the "where is the hole?" story is clear at a glance.
     """
 
     def __init__(self, ctx):
-        parts = PlotParts(series_validator=numeric_validator())
+        parts = PlotParts(series_validator=numeric_validator(coerce_numeric=True))
         super().__init__(ctx, parts)
+
+    def plot_semantic_version(self) -> str:
+        """Return the semantic version of this plot implementation."""
+        return "1.0.0"
 
     def default_descriptive(self) -> dict[str, Any]:
         """Return default descriptive payload including params and placeholders."""
@@ -137,16 +118,66 @@ class ShapeECDFGapPlot(BasePlot):
             "n_gaps_above_thr": n_gaps_above,
             "total_gap_prop": total_gap_prop,
             "max_gap_loc": max_gap_loc,
-            # TODO: payload for drawing
-            "unique_vals": unique_vals,
-            "max_gap_idx": max_idx,
         }
 
         if n == 0:
             desc["skip_plot"] = True
             desc["error"] = "no data to display"
+        else:
+            self.draw_cache_set("completeness_ecdf_gap", "unique_vals", unique_vals)
+            self.draw_cache_set("completeness_ecdf_gap", "max_gap_idx", max_idx)
+            self.draw_cache_set("completeness_ecdf_gap", "max_gap", max_gap)
+            self.draw_cache_set("completeness_ecdf_gap", "clean_values", clean.values)
 
         return desc
+
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
+        """Summarize gap size/location and central gap tendencies."""
+        if not desc:
+            return {}
+
+        n = int(desc.get("n", 0) or 0)
+        if n == 0:
+            return {}
+
+        fmt = self.formatter.format_numeric_value
+        n_unique = int(desc.get("n_unique", 0) or 0)
+        max_gap = desc.get("max_gap")
+        max_gap_loc = desc.get("max_gap_loc")
+        total_gap_prop = desc.get("total_gap_prop")
+        median_gap = desc.get("median_gap")
+        pct10_gap = desc.get("pct10_gap")
+        pct50_gap = desc.get("pct50_gap")
+        pct90_gap = desc.get("pct90_gap")
+        thr = getattr(self.ctx, "threshold", None)
+        n_gaps_above_thr = desc.get("n_gaps_above_thr")
+
+        context = f"n = {n:,} | n_unique = {n_unique:,}"
+
+        if self.is_finite(max_gap) and self.is_finite(max_gap_loc) and self.is_finite(total_gap_prop):
+            primary = f"Largest gap {fmt(max_gap, decimals=2)} near {fmt(max_gap_loc, decimals=2)}; total gap proportion {fmt(total_gap_prop, decimals=2)}."
+        elif self.is_finite(total_gap_prop):
+            primary = f"Total gap proportion {fmt(total_gap_prop, decimals=2)}; largest gap not available."
+        else:
+            primary = "Gap measures could not be computed."
+
+        secondary_parts: list[str] = []
+        if self.is_finite(median_gap):
+            secondary_parts.append(f"Median gap {fmt(median_gap, decimals=2)}")
+        if self.is_finite(pct10_gap) and self.is_finite(pct50_gap) and self.is_finite(pct90_gap):
+            secondary_parts.append(
+                f"P10/P50/P90 = {fmt(pct10_gap, decimals=2)}/{fmt(pct50_gap, decimals=2)}/{fmt(pct90_gap, decimals=2)}"
+            )
+        if thr is not None and n_gaps_above_thr is not None:
+            secondary_parts.append(f"Gaps > {fmt(thr, decimals=2)}: {int(n_gaps_above_thr)}")
+
+        secondary = " | ".join(secondary_parts) if secondary_parts else None
+
+        return {
+            "context": context,
+            "primary_finding": primary,
+            "secondary_finding": secondary,
+        }
 
     def draw(
         self,
@@ -160,19 +191,25 @@ class ShapeECDFGapPlot(BasePlot):
         palette,
     ):
         """Render ECDF, annotate the largest gap, and show a stats textbox."""
-        # ECDF from full cleaned series (not just uniques)
-        clean = s.dropna().sort_values()
+        unique_vals = self.draw_cache_get("completeness_ecdf_gap", "unique_vals")
+        max_gap_idx = self.draw_cache_get("completeness_ecdf_gap", "max_gap_idx")
+        max_gap = self.draw_cache_get("completeness_ecdf_gap", "max_gap")
+        clean_values = self.draw_cache_get("completeness_ecdf_gap", "clean_values")
         n = int(desc.get("n", 0))
-        ecdf_x = clean.values
+
+        if unique_vals is None or clean_values is None or n == 0:
+            desc["skip_plot"] = True
+            return fig, ax
+
+        # ECDF from full cleaned series (not just uniques)
+        ecdf_x = clean_values
         ecdf_y = (np.arange(1, n + 1) / n) if n > 0 else np.array([])
 
         if n > 0:
             ax.step(ecdf_x, ecdf_y, where="post", label="ECDF")
 
         # Annotate largest gap (only if we have two consecutive unique values and a finite gap)
-        unique_vals = desc["unique_vals"]
-        idx = desc.get("max_gap_idx")
-        max_gap = desc.get("max_gap")
+        idx = max_gap_idx
 
         if idx is not None and isinstance(idx, int | np.integer) and 0 <= idx < len(unique_vals) - 1 and self.is_finite(max_gap) and n > 0:
             # ECDF level just before the gap

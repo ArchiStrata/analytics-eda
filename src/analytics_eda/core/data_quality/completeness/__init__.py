@@ -1,5 +1,6 @@
 """Completeness pillar data-quality components."""
 
+from .completeness_ecdf_gap_plot import CompletenessECDFGapContext, CompletenessECDFGapPlot
 from .completeness_issues_analysis import CompletenessIssuesAnalysis, CompletenessIssuesAnalysisContext
 from .completeness_issues_bar_plot import CompletenessIssuesBarContext, CompletenessIssuesBarPlot
 
@@ -8,4 +9,6 @@ __all__ = [
     "CompletenessIssuesAnalysisContext",
     "CompletenessIssuesBarContext",
     "CompletenessIssuesBarPlot",
+    "CompletenessECDFGapContext",
+    "CompletenessECDFGapPlot",
 ]

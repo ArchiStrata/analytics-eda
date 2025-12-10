@@ -13,7 +13,6 @@ from analytics_eda.core.numeric.shape import (
         (
             lambda: pd.Series([1.0, 2.0, 3.0, 4.0], name="metric"),
             {
-                "ecdf_gap": {"chart_metadata": {"title": lambda v: isinstance(v, str)}},
                 "density": {"chart_metadata": {"title": lambda v: isinstance(v, str)}},
                 "probability_function": {"chart_metadata": {"title": lambda v: isinstance(v, str)}},
                 "distribution_fits": lambda v: (

@@ -31,6 +31,11 @@ def _sample_series() -> pd.Series:
                     "file_name": "Completeness Issues for dq (UnitTest).png",
                 },
             },
+            "ecdf_gap": {
+                "chart_metadata": {
+                    "title": (lambda v: isinstance(v, str)),
+                }
+            },
         }
     ],
     ids=["completeness_issues"],

@@ -31,8 +31,6 @@ from .shape import (
     ShapeDensityPlot,
     ShapeDistributionFitAnalysis,
     ShapeDistributionFitAnalysisContext,
-    ShapeECDFGapContext,
-    ShapeECDFGapPlot,
     ShapeECDFvsCDFContext,
     ShapeECDFvsCDFPlot,
     ShapeProbabilityFunctionContext,

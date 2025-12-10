@@ -4,14 +4,12 @@ Includes plots that surface missingness, coercion failures, and categorical
 cleanliness issues.
 """
 
-from .completeness.completeness_issues_analysis import (
-    CompletenessIssuesAnalysis,
-    CompletenessIssuesAnalysisContext,
+from .completeness.completeness_ecdf_gap_plot import (
+    CompletenessECDFGapContext,
+    CompletenessECDFGapPlot,
 )
-from .completeness.completeness_issues_bar_plot import (
-    CompletenessIssuesBarContext,
-    CompletenessIssuesBarPlot,
-)
+from .completeness.completeness_issues_analysis import CompletenessIssuesAnalysis, CompletenessIssuesAnalysisContext
+from .completeness.completeness_issues_bar_plot import CompletenessIssuesBarContext, CompletenessIssuesBarPlot
 from .consistency.consistency_casing_normalization_bar_plot import (
     ConsistencyCasingNormalizationBarContext,
     ConsistencyCasingNormalizationBarPlot,
@@ -68,7 +66,4 @@ from .validity.validity_allowed_categories_bar_plot import (
     ValidityAllowedCategoriesBarContext,
     ValidityAllowedCategoriesBarPlot,
 )
-from .validity.validity_value_compliance_analysis import (
-    ValidityValueComplianceAnalysis,
-    ValidityValueComplianceAnalysisContext,
-)
+from .validity.validity_value_compliance_analysis import ValidityValueComplianceAnalysis, ValidityValueComplianceAnalysisContext

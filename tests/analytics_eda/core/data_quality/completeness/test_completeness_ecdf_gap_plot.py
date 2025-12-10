@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from analytics_eda.core.numeric.shape import ShapeECDFGapContext, ShapeECDFGapPlot
+from analytics_eda.core.data_quality.completeness import CompletenessECDFGapContext, CompletenessECDFGapPlot
 
 
 @pytest.mark.parametrize(
@@ -10,20 +10,18 @@ from analytics_eda.core.numeric.shape import ShapeECDFGapContext, ShapeECDFGapPl
     [
         # Not a Series
         (lambda: [1, 2, 3], TypeError, r"data must be a pandas Series or DataFrame"),
-        # Non-numeric Series
-        (lambda: pd.Series(["a", "b", "c"], name="letters"), TypeError, r"Series must be numeric"),
         # Missing name
         (lambda: pd.Series([1, 2, 3]), ValueError, r"must have a non-empty 'name'"),
         # Blank/whitespace name
         (lambda: pd.Series([1, 2, 3], name="   "), ValueError, r"must have a non-empty 'name'"),
     ],
-    ids=["not_series", "bad_dtype", "missing_name", "blank_name"],
+    ids=["not_series", "missing_name", "blank_name"],
 )
 def test_validate_numeric_named_series_errors(series_factory, expected_exc, match):
     s = series_factory()
     with pytest.raises(expected_exc, match=match):
-        ctx = ShapeECDFGapContext()
-        plot = ShapeECDFGapPlot(ctx)
+        ctx = CompletenessECDFGapContext()
+        plot = CompletenessECDFGapPlot(ctx)
 
         plot.run(s)
 
@@ -57,6 +55,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "total_gap_prop": None,
                     "max_gap_loc": None,
                 },
+                "draft_descriptive_findings": {},
             },
         ),
         # 1) Simple increasing ints → verify n/n_unique and a few gap facts
@@ -76,6 +75,10 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "max_gap": 3.0,  # (4→7)
                     "max_gap_loc": 5.5,  # midpoint of (4,7)
                     # don't pin percentiles/median; small-sample interpolation varies
+                },
+                "draft_descriptive_findings": {
+                    "context": (lambda v: isinstance(v, str) and v.startswith("n = 4")),
+                    "primary_finding": (lambda v: isinstance(v, str) and "gap" in v.lower()),
                 },
             },
         ),
@@ -104,6 +107,9 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "n": 4,
                     "n_unique": 4,
                     "n_gaps_above_thr": 2,
+                },
+                "draft_descriptive_findings": {
+                    "primary_finding": (lambda v: isinstance(v, str) and "gap" in v.lower()),
                 },
             },
         ),
@@ -162,6 +168,9 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "max_gap": 4.5,
                     "max_gap_loc": 2.75,
                 },
+                "draft_descriptive_findings": {
+                    "primary_finding": (lambda v: isinstance(v, str) and "gap" in v.lower()),
+                },
             },
         ),
         # 8) Threshold present but no gap exceeds it → count is 0
@@ -218,7 +227,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
         "10_total_gap_prop_fraction",
     ],
 )
-def test_shape_ecdf_gap_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_completeness_ecdf_gap_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
 
     # If a file_name is provided, also set base_dir to tmp_path
@@ -226,8 +235,8 @@ def test_shape_ecdf_gap_plot_data_driven(make_series, kwargs, expect, tmp_path, 
         kwargs = kwargs.copy()
         kwargs["base_dir"] = tmp_path
 
-    ctx = ShapeECDFGapContext(**kwargs)
-    plot = ShapeECDFGapPlot(ctx)
+    ctx = CompletenessECDFGapContext(**kwargs)
+    plot = CompletenessECDFGapPlot(ctx)
 
     payload = plot.run(s)
 

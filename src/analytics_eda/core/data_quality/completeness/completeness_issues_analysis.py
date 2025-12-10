@@ -23,6 +23,7 @@ from analytics_eda.core.reporting.base_analysis import BaseAnalysis
 from analytics_eda.core.visualization.context.build_plot_context import build_plot_context
 from analytics_eda.core.visualization.validation import named_only_validator
 
+from .completeness_ecdf_gap_plot import CompletenessECDFGapContext, CompletenessECDFGapPlot
 from .completeness_issues_bar_plot import (
     CompletenessIssuesBarContext,
     CompletenessIssuesBarPlot,
@@ -42,6 +43,7 @@ class CompletenessIssuesAnalysisContext(AnalysisContext):
     report_relative_path: str = "completeness"
     report_file_name: str = "completeness_issues_analysis.json"
     completeness_issues_bar_context: CompletenessIssuesBarContext | None = None
+    completeness_ecdf_gap_context: CompletenessECDFGapContext | None = None
 
 
 class CompletenessIssuesAnalysis(BaseAnalysis):
@@ -82,4 +84,14 @@ class CompletenessIssuesAnalysis(BaseAnalysis):
         )
         comp_plot = CompletenessIssuesBarPlot(comp_ctx)
 
-        return {"completeness_issues": comp_plot.run(data_input)}
+        ecdf_gap_ctx = build_plot_context(
+            CompletenessECDFGapContext,
+            base=self.context.completeness_ecdf_gap_context,
+            overrides=base_kwargs,
+        )
+        ecdf_gap_plot = CompletenessECDFGapPlot(ecdf_gap_ctx)
+
+        return {
+            "completeness_issues": comp_plot.run(data_input),
+            "ecdf_gap": ecdf_gap_plot.run(data_input),
+        }
