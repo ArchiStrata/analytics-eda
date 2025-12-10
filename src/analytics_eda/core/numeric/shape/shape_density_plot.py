@@ -48,37 +48,25 @@ class ShapeDensityContext(PlotContext):
 
 class ShapeDensityPlot(BasePlot):
     """
-    Generate a histogram overlaid with a KDE to communicate the shape of a numeric distribution.
+    Show how a numeric distribution's shape behaves via histogram plus KDE.
 
-    Why:
-        Understanding a distribution’s shape—its skewness, tail‐weight, and number of peaks—reveals
-        subpopulations, asymmetries, and heavy tails that a simple histogram or boxplot may obscure.
+    Why this matters:
+    Skew, tail weight, and the number of peaks reveal sub-populations and
+    asymmetries that a table of summary stats or a bare histogram can miss.
 
-    What:
-        - Accepts a pandas Series of numeric values.
-        - Plots a smooth Kernel Density Estimate with:
-          • vertical lines at Q1, median (Q2), Q3
-          • shaded tail regions (below 10th, above 90th percentiles)
-          • markers for each local mode (peak) in the KDE
-        - Annotates skewness, kurtosis, quartile skewness, and mode count.
-        - Optionally saves the figure to disk.
-        - Returns computed shape metrics and chart parameters.
-
-    Returns BasePlot.run() schema:
-      {
-        "descriptive_stats": {
-          "params": {"bins": int|list, "bin_method": str|None},
-          "n","entropy_bits","skewness","kurtosis","modes_count","quartile_skew",
-          "pct_10","pct_25","pct_50","pct_75","pct_90"
-        },
-        "inferential_stats": {},
-        "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
-      }
+    What this plot does:
+    Accepts a numeric Series, overlays a KDE on top of a histogram, shades the
+    tails (10th/90th), marks local modes, and reports shape metrics including
+    skewness, kurtosis, entropy, quartile skew, and key percentiles.
     """
 
     def __init__(self, ctx):
         parts = PlotParts(series_validator=numeric_validator())
         super().__init__(ctx, parts)
+
+    def plot_semantic_version(self) -> str:
+        """Return the semantic version of this plot implementation."""
+        return "1.0.0"
 
     def default_descriptive(self) -> dict[str, Any]:
         """Return default descriptive payload and placeholders for drawing."""
@@ -100,6 +88,8 @@ class ShapeDensityPlot(BasePlot):
     def compute_descriptive(self, s: pd.Series) -> dict[str, Any]:
         """Compute shape stats, resolve bins, estimate KDE, and find modes."""
         n = int(s.size)
+        desc = self.default_descriptive()
+        desc["n"] = n
 
         # Resolve bins: bin_method > ctx.bins > default 30
         chosen_bins: int | Sequence[float] | None = self.ctx.bins
@@ -124,7 +114,7 @@ class ShapeDensityPlot(BasePlot):
 
         # Shape
         skewness = float(s.skew())
-        kurtosis = float(s.kurtosis())
+        kurtosis_val = float(s.kurtosis())
 
         # KDE grid
         kde = stats.gaussian_kde(s.to_numpy())
@@ -143,26 +133,87 @@ class ShapeDensityPlot(BasePlot):
         probs = hist_counts / hist_counts.sum() if hist_counts.sum() > 0 else np.array([])
         entropy_bits = float(-np.sum(probs * np.log2(probs + 1e-12))) if probs.size else None
 
-        return {
-            "params": {"bins": chosen_bins, "bin_method": self.ctx.bin_method},
-            "n": n,
-            "entropy_bits": entropy_bits,
-            "skewness": skewness,
-            "kurtosis": float(kurtosis),
-            "modes_count": modes_count,
-            "quartile_skew": quartile_skew,
-            "pct_10": float(pct_10),
-            "pct_25": float(q1),
-            "pct_50": float(q2),
-            "pct_75": float(q3),
-            "pct_90": float(pct_90),
-            # TODO: payload for drawing
+        # Cache render-only payload for draw()
+        self.draw_cache_set("density", "bins_resolved", chosen_bins)
+        self.draw_cache_set("density", "grid", grid)
+        self.draw_cache_set("density", "density", density)
+        self.draw_cache_set("density", "mode_x", mode_x)
+        self.draw_cache_set("density", "mode_y", mode_y)
+        self.draw_cache_set("density", "hist_counts", hist_counts)
 
-            "bins_resolved": chosen_bins,
-            "grid": grid,
-            "density": density,
-            "mode_x": mode_x.tolist(),
-            "mode_y": mode_y.tolist(),
+        desc.update(
+            {
+                "params": {"bins": chosen_bins, "bin_method": self.ctx.bin_method},
+                "entropy_bits": entropy_bits,
+                "skewness": skewness,
+                "kurtosis": kurtosis_val,
+                "modes_count": modes_count,
+                "quartile_skew": quartile_skew,
+                "pct_10": float(pct_10),
+                "pct_25": float(q1),
+                "pct_50": float(q2),
+                "pct_75": float(q3),
+                "pct_90": float(pct_90),
+            }
+        )
+
+        return desc
+
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
+        """Summarize skew/shape and central coverage for reporting."""
+        if not desc:
+            return {}
+
+        n = int(desc.get("n", 0) or 0)
+        if n == 0:
+            return {}
+
+        fmt = self.formatter.format_numeric_value
+        skewness = desc.get("skewness")
+        quartile_skew = desc.get("quartile_skew")
+        kurtosis_val = desc.get("kurtosis")
+        modes_count = int(desc.get("modes_count", 0) or 0)
+        pct_10 = desc.get("pct_10")
+        pct_90 = desc.get("pct_90")
+
+        skew_metric = quartile_skew if self.is_finite(quartile_skew) else skewness
+        if self.is_finite(skew_metric):
+            if skew_metric > 0.1:
+                skew_phrase = "right-skewed (heavier upper tail)"
+            elif skew_metric < -0.1:
+                skew_phrase = "left-skewed (heavier lower tail)"
+            else:
+                skew_phrase = "roughly symmetric tails"
+        else:
+            skew_phrase = "shape symmetry unclear"
+
+        if modes_count >= 3:
+            mode_phrase = f"{modes_count} modes"
+        elif modes_count == 2:
+            mode_phrase = "bimodal"
+        else:
+            mode_phrase = "unimodal"
+
+        primary = f"{mode_phrase.capitalize()} and {skew_phrase}."
+
+        secondary_parts: list[str] = []
+        if self.is_finite(pct_10) and self.is_finite(pct_90):
+            secondary_parts.append(f"Middle 80% spans {fmt(pct_10, decimals=2)} to {fmt(pct_90, decimals=2)}.")
+        if self.is_finite(kurtosis_val):
+            tail_note = "heavier tails" if kurtosis_val > 0 else "lighter tails" if kurtosis_val < 0 else "normal-like tails"
+            secondary_parts.append(f"Kurtosis {fmt(kurtosis_val, decimals=2)} ({tail_note}).")
+        secondary = " ".join(secondary_parts) if secondary_parts else None
+
+        context_parts = [f"n = {n:,}"]
+        if self.is_finite(skewness):
+            context_parts.append(f"skewness {fmt(skewness, decimals=2)}")
+        if self.is_finite(kurtosis_val):
+            context_parts.append(f"kurtosis {fmt(kurtosis_val, decimals=2)}")
+
+        return {
+            "context": " | ".join(context_parts),
+            "primary_finding": primary,
+            "secondary_finding": secondary,
         }
 
     def draw(
@@ -177,30 +228,40 @@ class ShapeDensityPlot(BasePlot):
         palette,
     ):
         """Render histogram, KDE, tail shading, quartile lines, modes, and legend."""
+        bins_resolved = self.draw_cache_get("density", "bins_resolved")
+        grid = self.draw_cache_get("density", "grid")
+        density = self.draw_cache_get("density", "density")
+        mode_x = self.draw_cache_get("density", "mode_x", np.array([]))
+        mode_y = self.draw_cache_get("density", "mode_y", np.array([]))
+
+        if bins_resolved is None or grid is None or density is None:
+            desc["skip_plot"] = True
+            return fig, ax
+
         # Histogram (density)
         ax.hist(
             s.to_numpy(),
-            bins=desc["bins_resolved"],
+            bins=bins_resolved,
             density=True,
             alpha=self.ctx.hist_alpha,
             label="Histogram",
         )
 
         # KDE
-        ax.plot(desc["grid"], desc["density"], lw=2, label="KDE")
+        ax.plot(grid, density, lw=2, label="KDE")
 
         # Tails
         ax.fill_between(
-            desc["grid"],
-            desc["density"],
-            where=(desc["grid"] < desc["pct_10"]),
+            grid,
+            density,
+            where=(grid < desc["pct_10"]),
             alpha=0.3,
             label="Bottom 10%",
         )
         ax.fill_between(
-            desc["grid"],
-            desc["density"],
-            where=(desc["grid"] > desc["pct_90"]),
+            grid,
+            density,
+            where=(grid > desc["pct_90"]),
             alpha=0.3,
             label="Top 10%",
         )
@@ -212,13 +273,28 @@ class ShapeDensityPlot(BasePlot):
 
         # Modes
         if desc["modes_count"] > 0:
-            ax.scatter(desc["mode_x"], desc["mode_y"], color="green", marker="o", label=f"{desc['modes_count']} mode(s)")
-            for x_loc, y_loc in zip(desc["mode_x"], desc["mode_y"], strict=True):
+            ax.scatter(mode_x, mode_y, color="green", marker="o", label=f"{desc['modes_count']} mode(s)")
+            for x_loc, y_loc in zip(mode_x, mode_y, strict=True):
                 ax.text(x_loc, y_loc, f"{x_loc:.2f}", ha="left", va="bottom", fontsize="x-small", color="green")
 
         # Stats textbox
-        stats_text = f"n = {desc['n']}\n" f"Entropy = {desc['entropy_bits']:.2f} bits\n" f"Skewness = {desc['skewness']:.2f}\n" f"Kurtosis = {desc['kurtosis']:.2f}\n" f"Quartile skew = {desc['quartile_skew']:.2f}"
-        ax.text(0.98, 0.98, stats_text, transform=ax.transAxes, ha="right", va="top", fontsize="small", bbox=dict(facecolor="white", alpha=0.5))
+        stats_text = (
+            f"n = {desc['n']}\n"
+            f"Entropy = {desc['entropy_bits']:.2f} bits\n"
+            f"Skewness = {desc['skewness']:.2f}\n"
+            f"Kurtosis = {desc['kurtosis']:.2f}\n"
+            f"Quartile skew = {desc['quartile_skew']:.2f}"
+        )
+        ax.text(
+            0.98,
+            0.98,
+            stats_text,
+            transform=ax.transAxes,
+            ha="right",
+            va="top",
+            fontsize="small",
+            bbox=dict(facecolor="white", alpha=0.5),
+        )
 
         # Legend ordering similar to legacy presentation
         handles, labels = ax.get_legend_handles_labels()

@@ -239,7 +239,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
         "11_explicit_filename_saves",
     ],
 )
-def test_distribution_qq_fit_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_shape_qq_fit_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
 
     # If a file_name is provided, also set base_dir to tmp_path

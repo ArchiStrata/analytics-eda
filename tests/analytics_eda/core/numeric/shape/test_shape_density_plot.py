@@ -62,6 +62,7 @@ test_data_series = pd.Series([1, 2, 2, 3, 4])
                     "pct_90": None,
                     "params": {"bins": None, "bin_method": None},
                 },
+                "draft_descriptive_findings": {},
             },
         ),
         # 1) Defaults with no kwargs → bins=30 fallback; basic shape stats present
@@ -90,6 +91,7 @@ test_data_series = pd.Series([1, 2, 2, 3, 4])
                     "pct_75": (lambda v: isinstance(v, float)),
                     "pct_90": (lambda v: isinstance(v, float)),
                 },
+                "draft_descriptive_findings": {"primary_finding": (lambda v: bool(v))},
             },
         ),
         # 2) Explicit integer bins
@@ -249,6 +251,7 @@ test_data_series = pd.Series([1, 2, 2, 3, 4])
                     "skewness": (lambda v: v > 0),
                     "quartile_skew": (lambda v: v > 0),
                 },
+                "draft_descriptive_findings": {"primary_finding": (lambda v: "right-skewed" in v.lower())},
             },
         ),
         # 14) Left‑skewed (negative exponential) → skewness < 0, quartile_skew < 0
@@ -275,13 +278,14 @@ test_data_series = pd.Series([1, 2, 2, 3, 4])
                 name="bimodal",
             ),
             {},
-            {
-                "descriptive_stats": {
-                    "n": 300,
-                    "modes_count": (lambda v: isinstance(v, int) and v >= 2),
+                {
+                    "descriptive_stats": {
+                        "n": 300,
+                        "modes_count": (lambda v: isinstance(v, int) and v >= 2),
+                    },
+                    "draft_descriptive_findings": {"primary_finding": (lambda v: "modal" in v.lower())},
                 },
-            },
-        ),
+            ),
         # 16) Save with defaults (only base_dir/file_name)
         (
             lambda: pd.Series(range(10), name="nums"),
@@ -342,7 +346,7 @@ test_data_series = pd.Series([1, 2, 2, 3, 4])
         "17_custom_title_labels_source_and_save",
     ],
 )
-def test_distribution_density_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_shape_density_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
     if "file_name" in kwargs:
         kwargs = kwargs.copy()

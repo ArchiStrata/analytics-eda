@@ -258,7 +258,7 @@ def test_invalid_distribution_name_raises_value_error():
         "9_gamma_positive_types",
     ],
 )
-def test_distribution_ecdf_vs_cdf_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_shape_ecdf_vs_cdf_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
 
     # If a file_name is provided, also set base_dir to tmp_path

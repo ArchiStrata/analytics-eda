@@ -253,7 +253,7 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
         "10_continuous_basic_moments",
     ],
 )
-def test_distribution_probability_function_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
+def test_shape_probability_function_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):
     s = make_series()
 
     # If a file_name is provided, also set base_dir to tmp_path
