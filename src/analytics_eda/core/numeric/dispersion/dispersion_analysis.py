@@ -87,7 +87,6 @@ class DispersionAnalysis(BaseAnalysis):
 
         # TODO: population variance
         # TODO: population standard deviation
-        # TODO: Coefficient of variation
 
         # TODO: Dispersion time series analysis
         # * variance

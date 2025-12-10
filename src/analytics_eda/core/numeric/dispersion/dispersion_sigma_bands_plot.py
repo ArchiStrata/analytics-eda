@@ -66,6 +66,7 @@ class DispersionSigmaBandsPlot(BasePlot):
             "mean": None,
             "std": None,
             "cv": None,
+            "variance": None,
             "sigma_1_lower": None,
             "sigma_1_upper": None,
             "sigma_2_lower": None,
@@ -101,6 +102,10 @@ class DispersionSigmaBandsPlot(BasePlot):
         if self.is_finite(mean) and mean != 0 and self.is_finite(std_finite):
             cv_value = std_finite / mean
         desc["cv"] = cv_value
+        variance_value: float | None = None
+        if self.is_finite(std_finite):
+            variance_value = std_finite**2
+        desc["variance"] = variance_value
 
         if not (std_finite and std_finite > 0):
             # Degenerate dispersion; everything collapses to the mean
@@ -158,6 +163,7 @@ class DispersionSigmaBandsPlot(BasePlot):
         mean = desc.get("mean")
         std = desc.get("std")
         cv_value = desc.get("cv")
+        variance_value = desc.get("variance")
         params = desc.get("params") or {}
         m = params.get("std_outlier_multiplier")
 
@@ -168,6 +174,8 @@ class DispersionSigmaBandsPlot(BasePlot):
             context_parts.append(f"σ {self.formatter.format_numeric_value(std, decimals=2)}")
         if self.is_finite(cv_value):
             context_parts.append(f"CV {self.formatter.format_numeric_value(cv_value, decimals=2)}")
+        if self.is_finite(variance_value):
+            context_parts.append(f"Var {self.formatter.format_numeric_value(variance_value, decimals=2)}")
         if m:
             context_parts.append(f"Outliers beyond ±{m}σ")
         context = " • ".join(context_parts)
@@ -212,6 +220,9 @@ class DispersionSigmaBandsPlot(BasePlot):
         cv_value = desc.get("cv")
         if self.is_finite(cv_value):
             parts.append(f"CV = {self.formatter.format_numeric_value(cv_value, decimals=2)}")
+        var_value = desc.get("variance")
+        if self.is_finite(var_value):
+            parts.append(f"Var = {self.formatter.format_numeric_value(var_value, decimals=2)}")
 
         m = desc.get("params", {}).get("std_outlier_multiplier")
         if m:
@@ -219,8 +230,11 @@ class DispersionSigmaBandsPlot(BasePlot):
         return " • ".join(parts)
 
     def footer_summary_text(self, desc: dict[str, Any], inf: dict[str, Any], chart_metadata: dict[str, Any]) -> str:
-        """Return footer summary with sample size."""
-        return f"n = {desc['n']}"
+        """Return footer summary with sample size and variance as a background metric."""
+        var_value = desc.get("variance")
+        var_txt = f"Var {self.formatter.format_numeric_value(var_value, decimals=2)}" if self.is_finite(var_value) else None
+        parts = [p for p in (var_txt, f"n = {desc['n']}") if p]
+        return " • ".join(parts) if parts else f"n = {desc['n']}"
 
     def draw(
         self,

@@ -47,6 +47,7 @@ SIGMA_STORY_SERIES = pd.Series([-6, -3, -1, 0, 1, 2, 3, 6], dtype="float64", nam
                     "mean": None,
                     "std": None,
                     "cv": None,
+                    "variance": None,
                     "sigma_1_lower": None,
                     "sigma_1_upper": None,
                     "count_within_1_sigma": 0,
@@ -72,6 +73,7 @@ SIGMA_STORY_SERIES = pd.Series([-6, -3, -1, 0, 1, 2, 3, 6], dtype="float64", nam
                     "mean": 5.0,
                     "std": 0.0,
                     "cv": 0.0,
+                    "variance": 0.0,
                     "sigma_1_lower": 5.0,
                     "sigma_1_upper": 5.0,
                     "sigma_3_lower": 5.0,
@@ -83,7 +85,7 @@ SIGMA_STORY_SERIES = pd.Series([-6, -3, -1, 0, 1, 2, 3, 6], dtype="float64", nam
                     "count_beyond_outlier_threshold": 0,
                 },
                 "draft_descriptive_findings": {
-                    "context": "n = 4 • mean 5.00 • σ 0.00 • CV 0.00 • Outliers beyond ±3.0σ",
+                    "context": "n = 4 • mean 5.00 • σ 0.00 • CV 0.00 • Var 0.00 • Outliers beyond ±3.0σ",
                     "primary_finding": "CV 0.00 • 100.0% of observations fall within ±1σ; 100.0% stay within ±2σ.",
                     "secondary_finding": None,
                 },
@@ -99,6 +101,7 @@ SIGMA_STORY_SERIES = pd.Series([-6, -3, -1, 0, 1, 2, 3, 6], dtype="float64", nam
                     "mean": pytest.approx(0.25, rel=1e-9),
                     "std": pytest.approx(3.693623849670827, rel=1e-9),
                     "cv": pytest.approx(14.774495398683308, rel=1e-9),
+                    "variance": pytest.approx(13.64285714285714, rel=1e-9),
                     "sigma_1_lower": pytest.approx(-3.443623849670827, rel=1e-9),
                     "sigma_1_upper": pytest.approx(3.943623849670827, rel=1e-9),
                     "count_within_1_sigma": 6,
@@ -108,7 +111,7 @@ SIGMA_STORY_SERIES = pd.Series([-6, -3, -1, 0, 1, 2, 3, 6], dtype="float64", nam
                     "count_beyond_outlier_threshold": 0,
                 },
                 "draft_descriptive_findings": {
-                    "context": "n = 8 • mean 0.25 • σ 3.69 • CV 14.77 • Outliers beyond ±3.0σ",
+                    "context": "n = 8 • mean 0.25 • σ 3.69 • CV 14.77 • Var 13.64 • Outliers beyond ±3.0σ",
                     "primary_finding": "CV 14.77 • 75.0% of observations fall within ±1σ; 100.0% stay within ±2σ.",
                     "secondary_finding": None,
                 },
@@ -122,6 +125,7 @@ SIGMA_STORY_SERIES = pd.Series([-6, -3, -1, 0, 1, 2, 3, 6], dtype="float64", nam
                 "descriptive_stats": {
                     "params": {"std_outlier_multiplier": 1.5},
                     "cv": pytest.approx(14.774495398683308, rel=1e-9),
+                    "variance": pytest.approx(13.64285714285714, rel=1e-9),
                     "count_beyond_outlier_threshold": 2,
                     "extreme_lower_count": 1,
                     "extreme_upper_count": 1,
@@ -129,7 +133,7 @@ SIGMA_STORY_SERIES = pd.Series([-6, -3, -1, 0, 1, 2, 3, 6], dtype="float64", nam
                     "extreme_upper_bound": pytest.approx(5.790435774506241, rel=1e-9),
                 },
                 "draft_descriptive_findings": {
-                    "context": "n = 8 • mean 0.25 • σ 3.69 • CV 14.77 • Outliers beyond ±1.5σ",
+                    "context": "n = 8 • mean 0.25 • σ 3.69 • CV 14.77 • Var 13.64 • Outliers beyond ±1.5σ",
                     "primary_finding": "CV 14.77 • 75.0% of observations fall within ±1σ; 100.0% stay within ±2σ.",
                     "secondary_finding": "25.0% exceed ±1.5σ (1 low / 1 high).",
                 },
