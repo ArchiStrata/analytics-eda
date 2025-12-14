@@ -90,6 +90,8 @@ test_data_series = pd.Series([1, 2, 2, 3, 4])
                     "pct_50": (lambda v: isinstance(v, float)),
                     "pct_75": (lambda v: isinstance(v, float)),
                     "pct_90": (lambda v: isinstance(v, float)),
+                    "mean_reliability": "reliable",
+                    "summary_badge": (lambda v: isinstance(v, dict) and v.get("mean") is not None),
                 },
                 "draft_descriptive_findings": {"primary_finding": (lambda v: bool(v))},
             },
@@ -250,8 +252,10 @@ test_data_series = pd.Series([1, 2, 2, 3, 4])
                     "n": 200,
                     "skewness": (lambda v: v > 0),
                     "quartile_skew": (lambda v: v > 0),
+                    "skew_level": (lambda v: v in ("moderate", "strong")),
+                    "mean_reliability": "prefer_median",
                 },
-                "draft_descriptive_findings": {"primary_finding": (lambda v: "right-skewed" in v.lower())},
+                "draft_descriptive_findings": {"primary_finding": (lambda v: "right skew" in v.lower())},
             },
         ),
         # 14) Left‑skewed (negative exponential) → skewness < 0, quartile_skew < 0
@@ -324,6 +328,21 @@ test_data_series = pd.Series([1, 2, 2, 3, 4])
                 },
             },
         ),
+        # 18) Unknown skew/mean reliability (constant series) formats to 'unknown'
+        (
+            lambda: pd.Series([1.0, 9.0], name="tiny"),
+            {},
+            {
+                "descriptive_stats": {
+                    "mean_reliability": "unknown",
+                    "summary_badge": {"skew": (lambda v: "unknown" in v.lower()), "mean": "unknown"},
+                },
+                "draft_descriptive_findings": {
+                    "secondary_finding": (lambda v: v is None or "unknown" in v.lower()),
+                    "context": (lambda v: "mean reliability" in v.lower()),
+                },
+            },
+        ),
     ],
     ids=[
         "0_empty",
@@ -344,6 +363,7 @@ test_data_series = pd.Series([1, 2, 2, 3, 4])
         "15_bimodal_modes_ge2",
         "16_save_with_defaults",
         "17_custom_title_labels_source_and_save",
+        "18_unknown_mean_reliability",
     ],
 )
 def test_shape_density_plot_data_driven(make_series, kwargs, expect, tmp_path, assert_plot_metadata):

@@ -73,8 +73,10 @@ class ShapeAnalysis(BaseAnalysis):
             overrides=base_kwargs,
         )
 
-        # TODO: DispersionZScoreHistogramPlot
-        # TODO: DispersionRobustZScoreHistogramPlot
+        # TODO: Add shape classifier (pattern tags: bell, uniform, J/rev-J, U; combine modality, kurtosis, tail balance, distribution-fit scores).
+
+        # TODO: ShapeZScoreHistogramPlot
+        # TODO: ShapeRobustZScoreHistogramPlot
 
         # TODO: Shape time series analysis
 

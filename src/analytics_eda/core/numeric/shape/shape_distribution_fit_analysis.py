@@ -66,6 +66,8 @@ class ShapeDistributionFitAnalysis(BaseAnalysis):
         series_name = data_input.name or "series"
         base_kwargs = {**self.base_kwargs(), "name": series_name}
 
+        # TODO: Rank candidate fits (aggregate KS/AD/CvM/QQ metrics; pick best-fit distribution and confidence note).
+        # TODO: Enrich QQ/ECDF plots (shape_qq_fit_plot.py, shape_ecdf_vs_cdf_plot.py) with tail curvature notes, fit score labels, and consolidated normality verdict for norm.
         fits: dict[str, Any] = {}
         for dist_name in self.context.distribution_names:
             ecdf_vs_cdf_ctx = build_plot_context(
