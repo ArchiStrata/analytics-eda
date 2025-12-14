@@ -151,7 +151,7 @@ class ConsistencyCasingNormalizationBarPlot(SeriesBarChartMixin, BasePlot):
                 "secondary_finding": None,
             }
 
-        primary = f"{values_with_collisions:,} values participate in casing collisions; " f"distinct categories drop from {distinct_raw:,} to {distinct_after:,} (Δ = {collapse:,})."
+        primary = f"{values_with_collisions:,} values participate in casing collisions; distinct categories drop from {distinct_raw:,} to {distinct_after:,} (Δ = {collapse:,})."
 
         return {
             "context": context,

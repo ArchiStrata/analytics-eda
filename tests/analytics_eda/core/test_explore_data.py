@@ -10,13 +10,7 @@ from analytics_eda.core import explore_data
 
 @pytest.fixture
 def sample_dataframe():
-    df = pd.DataFrame({
-        "id": [1, 2, 3, 4, 5],
-        "name": ["Alice", "Bob", "Charlie", "David", "Eve"],
-        "age": [25, 30, 35, None, 40],
-        "gender": pd.Series(["F", "M", "M", "M", "F"], dtype="category"),
-        "constant": ["yes"] * 5
-    })
+    df = pd.DataFrame({"id": [1, 2, 3, 4, 5], "name": ["Alice", "Bob", "Charlie", "David", "Eve"], "age": [25, 30, 35, None, 40], "gender": pd.Series(["F", "M", "M", "M", "F"], dtype="category"), "constant": ["yes"] * 5})
     return df
 
 
@@ -32,14 +26,16 @@ def test_explore_data_all_branches(tmp_path):
     # Combine them
     numeric_var = np.concatenate([base_values, extreme_upper, extreme_lower])
 
-    df = pd.DataFrame({
-        "numeric_const": [1.0] * 100,                              # Constant numeric
-        "numeric_var": numeric_var,                               # Numeric with outlier
-        "category_var": pd.Series((["A", "B", "C", None] * 25)[:100], dtype="category"),
-        "object_high_card": [str(i) for i in range(100)],         # Object high cardinality
-        "object_const": ["X"] * 100,                               # Constant object
-        "mixed_nan": [np.nan] * 10 + [1] * 90    # Missing values
-    })
+    df = pd.DataFrame(
+        {
+            "numeric_const": [1.0] * 100,  # Constant numeric
+            "numeric_var": numeric_var,  # Numeric with outlier
+            "category_var": pd.Series((["A", "B", "C", None] * 25)[:100], dtype="category"),
+            "object_high_card": [str(i) for i in range(100)],  # Object high cardinality
+            "object_const": ["X"] * 100,  # Constant object
+            "mixed_nan": [np.nan] * 10 + [1] * 90,  # Missing values
+        }
+    )
 
     summary = explore_data(df, report_path=tmp_path)
 

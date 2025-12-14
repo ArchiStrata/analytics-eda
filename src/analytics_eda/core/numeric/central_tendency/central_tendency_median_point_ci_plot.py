@@ -429,7 +429,7 @@ class CentralTendencyMedianPointCIPlot(BasePlot):
             if "sign_test" in pm:
                 st = pm["sign_test"]
                 ptxt = fmt.format_p_value(st["p_value"])
-                parts.append(f"Sign: +={st['num_positive']}, -={st['num_negative']}, {ptxt} " f"{'(reject)' if st['reject'] else '(ns)'}")
+                parts.append(f"Sign: +={st['num_positive']}, -={st['num_negative']}, {ptxt} {'(reject)' if st['reject'] else '(ns)'}")
             if parts:
                 ax.text(0.01, 0.95, "; ".join(parts), transform=ax.transAxes, va="top", ha="left", fontsize="small", bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.6))
 

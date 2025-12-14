@@ -76,8 +76,6 @@ class ShapeQqFitPlot(BasePlot):
         dist = self.ctx.distribution_name
         return {
             "fit_desc": f"fitted to {dist}",
-            # If you also want alpha shown: "extra_desc": f"alpha={self.ctx.alpha:g}",
-            # If your template ever needs a placeholder, expose it too (e.g., {dist}):
             "dist": dist,
         }
 

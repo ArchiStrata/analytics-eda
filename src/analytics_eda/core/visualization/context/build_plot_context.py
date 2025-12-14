@@ -16,10 +16,12 @@
 Provides `build_plot_context`, which constructs or updates a dataclass-based
 plot context from a base instance or dict, applying validated overrides.
 """
+
 from dataclasses import fields, is_dataclass, replace
 from typing import Any, TypeVar
 
 T = TypeVar("T")
+
 
 def build_plot_context(
     ctx_cls: type[T],

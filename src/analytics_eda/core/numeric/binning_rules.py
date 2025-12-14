@@ -23,6 +23,7 @@ from analytics_eda.core.visualization.validation.validation import numeric_valid
 
 logger = logging.getLogger(__name__)
 
+
 def choose_bins(series: pd.Series) -> tuple[int, str]:
     """
     Choose a robust histogram bin count based on data size, shape, and skew.
@@ -111,6 +112,7 @@ def sturges_bins(series: pd.Series) -> int:
         raise ValueError("n_obs must be >= 1")
     return math.ceil(math.log2(n_obs) + 1)
 
+
 def scott_bins(series: pd.Series) -> int:
     """
     Compute the number of histogram bins using Scott's Rule.
@@ -147,11 +149,12 @@ def scott_bins(series: pd.Series) -> int:
         raise ValueError("Series must have non-zero variance for Scott's Rule.")
 
     # 4. Compute bin width and count
-    h = 3.5 * sigma / (n ** (1/3))
+    h = 3.5 * sigma / (n ** (1 / 3))
     data_range = cleaned_series.max() - cleaned_series.min()
     k = math.ceil(data_range / h)
 
     return k
+
 
 def freedman_diaconis_bins(series: pd.Series) -> int:
     """
@@ -190,11 +193,12 @@ def freedman_diaconis_bins(series: pd.Series) -> int:
         raise ValueError("IQR must be positive for Freedman–Diaconis rule.")
 
     # 4. Calculate bin count
-    h = 2 * iqr / (n ** (1/3))
+    h = 2 * iqr / (n ** (1 / 3))
     data_range = cleaned_series.max() - cleaned_series.min()
     k = math.ceil(data_range / h)
 
     return max(k, 1)
+
 
 def doane_bins(series: pd.Series) -> int:
     """

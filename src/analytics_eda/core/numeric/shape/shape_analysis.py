@@ -28,10 +28,6 @@ from .shape_distribution_fit_analysis import (
     ShapeDistributionFitAnalysis,
     ShapeDistributionFitAnalysisContext,
 )
-from .shape_probability_function_plot import (
-    ShapeProbabilityFunctionContext,
-    ShapeProbabilityFunctionPlot,
-)
 
 
 @dataclass
@@ -43,7 +39,6 @@ class ShapeAnalysisContext(AnalysisContext):
     report_file_name: str = "shape_analysis.json"
 
     density_context: ShapeDensityContext | None = None
-    probability_function_context: ShapeProbabilityFunctionContext | None = None
     distribution_fit_context: ShapeDistributionFitAnalysisContext | None = None
 
 
@@ -52,8 +47,8 @@ class ShapeAnalysis(BaseAnalysis):
     Assess distribution shape and fit for a numeric series.
 
     Big idea:
-        Provide a concise view of empirical vs. theoretical shape: density, ECDF gaps,
-        ECDF vs. CDF fits, Q–Q diagnostics, and probability function overlays.
+        Provide a concise view of empirical vs. theoretical shape: density plus
+        ECDF-vs-CDF and Q-Q fit diagnostics.
     """
 
     semantic_version = "1.0.0"
@@ -77,11 +72,6 @@ class ShapeAnalysis(BaseAnalysis):
             base=self.context.density_context,
             overrides=base_kwargs,
         )
-        prob_ctx = build_plot_context(
-            ShapeProbabilityFunctionContext,
-            base=self.context.probability_function_context,
-            overrides=base_kwargs,
-        )
 
         # TODO: DispersionZScoreHistogramPlot
         # TODO: DispersionRobustZScoreHistogramPlot
@@ -90,7 +80,6 @@ class ShapeAnalysis(BaseAnalysis):
 
         return {
             "density": ShapeDensityPlot(density_ctx).run(data_input),
-            "probability_function": ShapeProbabilityFunctionPlot(prob_ctx).run(data_input),
             "distribution_fits": self._run_distribution_fits(data_input),
         }
 

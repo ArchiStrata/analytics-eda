@@ -4,7 +4,7 @@ from analytics_eda.core.reporting.sanitize_json import sanitize_json
 
 
 def test_nan_float_converted_to_none():
-    assert sanitize_json(float('nan')) is None
+    assert sanitize_json(float("nan")) is None
 
 
 def test_numpy_scalars_converted_to_native():
@@ -19,14 +19,8 @@ def test_numpy_scalars_converted_to_native():
 
 
 def test_nested_structure_sanitization():
-    data = {
-        "a": np.int64(5),
-        "b": [np.float32(2.5), float('nan'), {"x": np.bool_(False)}]
-    }
-    expected = {
-        "a": 5,
-        "b": [2.5, None, {"x": False}]
-    }
+    data = {"a": np.int64(5), "b": [np.float32(2.5), float("nan"), {"x": np.bool_(False)}]}
+    expected = {"a": 5, "b": [2.5, None, {"x": False}]}
     assert sanitize_json(data) == expected
 
 

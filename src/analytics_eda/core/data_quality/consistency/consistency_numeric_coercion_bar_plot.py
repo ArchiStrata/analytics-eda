@@ -155,7 +155,7 @@ class ConsistencyNumericCoercionBarPlot(SeriesBarChartMixin, BasePlot):
 
         # how many distinct failed coercion issues are there and how common are they?
         # Primary: overall rate + count
-        findings["primary_finding"] = f"{self.formatter.format_percent(pct_nonnum)} of values failed numeric coercion " f"({total_nonnum:,} rows)."
+        findings["primary_finding"] = f"{self.formatter.format_percent(pct_nonnum)} of values failed numeric coercion ({total_nonnum:,} rows)."
 
         # which issues had the most, how common, and how many?
         bars: dict[str, Any] = desc.get("bars", {})

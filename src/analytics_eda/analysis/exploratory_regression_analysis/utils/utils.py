@@ -34,12 +34,8 @@ def resolve_cat_col(df: pd.DataFrame, cols: Sequence[str] | None, role_map: Mapp
         raise KeyError(f"Categorical column '{col}' not found. Provide cols=['<cat>', ...] or role_map['x'].")
     return col
 
-def resolve_num_col(
-    df: pd.DataFrame,
-    cols: Sequence[str] | None,
-    role_map: Mapping[str, str] | None,
-    role: str = "y"
-) -> str:
+
+def resolve_num_col(df: pd.DataFrame, cols: Sequence[str] | None, role_map: Mapping[str, str] | None, role: str = "y") -> str:
     """Resolve the numeric column for a given role.
 
     Defaults to ``role='y'`` for backward compatibility. Chooses, in
@@ -57,17 +53,13 @@ def resolve_num_col(
         raise KeyError(f"Numeric column for role '{role}' not found. Provided cols={cols}, role_map={role_map}.")
     return col
 
+
 def dropna_on(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """Return a copy of *df* with rows dropped where *col* is NA."""
     return df.dropna(subset=[col])
 
-def postprocess_series(
-    s: pd.Series,
-    *,
-    min_value: float | None = None,
-    sort_desc: bool = True,
-    top_k: int | None = None
-) -> pd.Series:
+
+def postprocess_series(s: pd.Series, *, min_value: float | None = None, sort_desc: bool = True, top_k: int | None = None) -> pd.Series:
     """Filter/sort/trim a numeric Series for charting.
 
     Parameters
@@ -94,36 +86,44 @@ def postprocess_series(
         s = s.iloc[:top_k]
     return s
 
+
 def truncate_labels(labels: list[str], max_len: int | None) -> list[str]:
     """Truncate labels to at most ``max_len`` characters with an ellipsis."""
     if not max_len:
         return labels
-    return [lbl if len(lbl) <= max_len else lbl[:max(0, max_len - 1)] + "…" for lbl in labels]
+    return [lbl if len(lbl) <= max_len else lbl[: max(0, max_len - 1)] + "…" for lbl in labels]
+
 
 def k_groups_from_series(s: pd.Series) -> int:
     """Return the number of non-null unique values in *s*."""
     return int(pd.Series(s).dropna().nunique())
 
+
 def agg_count_rows(df: pd.DataFrame, cat: str) -> pd.Series:
     """Count rows per category (including NaN handling via groupby)."""
     return df.groupby(cat, observed=True).size().astype(int)
 
+
 def agg_count_nonnull(df: pd.DataFrame, cat: str, num: str) -> pd.Series:
     """Count non-null entries of *num* per category *cat*."""
     return df.groupby(cat, observed=True)[num].count().astype(int)
+
 
 def agg_sum(df: pd.DataFrame, cat: str, num: str) -> pd.Series:
     """Sum *num* per category *cat* (NaNs contribute 0)."""
     # pandas >= 1.1 has min_count; NaNs contribute 0
     return df.groupby(cat, observed=True)[num].sum(min_count=0).fillna(0)
 
+
 def agg_mean(df: pd.DataFrame, cat: str, num: str) -> pd.Series:
     """Mean of *num* per category *cat*."""
     return df.groupby(cat, observed=True)[num].mean()
 
+
 def agg_var(df: pd.DataFrame, cat: str, num: str, ddof: int = 1) -> pd.Series:
     """Variance of *num* per category *cat* (with configurable ``ddof``)."""
     return df.groupby(cat, observed=True)[num].var(ddof=ddof)
+
 
 def grouped_arrays(df: pd.DataFrame, cat: str, num: str) -> list[np.ndarray]:
     """Return a list of numpy arrays of *num*, one per category in *cat*."""

@@ -153,7 +153,7 @@ class ConsistencyCharacterHygieneBarPlot(SeriesBarChartMixin, BasePlot):
                 "secondary_finding": None,
             }
 
-        primary = f"{values_with_issues:,} values contain disallowed characters; " f"distinct categories drop from {distinct_raw:,} to {distinct_after:,} (Δ = {collapse:,}) after sanitization."
+        primary = f"{values_with_issues:,} values contain disallowed characters; distinct categories drop from {distinct_raw:,} to {distinct_after:,} (Δ = {collapse:,}) after sanitization."
 
         return {
             "context": context,

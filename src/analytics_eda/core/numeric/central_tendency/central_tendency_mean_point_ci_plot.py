@@ -154,7 +154,7 @@ class CentralTendencyMeanPointCIPlot(BasePlot):
         ci_txt = "CI not available" if None in ci else f"{self.formatter.format_numeric_value(ci[0], decimals=desc['mean_round_decimals'])} to {self.formatter.format_numeric_value(ci[1], decimals=desc['mean_round_decimals'])}"
         return {
             "context": f"n = {desc['n']}",
-            "primary_finding": f"Mean is {desc['mean_formatted']} with {int(desc['params']['ci_level']*100)}% CI ({ci_txt}).",
+            "primary_finding": f"Mean is {desc['mean_formatted']} with {int(desc['params']['ci_level'] * 100)}% CI ({ci_txt}).",
             "secondary_finding": None,
         }
 
@@ -238,7 +238,7 @@ class CentralTendencyMeanPointCIPlot(BasePlot):
         ttxt = self.formatter.format_test_statistic(t["statistic"])
 
         # Combine t and d in primary finding
-        primary = f"The sample mean {'differs significantly' if rej else 'does not differ significantly'} " f"from the population mean ({ttxt}, {ptxt})."
+        primary = f"The sample mean {'differs significantly' if rej else 'does not differ significantly'} from the population mean ({ttxt}, {ptxt})."
 
         if d is not None:
             primary += f" The effect size is {self.formatter.format_cohens_d(d)}."

@@ -171,7 +171,7 @@ class BalanceRareCategoriesPlot(SeriesBarChartMixin, BasePlot):
         pct_rare_rows = self.formatter.format_percent(float(desc.get("pct_subset", 0.0)))
         n_rare_rows = int(desc.get("subset_count", 0))
 
-        findings["primary_finding"] = f"Rare categories (threshold={ttype}: ≤ {thr_p} or ≤ {thr_c} count) " f"found: {n_rare}; they account for {pct_rare_rows} of rows " f"({n_rare_rows:,})."
+        findings["primary_finding"] = f"Rare categories (threshold={ttype}: ≤ {thr_p} or ≤ {thr_c} count) found: {n_rare}; they account for {pct_rare_rows} of rows ({n_rare_rows:,})."
         return findings
 
     # ---- drawing ----

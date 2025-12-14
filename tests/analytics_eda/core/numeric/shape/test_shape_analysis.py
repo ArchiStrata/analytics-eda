@@ -14,7 +14,6 @@ from analytics_eda.core.numeric.shape import (
             lambda: pd.Series([1.0, 2.0, 3.0, 4.0], name="metric"),
             {
                 "density": {"chart_metadata": {"title": lambda v: isinstance(v, str)}},
-                "probability_function": {"chart_metadata": {"title": lambda v: isinstance(v, str)}},
                 "distribution_fits": lambda v: (
                     isinstance(v, dict) and isinstance(v.get("data"), dict) and "distribution_fits" in v["data"] and "norm" in v["data"]["distribution_fits"] and all(k in v["data"]["distribution_fits"]["norm"] for k in ("ecdf_vs_cdf", "qq_fit"))
                 ),

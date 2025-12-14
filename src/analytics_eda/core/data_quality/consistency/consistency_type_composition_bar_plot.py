@@ -169,7 +169,7 @@ class ConsistencyTypeCompositionBarPlot(SeriesBarChartMixin, BasePlot):
         }
 
         if dominant_type and dom_ratio >= 0.9:
-            findings["primary_finding"] = f"Column is predominantly {dominant_type.lower()} " f"({self.formatter.format_percent(dom_ratio)} of non-null)."
+            findings["primary_finding"] = f"Column is predominantly {dominant_type.lower()} ({self.formatter.format_percent(dom_ratio)} of non-null)."
         else:
             findings["primary_finding"] = "Column is mixed-type; no single type exceeds 90% of non-null."
 

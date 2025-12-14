@@ -320,7 +320,7 @@ class DefaultMatplotlibRenderer(RendererProtocol):
         if getattr(ctx, "base_dir", None):
             saved_name = getattr(ctx, "file_name", None) or chart_md.get("file_name")
             if not saved_name and getattr(ctx, "auto_file_name", False):
-                saved_name = f'{chart_md.get("title","figure")}.png'
+                saved_name = f"{chart_md.get('title', 'figure')}.png"
             if saved_name:
                 os.makedirs(ctx.base_dir, exist_ok=True)
                 fig.savefig(os.path.join(ctx.base_dir, saved_name), bbox_inches="tight", dpi=getattr(ctx, "dpi", None))

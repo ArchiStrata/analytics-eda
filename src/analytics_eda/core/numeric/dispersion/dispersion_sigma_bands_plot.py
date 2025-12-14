@@ -187,10 +187,7 @@ class DispersionSigmaBandsPlot(BasePlot):
         primary_parts = []
         if self.is_finite(cv_value):
             primary_parts.append(f"CV {self.formatter.format_numeric_value(cv_value, decimals=2)}")
-        primary_parts.append(
-            f"{self.formatter.format_percent(share_1)} of observations fall within ±1σ; "
-            f"{self.formatter.format_percent(share_2)} stay within ±2σ."
-        )
+        primary_parts.append(f"{self.formatter.format_percent(share_1)} of observations fall within ±1σ; {self.formatter.format_percent(share_2)} stay within ±2σ.")
         primary = " • ".join(primary_parts)
 
         outliers = int(desc.get("count_beyond_outlier_threshold", 0) or 0)
@@ -199,7 +196,7 @@ class DispersionSigmaBandsPlot(BasePlot):
             pct_outliers = self.formatter.format_percent(outliers / n)
             lower_extreme = int(desc.get("extreme_lower_count", 0) or 0)
             upper_extreme = int(desc.get("extreme_upper_count", 0) or 0)
-            secondary = f"{pct_outliers} exceed ±{m}σ " f"({lower_extreme:,} low / {upper_extreme:,} high)."
+            secondary = f"{pct_outliers} exceed ±{m}σ ({lower_extreme:,} low / {upper_extreme:,} high)."
 
         return {
             "context": context,

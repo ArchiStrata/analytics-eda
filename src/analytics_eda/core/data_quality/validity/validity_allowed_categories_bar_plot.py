@@ -170,7 +170,7 @@ class ValidityAllowedCategoriesBarPlot(SeriesBarChartMixin, BasePlot):
                 "secondary_finding": None,
             }
 
-        primary = f"{values_with_invalid:,} values fall outside the allowed categories; " f"distinct categories drop from {distinct_raw:,} to {distinct_after:,} (Δ = {collapse:,}) after filtering."
+        primary = f"{values_with_invalid:,} values fall outside the allowed categories; distinct categories drop from {distinct_raw:,} to {distinct_after:,} (Δ = {collapse:,}) after filtering."
 
         return {
             "context": context,

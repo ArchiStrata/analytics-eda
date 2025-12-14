@@ -23,6 +23,7 @@ from typing import Any
 DrawFnSeries = Callable[[dict[str, Any], dict[str, Any], dict[str, Any], Any, Any, Any], tuple[Any, Any]]
 # (desc, inf, chart_md, fig, ax, palette) -> (fig, ax)
 
+
 class RendererProtocol:
     """Abstract interface for plot rendering.
 

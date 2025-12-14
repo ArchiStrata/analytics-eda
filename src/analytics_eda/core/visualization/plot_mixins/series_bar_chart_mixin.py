@@ -16,6 +16,7 @@
 Provides context options and shared helpers to build stats, cache draw arrays,
 and render series-based bar charts.
 """
+
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -50,16 +51,16 @@ class SeriesBarChartContext(PlotContext):
     bar_height_source: Literal["values", "counts"] = "values"
     bar_sort_descending: bool = False
     bar_highlight_top: bool = True
-    bar_top_n: int = 1 # how many top bars to highlight
-    bar_top_include_ties: bool = True # include ties
+    bar_top_n: int = 1  # how many top bars to highlight
+    bar_top_include_ties: bool = True  # include ties
 
-    max_display_bars: int | None = 15       # cap number of bars to display
-    other_label: str = "Other"                 # label used when aggregating capped bars
+    max_display_bars: int | None = 15  # cap number of bars to display
+    other_label: str = "Other"  # label used when aggregating capped bars
     other_label_format: str = "{label} (k={k_agg})"
 
     # optional threshold-based aggregation (pre-cap)
     other_min_count: int | None = None  # collapse categories with count < other_min_count into "Other"
-    other_respect_existing: bool = True    # if 'Other' already in counts, merge into it instead of creating a second one
+    other_respect_existing: bool = True  # if 'Other' already in counts, merge into it instead of creating a second one
 
 
 class SeriesBarChartMixin:
@@ -206,8 +207,7 @@ class SeriesBarChartMixin:
 
         if isinstance(other_min, int) and other_min > 0:
             # do not consider the raw 'Other' key itself for thresholding
-            small_keys = [k for k, v in counts.items()
-                        if k != other_label_base and int(v) < other_min]
+            small_keys = [k for k, v in counts.items() if k != other_label_base and int(v) < other_min]
             threshold_fold_k = len(small_keys)
             small_sum = int(sum(int(counts[k]) for k in small_keys))
             for k in small_keys:
@@ -220,7 +220,7 @@ class SeriesBarChartMixin:
                     has_existing_other = True
 
         # Create (label, count, ratio) tuples AFTER thresholding
-        items = [(k, int(v), float(v)/denom) for k, v in counts.items()]
+        items = [(k, int(v), float(v) / denom) for k, v in counts.items()]
 
         # ---- Cap policy: aggregate overflow into a SINGLE displayed "Other" bar ----
         max_display_bars = getattr(self.ctx, "max_display_bars", None)
@@ -255,8 +255,8 @@ class SeriesBarChartMixin:
         clipped: list[tuple[str, int, float]] = []
         if isinstance(max_display_bars, int) and max_display_bars > 0 and len(items) > max_display_bars:
             keep = max_display_bars - 1  # reserve 1 slot for displayed Other
-            top_items = items_wo_other[:max(0, keep)]
-            clipped = items_wo_other[max(0, keep):]
+            top_items = items_wo_other[: max(0, keep)]
+            clipped = items_wo_other[max(0, keep) :]
 
         # Assemble bars dict
         bars: dict[str, dict[str, float | int]] = {}
@@ -272,8 +272,7 @@ class SeriesBarChartMixin:
             k_agg = threshold_fold_k + len(clipped)
 
             # Format the display label (e.g., "Other (k=3)") if we actually folded something in
-            other_display = (other_label_fmt.format(label=other_label_base, k_agg=k_agg)
-                            if k_agg > 0 else other_label_base)
+            other_display = other_label_fmt.format(label=other_label_base, k_agg=k_agg) if k_agg > 0 else other_label_base
 
             bars[other_display] = {
                 "count": other_count,
@@ -338,17 +337,17 @@ class SeriesBarChartMixin:
                 "bar_top_include_ties": include_ties,
                 **(extra_params or {}),
             },
-            "total": total, # total series
-            "total_nonnull": total_nonnull, # total nonnull in series
-            "subset_count": subset_count, # subset count
-            "pct_subset": (subset_count / denom) if denom > 0 else 0.0, # subset count % of denominator
+            "total": total,  # total series
+            "total_nonnull": total_nonnull,  # total nonnull in series
+            "subset_count": subset_count,  # subset count
+            "pct_subset": (subset_count / denom) if denom > 0 else 0.0,  # subset count % of denominator
             "denominator_key": denominator_key,
             "bars": bars,
             "unique_categories_total": unique_categories_total,
-            "input_categories": input_categories,                   # size of counts (pre-capping)
-            "input_nonzero_categories": input_nonzero_categories,   # positive-count labels (pre-capping)
-            "nonzero_categories": int(sum(1 for v in bars.values() if int(v["count"]) > 0)), # post-capping
-            "n_bars_rendered": int(len(bars)), # post-capping
+            "input_categories": input_categories,  # size of counts (pre-capping)
+            "input_nonzero_categories": input_nonzero_categories,  # positive-count labels (pre-capping)
+            "nonzero_categories": int(sum(1 for v in bars.values() if int(v["count"]) > 0)),  # post-capping
+            "n_bars_rendered": int(len(bars)),  # post-capping
             "top_labels": top_labels,
         }
 
@@ -387,12 +386,14 @@ class SeriesBarChartMixin:
             if counts is None:
                 return ax
             heights = np.asarray(counts)
+
             def fmt_primary(v):  # count
                 return f"{int(v):,}"
         else:  # "values" (default)
             if values is None:
                 return ax
             heights = np.asarray(values, dtype=float)
+
             def fmt_primary(v):  # percent
                 return self.formatter.format_percent(float(v))
 

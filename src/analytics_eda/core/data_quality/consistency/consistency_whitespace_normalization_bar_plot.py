@@ -144,7 +144,7 @@ class ConsistencyWhitespaceNormalizationBarPlot(SeriesBarChartMixin, BasePlot):
                 "secondary_finding": None,
             }
 
-        primary = f"{values_with_issues:,} values show whitespace that trims away; " f"distinct categories drop from {distinct_raw:,} to {distinct_after:,} (Δ = {collapse:,})."
+        primary = f"{values_with_issues:,} values show whitespace that trims away; distinct categories drop from {distinct_raw:,} to {distinct_after:,} (Δ = {collapse:,})."
 
         return {
             "context": context,

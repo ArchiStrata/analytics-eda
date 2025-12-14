@@ -1,4 +1,5 @@
 """Validation module."""
+
 from .validation import (
     FrameValidator,
     SeriesKind,

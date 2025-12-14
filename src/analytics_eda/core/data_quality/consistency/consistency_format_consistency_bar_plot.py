@@ -183,7 +183,7 @@ class ConsistencyFormatConsistencyBarPlot(SeriesBarChartMixin, BasePlot):
         }
 
         if dominant_format and dom_ratio >= 0.9:
-            findings["primary_finding"] = f"Values follow a single dominant format: {dominant_format} " f"({self.formatter.format_percent(dom_ratio)} of non-null)."
+            findings["primary_finding"] = f"Values follow a single dominant format: {dominant_format} ({self.formatter.format_percent(dom_ratio)} of non-null)."
         else:
             findings["primary_finding"] = "Formats are fragmented; no single pattern exceeds 90% of non-null."
 

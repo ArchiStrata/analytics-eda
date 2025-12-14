@@ -126,7 +126,7 @@ class BalanceLorenzCurvePlot(BasePlot):
 
         findings = {
             "context": f"N = {total:,} values across {k} categories",
-            "primary_finding": f"Category imbalance measured by Gini index = {self.formatter.format_numeric_value(gini, decimals=3, unit=None)} " "(0 = perfectly balanced, 1 = highly imbalanced).",
+            "primary_finding": f"Category imbalance measured by Gini index = {self.formatter.format_numeric_value(gini, decimals=3, unit=None)} (0 = perfectly balanced, 1 = highly imbalanced).",
             "secondary_finding": None,
         }
 

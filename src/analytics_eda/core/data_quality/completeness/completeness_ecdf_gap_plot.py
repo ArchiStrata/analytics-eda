@@ -165,9 +165,7 @@ class CompletenessECDFGapPlot(BasePlot):
         if self.is_finite(median_gap):
             secondary_parts.append(f"Median gap {fmt(median_gap, decimals=2)}")
         if self.is_finite(pct10_gap) and self.is_finite(pct50_gap) and self.is_finite(pct90_gap):
-            secondary_parts.append(
-                f"P10/P50/P90 = {fmt(pct10_gap, decimals=2)}/{fmt(pct50_gap, decimals=2)}/{fmt(pct90_gap, decimals=2)}"
-            )
+            secondary_parts.append(f"P10/P50/P90 = {fmt(pct10_gap, decimals=2)}/{fmt(pct50_gap, decimals=2)}/{fmt(pct90_gap, decimals=2)}")
         if thr is not None and n_gaps_above_thr is not None:
             secondary_parts.append(f"Gaps > {fmt(thr, decimals=2)}: {int(n_gaps_above_thr)}")
 

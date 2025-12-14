@@ -246,7 +246,7 @@ class BalanceChiSquareUniformPlot(BasePlot):
         min_exp = float(np.min(expected)) if len(expected) else None
         warning = None
         if n_lt5 > 0:
-            warning = f"Assumption caution: {n_lt5} of {k} categories have expected counts < 5 " f"(minimum expected = {self.formatter.format_numeric_value(min_exp)}); chi-square results may be unreliable."
+            warning = f"Assumption caution: {n_lt5} of {k} categories have expected counts < 5 (minimum expected = {self.formatter.format_numeric_value(min_exp)}); chi-square results may be unreliable."
 
         # Test
         chi2_stat, p_val = chisquare(f_obs=observed, f_exp=expected)

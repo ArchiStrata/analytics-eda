@@ -16,6 +16,7 @@
 This module defines validators for Pandas Series and DataFrames that enforce
 lightweight structural/dtype constraints used by plotting utilities.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -32,7 +33,7 @@ class SeriesKind(str, Enum):
 
     CATEGORICAL = "categorical"
     NUMERIC = "numeric"
-    NAMED = "named"          # no dtype check; just the name requirement
+    NAMED = "named"  # no dtype check; just the name requirement
 
 
 @dataclass(frozen=True)
@@ -60,7 +61,7 @@ class SeriesValidator:
     throw_if_empty: bool = False
 
     # CATEGORICAL / NAMED specific
-    cast_str: bool = True     # convert values to str (useful for hue/labels/ticks)
+    cast_str: bool = True  # convert values to str (useful for hue/labels/ticks)
 
     # NUMERIC specific
     coerce_numeric: bool = False  # try to coerce to numeric with pd.to_numeric
@@ -96,9 +97,7 @@ class SeriesValidator:
         # ---- kind-specific checks & optional coercions ----
         if self.kind == SeriesKind.CATEGORICAL:
             if not (isinstance(out.dtype, pd.CategoricalDtype) or is_object_dtype(out)):
-                raise TypeError(
-                    f"Series '{out.name}' must be categorical (or object) for categorical analysis."
-                )
+                raise TypeError(f"Series '{out.name}' must be categorical (or object) for categorical analysis.")
             if self.cast_str:
                 out = out.astype(str)
 
@@ -250,4 +249,3 @@ class FrameValidator(Protocol):
             ValueError: If roles/columns are inconsistent.
         """
         ...
-

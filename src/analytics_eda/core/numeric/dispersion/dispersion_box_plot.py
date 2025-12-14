@@ -145,7 +145,7 @@ class DispersionBoxPlot(BasePlot):
         context = " • ".join(context_parts)
 
         if self.is_finite(median) and self.is_finite(q1) and self.is_finite(q3) and self.is_finite(iqr):
-            primary = f"Median {fmt(median, decimals=2)} with middle 50% spanning " f"{fmt(q1, decimals=2)}–{fmt(q3, decimals=2)} (IQR {fmt(iqr, decimals=2)})."
+            primary = f"Median {fmt(median, decimals=2)} with middle 50% spanning {fmt(q1, decimals=2)}–{fmt(q3, decimals=2)} (IQR {fmt(iqr, decimals=2)})."
         else:
             primary = "Quartile spread cannot be summarized with the available stats."
 

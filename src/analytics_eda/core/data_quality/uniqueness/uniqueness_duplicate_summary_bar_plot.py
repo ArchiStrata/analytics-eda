@@ -146,7 +146,7 @@ class UniquenessDuplicateSummaryBarPlot(SeriesBarChartMixin, BasePlot):
             findings["secondary_finding"] = f"Duplicates account for {self.formatter.format_percent(duplicate_ratio)} of entries."
             return findings
 
-        findings["primary_finding"] = f"{self.formatter.format_percent(duplicate_ratio)} of {total_nonnull:,} non-null values " f"are duplicates ({duplicates:,} entries)."
+        findings["primary_finding"] = f"{self.formatter.format_percent(duplicate_ratio)} of {total_nonnull:,} non-null values are duplicates ({duplicates:,} entries)."
         findings["secondary_finding"] = f"Distinct values: {nunique:,} ({self.formatter.format_percent(1 - duplicate_ratio)})."
 
         # Threshold alerting, if configured

@@ -278,14 +278,14 @@ test_data_series = pd.Series([1, 2, 2, 3, 4])
                 name="bimodal",
             ),
             {},
-                {
-                    "descriptive_stats": {
-                        "n": 300,
-                        "modes_count": (lambda v: isinstance(v, int) and v >= 2),
-                    },
-                    "draft_descriptive_findings": {"primary_finding": (lambda v: "modal" in v.lower())},
+            {
+                "descriptive_stats": {
+                    "n": 300,
+                    "modes_count": (lambda v: isinstance(v, int) and v >= 2),
                 },
-            ),
+                "draft_descriptive_findings": {"primary_finding": (lambda v: "modal" in v.lower())},
+            },
+        ),
         # 16) Save with defaults (only base_dir/file_name)
         (
             lambda: pd.Series(range(10), name="nums"),

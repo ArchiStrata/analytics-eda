@@ -28,6 +28,7 @@ JSON values (e.g., NaN) before serialization.
 Functions:
 - sanitize_json(o): Recursively converts data into a JSON-serializable form.
 """
+
 import math
 
 import numpy as np

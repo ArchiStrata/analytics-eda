@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 import matplotlib
+
 matplotlib.use("Agg")  # headless backend; avoids Tk error on Windows
 
 from tests.analytics_eda.utils_internal.load_and_validate_report import (

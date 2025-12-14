@@ -16,6 +16,7 @@
 Defines `PlotParts`, a lightweight container that wires together
 validators, chart metadata builder, and a renderer.
 """
+
 from dataclasses import dataclass, field
 
 from analytics_eda.core.visualization.chart_metadata import (

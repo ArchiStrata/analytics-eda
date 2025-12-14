@@ -24,6 +24,7 @@ import pandas as pd
 
 Desc = str | Sequence[str] | None
 
+
 class ChartMetadataBuilderProtocol:
     """Builds chart title and chart metadata dict.
 
@@ -106,27 +107,16 @@ class DefaultChartMetadataBuilder(ChartMetadataBuilderProtocol):
         joined_cols = " • ".join(cols) if cols else None
         role_label = self._label_from_roles(role_map)
 
-        base_label = (
-            getattr(ctx, "name", None)
-            or role_label
-            or joined_cols
-            or (getattr(series, "name", None) if series is not None else None)
-            or "Value"
-        )
+        base_label = getattr(ctx, "name", None) or role_label or joined_cols or (getattr(series, "name", None) if series is not None else None) or "Value"
 
         # subclass-provided overrides / extras
         tk = dict((title_kwargs_cb or (lambda **_: {}))(series=series, cols=cols, role_map=role_map) or {})
-        filter_desc    = tk.pop("filter_desc",    getattr(ctx, "filter_desc", None))
+        filter_desc = tk.pop("filter_desc", getattr(ctx, "filter_desc", None))
         transform_desc = tk.pop("transform_desc", getattr(ctx, "transform_desc", None))
-        fit_desc       = tk.pop("fit_desc",       getattr(ctx, "fit_desc", None))
-        extra_desc     = tk.pop("extra_desc",     getattr(ctx, "extra_desc", None))
+        fit_desc = tk.pop("fit_desc", getattr(ctx, "fit_desc", None))
+        extra_desc = tk.pop("extra_desc", getattr(ctx, "extra_desc", None))
 
-        parts = (
-            self._to_list(filter_desc)
-            + self._to_list(transform_desc)
-            + self._to_list(fit_desc)
-            + self._to_list(extra_desc)
-        )
+        parts = self._to_list(filter_desc) + self._to_list(transform_desc) + self._to_list(fit_desc) + self._to_list(extra_desc)
         modifiers = f" ({', '.join(parts)})" if parts else ""
 
         # ctx fmt first, then subclass placeholders override
@@ -138,12 +128,12 @@ class DefaultChartMetadataBuilder(ChartMetadataBuilderProtocol):
         values["ylabel"] = getattr(ctx, "ylabel", "") or ""
 
         # expose raw component strings if template wants them
-        values["filter"]    = ", ".join(self._to_list(filter_desc))
+        values["filter"] = ", ".join(self._to_list(filter_desc))
         values["transform"] = ", ".join(self._to_list(transform_desc))
-        values["fit"]       = ", ".join(self._to_list(fit_desc))
+        values["fit"] = ", ".join(self._to_list(fit_desc))
 
         # required keys
-        values["name"]      = base_label
+        values["name"] = base_label
         values["modifiers"] = modifiers
 
         template = getattr(ctx, "title_template", None) or "{name}{modifiers}"
@@ -180,8 +170,6 @@ class DefaultChartMetadataBuilder(ChartMetadataBuilderProtocol):
             "file_name": getattr(ctx, "file_name", None),
             "version": version_cb(),
         }
-        overrides = (metadata_overrides_cb or (lambda **_: {}))(
-            series=series, cols=cols, role_map=role_map
-        ) or {}
+        overrides = (metadata_overrides_cb or (lambda **_: {}))(series=series, cols=cols, role_map=role_map) or {}
         md.update(overrides)
         return md

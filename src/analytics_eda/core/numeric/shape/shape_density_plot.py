@@ -278,13 +278,7 @@ class ShapeDensityPlot(BasePlot):
                 ax.text(x_loc, y_loc, f"{x_loc:.2f}", ha="left", va="bottom", fontsize="x-small", color="green")
 
         # Stats textbox
-        stats_text = (
-            f"n = {desc['n']}\n"
-            f"Entropy = {desc['entropy_bits']:.2f} bits\n"
-            f"Skewness = {desc['skewness']:.2f}\n"
-            f"Kurtosis = {desc['kurtosis']:.2f}\n"
-            f"Quartile skew = {desc['quartile_skew']:.2f}"
-        )
+        stats_text = f"n = {desc['n']}\nEntropy = {desc['entropy_bits']:.2f} bits\nSkewness = {desc['skewness']:.2f}\nKurtosis = {desc['kurtosis']:.2f}\nQuartile skew = {desc['quartile_skew']:.2f}"
         ax.text(
             0.98,
             0.98,

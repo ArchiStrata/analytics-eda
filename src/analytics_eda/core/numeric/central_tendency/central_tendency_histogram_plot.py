@@ -256,13 +256,9 @@ class CentralTendencyHistogramPlot(BasePlot):
             if abs(delta) < 1e-6:
                 secondary = f"Mean and median are nearly identical at {mean_formatted}, suggesting a symmetric distribution."
             elif mean > median:
-                secondary = (
-                    f"Mean ({mean_formatted}) exceeds median ({median_formatted}) " f"by {delta_formatted}, suggesting right-skew." if delta is not None else f"Mean ({mean_formatted}) exceeds median ({median_formatted}), suggesting right-skew."
-                )
+                secondary = f"Mean ({mean_formatted}) exceeds median ({median_formatted}) by {delta_formatted}, suggesting right-skew." if delta is not None else f"Mean ({mean_formatted}) exceeds median ({median_formatted}), suggesting right-skew."
             else:
-                secondary = (
-                    f"Mean ({mean_formatted}) is below median ({median_formatted}) " f"by {delta_formatted}, suggesting left-skew." if delta is not None else f"Mean ({mean_formatted}) is below median ({median_formatted}), suggesting left-skew."
-                )
+                secondary = f"Mean ({mean_formatted}) is below median ({median_formatted}) by {delta_formatted}, suggesting left-skew." if delta is not None else f"Mean ({mean_formatted}) is below median ({median_formatted}), suggesting left-skew."
         else:
             secondary = None
 

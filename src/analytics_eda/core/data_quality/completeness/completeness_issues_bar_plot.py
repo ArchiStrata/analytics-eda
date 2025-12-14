@@ -147,7 +147,7 @@ class CompletenessIssuesBarPlot(SeriesBarChartMixin, BasePlot):
             findings["primary_finding"] = "All values are present; no completeness gaps detected."
             return findings
 
-        findings["primary_finding"] = f"{self.formatter.format_percent(pct_gaps)} of {total:,} values are incomplete " f"({total_gaps:,} rows)."
+        findings["primary_finding"] = f"{self.formatter.format_percent(pct_gaps)} of {total:,} values are incomplete ({total_gaps:,} rows)."
 
         bars: dict[str, Any] = desc.get("bars", {})
         denom_key = desc.get("denominator_key", "pct_of_total")

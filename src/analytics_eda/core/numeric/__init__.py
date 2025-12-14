@@ -33,8 +33,6 @@ from .shape import (
     ShapeDistributionFitAnalysisContext,
     ShapeECDFvsCDFContext,
     ShapeECDFvsCDFPlot,
-    ShapeProbabilityFunctionContext,
-    ShapeProbabilityFunctionPlot,
     ShapeQqFitContext,
     ShapeQqFitPlot,
 )
