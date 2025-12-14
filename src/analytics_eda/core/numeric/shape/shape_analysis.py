@@ -24,10 +24,7 @@ from analytics_eda.core.visualization.context.build_plot_context import build_pl
 from analytics_eda.core.visualization.validation import numeric_validator
 
 from .shape_density_plot import ShapeDensityContext, ShapeDensityPlot
-from .shape_distribution_fit_analysis import (
-    ShapeDistributionFitAnalysis,
-    ShapeDistributionFitAnalysisContext,
-)
+from .distribution_fit import ShapeDistributionFitAnalysis, ShapeDistributionFitAnalysisContext
 
 
 @dataclass
