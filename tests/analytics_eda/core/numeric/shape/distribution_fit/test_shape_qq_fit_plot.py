@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
@@ -31,19 +32,20 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
 @pytest.mark.parametrize(
     "make_series, kwargs, expect",
     [
-        # 0) EMPTY → minimal stats NaN; inferential params carry alpha; title includes dist
+        # 0) EMPTY + minimal stats NaN; inferential params carry alpha; title includes dist
         (
             lambda: pd.Series([], dtype="float64", name="nums"),
             {"distribution_name": "norm"},
             {
                 "chart_metadata": {
-                    "title": "Q–Q Plot Fit Assessment of nums (fitted to norm)",
+                    "title": "QQ Plot Fit Assessment of nums (fitted to norm)",
                     "xlabel": "Theoretical Quantiles",
                     "ylabel": "Sample Quantiles",
                     "data_source": None,
                     "file_name": None,
                 },
                 "descriptive_stats": {
+                    "n": 0,
                     "intercept": None,
                     "slope": None,
                     "r_squared": None,
@@ -53,20 +55,33 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                     "skewness": None,
                     "kurtosis": None,
                     "min": None,
+                    "reference_line": True,
+                    "params": {"distribution_name": "norm", "distribution_fit": None},
                 },
                 "inferential_stats": {
                     "params": {"alpha": 0.05, "distribution_name": "norm"},
                 },
+                "draft_descriptive_findings": {
+                    "context": "n = 0 | distribution = norm",
+                    "primary_finding": None,
+                    "secondary_finding": None,
+                },
+                "draft_inferential_findings": {
+                    "context": "n = 0 | distribution = norm | alpha = 0.05",
+                    "primary_finding": None,
+                    "secondary_finding": None,
+                },
             },
         ),
-        # 1) norm, small n (<50) → Shapiro present, no D’Agostino (since n<20), no JB
+        # 1) norm, small n (<50) + Shapiro present, no D'Agostino (since n<20), no JB
         (
             lambda: pd.Series(np.random.default_rng(0).normal(size=10), name="x"),
             {"distribution_name": "norm", "alpha": 0.05},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of x (fitted to norm)"},
+                "chart_metadata": {"title": "QQ Plot Fit Assessment of x (fitted to norm)"},
                 "descriptive_stats": {
                     "r_squared": (lambda v: isinstance(v, float) and 0.0 <= v <= 1.0),
+                    "reference_line": True,
                 },
                 "inferential_stats": {
                     "params": {"alpha": 0.05, "distribution_name": "norm"},
@@ -76,14 +91,24 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                         "reject": (lambda v: isinstance(v, bool)),
                     },
                 },
+                "draft_descriptive_findings": {
+                    "context": (lambda v: isinstance(v, str) and "distribution" in v),
+                    "primary_finding": (lambda v: isinstance(v, str) and len(v) > 0),
+                    "secondary_finding": (lambda v: v is None or isinstance(v, str)),
+                },
+                "draft_inferential_findings": {
+                    "context": (lambda v: isinstance(v, str) and "alpha" in v),
+                    "primary_finding": (lambda v: v is None or isinstance(v, str)),
+                    "secondary_finding": (lambda v: v is None or isinstance(v, str)),
+                },
             },
         ),
-        # 2) norm, mid n (≥20 and <50) → Shapiro + D’Agostino present, no JB
+        # 2) norm, mid n (>=20 and <50) + Shapiro + D'Agostino present, no JB
         (
             lambda: pd.Series(np.random.default_rng(1).normal(size=30), name="mid"),
             {"distribution_name": "norm"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of mid (fitted to norm)"},
+                "chart_metadata": {"title": "QQ Plot Fit Assessment of mid (fitted to norm)"},
                 "inferential_stats": {
                     "params": {"alpha": 0.05, "distribution_name": "norm"},
                     "shapiro": {
@@ -99,12 +124,12 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
             },
         ),
-        # 3) norm, huge n (>2000) → Shapiro excluded (n>=50), D’Agostino present, JB present
+        # 3) norm, huge n (>2000) + Shapiro excluded (n>=50), D'Agostino present, JB present
         (
             lambda: pd.Series(np.random.default_rng(2).normal(size=2100), name="huge"),
             {"distribution_name": "norm"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of huge (fitted to norm)"},
+                "chart_metadata": {"title": "QQ Plot Fit Assessment of huge (fitted to norm)"},
                 "descriptive_stats": {
                     "r_squared": (lambda v: isinstance(v, float) and 0.0 <= v <= 1.0),
                 },
@@ -151,15 +176,15 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             {"distribution_name": "norm", "alpha": 0.10},
             {
                 "inferential_stats": {"params": {"alpha": 0.10, "distribution_name": "norm"}},
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of alpha (fitted to norm)"},
+                "chart_metadata": {"title": "QQ Plot Fit Assessment of alpha (fitted to norm)"},
             },
         ),
-        # 6) lognorm (positive support) → no normality tests; stats types present
+        # 6) lognorm (positive support) + no normality tests; stats types present
         (
             lambda: pd.Series(np.random.default_rng(3).lognormal(mean=0.0, sigma=0.5, size=80), name="logpos"),
             {"distribution_name": "lognorm"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of logpos (fitted to lognorm)"},
+                "chart_metadata": {"title": "QQ Plot Fit Assessment of logpos (fitted to lognorm)"},
                 "descriptive_stats": {
                     "slope": (lambda v: isinstance(v, float)),
                     "intercept": (lambda v: isinstance(v, float)),
@@ -170,21 +195,21 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
                 },
             },
         ),
-        # 7) gamma (positive support) → no normality tests
+        # 7) gamma (positive support) + no normality tests
         (
             lambda: pd.Series(np.random.default_rng(4).gamma(shape=2.0, scale=2.0, size=100), name="g"),
             {"distribution_name": "gamma"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of g (fitted to gamma)"},
+                "chart_metadata": {"title": "QQ Plot Fit Assessment of g (fitted to gamma)"},
                 "inferential_stats": {"params": {"alpha": 0.05, "distribution_name": "gamma"}},
             },
         ),
-        # 8) expon (non-negative support) → no normality tests
+        # 8) expon (non-negative support) + no normality tests
         (
             lambda: pd.Series(np.random.default_rng(5).exponential(scale=1.0, size=120), name="e"),
             {"distribution_name": "expon"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of e (fitted to expon)"},
+                "chart_metadata": {"title": "QQ Plot Fit Assessment of e (fitted to expon)"},
                 "inferential_stats": {"params": {"alpha": 0.05, "distribution_name": "expon"}},
             },
         ),
@@ -199,16 +224,16 @@ def test_validate_numeric_named_series_errors(series_factory, expected_exc, matc
             },
             {
                 "chart_metadata": {
-                    "title": "Q–Q Plot Fit Assessment of Price (NY only, winsorized, fitted to norm)",
+                    "title": "QQ Plot Fit Assessment of Price (NY only, winsorized, fitted to norm)",
                 },
             },
         ),
-        # 10) NaNs present → cleaned n used; still produces valid stats
+        # 10) NaNs present + cleaned n used; still produces valid stats
         (
             lambda: pd.Series([1.0, np.nan, 2.0, np.nan, 5.0], name="with_nans"),
             {"distribution_name": "norm"},
             {
-                "chart_metadata": {"title": "Q–Q Plot Fit Assessment of with_nans (fitted to norm)"},
+                "chart_metadata": {"title": "QQ Plot Fit Assessment of with_nans (fitted to norm)"},
                 "descriptive_stats": {
                     "slope": (lambda v: isinstance(v, float)),
                     "r_squared": (lambda v: isinstance(v, float) and 0.0 <= v <= 1.0),
@@ -253,3 +278,21 @@ def test_shape_qq_fit_plot_data_driven(make_series, kwargs, expect, tmp_path, as
     payload = plot.run(s)
 
     assert_plot_metadata(payload, expect, tmp_path)
+
+
+def test_shape_qq_fit_plot_skip_when_cache_missing():
+    s = pd.Series(np.linspace(0, 1, 10), name="cache")
+    ctx = ShapeQqFitContext(distribution_name="norm")
+    plot = ShapeQqFitPlot(ctx)
+
+    desc = plot.compute_descriptive(s)
+    inf = plot.compute_inferential(s, desc)
+
+    # Clear cached draw payload to simulate mismatch
+    plot._draw_clear()
+
+    fig, ax = plt.subplots()
+    palette = plt.rcParams["axes.prop_cycle"].by_key().get("color", [])
+    plot.draw(s, desc, inf, {}, fig=fig, ax=ax, palette=palette)
+
+    assert desc.get("skip_plot"), "draw should set skip_plot when cache is missing"
