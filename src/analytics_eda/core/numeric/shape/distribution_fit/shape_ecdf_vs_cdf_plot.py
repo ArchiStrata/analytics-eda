@@ -47,35 +47,16 @@ class ShapeECDFvsCDFContext(PlotContext):
 
 class ShapeECDFvsCDFPlot(BasePlot):
     """
-    Generate an ECDF vs. theoretical CDF plot with goodness-of-fit tests (KS, AD, CvM).
+    Compare an empirical CDF to a fitted theoretical CDF and quantify the fit.
 
-    Why:
-        Visualize the fit of data to a theoretical distribution by showing
-        the empirical CDF against the fitted CDF, and quantify with formal tests.
+    Why this matters:
+    Shows how closely a sample follows a chosen distribution and surfaces
+    departures with formal goodness-of-fit tests (KS, AD, CvM).
 
-    What:
-        - Fits parameters for 'norm', 'lognorm', 'gamma', or 'expon'.
-        - Computes ECDF and theoretical CDF.
-        - Runs:
-            • Kolmogorov–Smirnov for all distributions.
-            • Anderson–Darling for 'norm' and 'expon'.
-            • Cramér–von Mises for all distributions.
-        - Annotates ECDF, CDF, max gap (KS D) and includes a stats textbox.
-        - Returns descriptive stats, test results, and chart metadata.
-
-    Returns BasePlot.run() schema:
-      {
-        "descriptive_stats": {
-          "n": int,
-          "params": {"distribution_fit": tuple|None, "distribution_name": str},
-          "error": str (optional)
-        },
-        "inferential_stats": {
-          "params": {"alpha": float},
-          "ks": {...}, "anderson": {...}, "cvm": {...}  # when applicable
-        },
-        "chart_metadata": {"title","xlabel","ylabel","data_source","file_name"}
-      }
+    What this plot does:
+    Fits one of norm/lognorm/gamma/expon, overlays ECDF vs. fitted CDF, marks
+    the Kolmogorov-Smirnov max gap, summarizes fit parameters, and reports test
+    decisions at the chosen alpha.
     """
 
     def __init__(self, ctx):
@@ -83,6 +64,10 @@ class ShapeECDFvsCDFPlot(BasePlot):
         super().__init__(ctx, parts)
 
     ALLOWED: tuple[DistName, ...] = ("norm", "lognorm", "gamma", "expon")
+
+    def plot_semantic_version(self) -> str:
+        """Return the semantic version of this plot implementation."""
+        return "1.0.0"
 
     def title_kwargs(self, *, series=None, cols=None, role_map=None) -> dict[str, Any]:
         """Return placeholders used by the title template (e.g., fit description)."""
@@ -107,6 +92,7 @@ class ShapeECDFvsCDFPlot(BasePlot):
                 "distribution_fit": None,
                 "distribution_name": self.ctx.distribution_name,
             },
+            "ks_D": np.nan,
         }
 
     def default_inferential(self) -> dict[str, Any]:
@@ -136,16 +122,14 @@ class ShapeECDFvsCDFPlot(BasePlot):
 
         if n == 0:
             desc["params"]["distribution_fit"] = None
-            # TODO: payload for drawing
-            desc.update({"x": np.array([]), "ecdf": np.array([]), "cdf_theo": np.array([]), "ks_D": np.nan})
+            desc["ks_D"] = np.nan
             return desc
 
         if err is not None:
             desc["params"]["distribution_fit"] = None
             desc["error"] = err
             desc["skip_plot"] = True
-            # TODO: payload for drawing
-            desc.update({"x": np.array([]), "ecdf": np.array([]), "cdf_theo": np.array([]), "ks_D": np.nan})
+            desc["ks_D"] = np.nan
             return desc
 
         # Fit distribution
@@ -161,16 +145,24 @@ class ShapeECDFvsCDFPlot(BasePlot):
         # Theoretical CDF
         cdf_theo = dist.cdf(x, *fit_params)
 
-        # TODO: payload for drawing
-        ks_D = float(np.max(np.abs(ecdf - cdf_theo)))
-        desc.update({"x": x, "ecdf": ecdf, "cdf_theo": cdf_theo, "ks_D": ks_D})
+        ks_gap = np.abs(ecdf - cdf_theo)
+        ks_idx = int(np.argmax(ks_gap))
+        ks_D = float(np.max(ks_gap))
+        desc["ks_D"] = ks_D
+
+        # Cache render-only payload for draw()
+        self.draw_cache_set("ecdf_cdf", "x", x)
+        self.draw_cache_set("ecdf_cdf", "ecdf", ecdf)
+        self.draw_cache_set("ecdf_cdf", "cdf_theo", cdf_theo)
+        self.draw_cache_set("ecdf_cdf", "ks_idx", ks_idx)
+
         return desc
 
     def compute_inferential(self, s: pd.Series, desc: dict[str, Any]) -> dict[str, Any]:
         """Run KS, AD (when applicable), and CvM tests using fitted parameters."""
         out: dict[str, Any] = {"params": {"alpha": float(self.ctx.alpha)}}
 
-        # empty or error → only params
+        # empty or error -> only params
         if desc.get("n", 0) == 0 or "error" in desc:
             return out
 
@@ -192,7 +184,7 @@ class ShapeECDFvsCDFPlot(BasePlot):
         D, p_ks = stats.kstest(data, name, args=fit_params)
         out["ks"] = {"statistic": float(D), "p_value": float(p_ks), "reject": bool(p_ks < alpha)}
 
-        # 2) Anderson–Darling (norm, expon)
+        # 2) Anderson-Darling (norm, expon)
         if name in ("norm", "expon"):
             ad = stats.anderson(data, dist=name)
             levels = np.array(ad.significance_level) / 100.0
@@ -206,7 +198,7 @@ class ShapeECDFvsCDFPlot(BasePlot):
                 "reject": bool(ad.statistic > crit),
             }
 
-        # 3) Cramér–von Mises
+        # 3) Cramer-von Mises
         cvm_res = stats.cramervonmises(data, name, args=fit_params)
         out["cvm"] = {
             "statistic": float(cvm_res.statistic),
@@ -215,6 +207,112 @@ class ShapeECDFvsCDFPlot(BasePlot):
         }
 
         return out
+
+    def draft_descriptive_findings(self, desc: dict[str, Any]) -> dict[str, Any]:
+        """Summarize sample size, gap, and fitted parameters."""
+        if not desc:
+            return {}
+
+        n = int(desc.get("n", 0) or 0)
+        dist_name = desc.get("params", {}).get("distribution_name", self.ctx.distribution_name)
+
+        if n == 0:
+            return {"context": f"n = 0 | distribution = {dist_name}", "primary_finding": None, "secondary_finding": None}
+
+        if desc.get("error"):
+            return {
+                "context": f"n = {n} | distribution = {dist_name}",
+                "primary_finding": None,
+                "secondary_finding": None,
+            }
+
+        fmt = self.formatter.format_numeric_value
+        ks_D = desc.get("ks_D")
+        fit = desc.get("params", {}).get("distribution_fit")
+        ks_text = f"KS max gap {fmt(ks_D, decimals=3)}" if self.is_finite(ks_D) else "KS gap unavailable"
+        primary = f"Empirical CDF vs fitted {dist_name} shows {ks_text} across n = {n}."
+
+        secondary = None
+        if fit is not None:
+            fit_vals = ", ".join(fmt(p, decimals=3) for p in fit)
+            secondary = f"Fitted parameters: ({fit_vals})."
+
+        return {
+            "context": f"n = {n} | distribution = {dist_name}",
+            "primary_finding": primary,
+            "secondary_finding": secondary,
+        }
+
+    def draft_inferential_findings(self, inf: dict[str, Any], desc: dict[str, Any]) -> dict[str, Any]:
+        """Summarize KS/AD/CvM decisions at alpha."""
+        if not inf:
+            return {}
+
+        n = int(desc.get("n", 0) or 0)
+        dist_name = desc.get("params", {}).get("distribution_name", self.ctx.distribution_name)
+        alpha = float(inf.get("params", {}).get("alpha", self.ctx.alpha))
+
+        if n == 0 or desc.get("error"):
+            return {"context": f"n = {n} | distribution = {dist_name} | alpha = {alpha}", "primary_finding": None, "secondary_finding": None}
+
+        fmt = self.formatter.format_numeric_value
+
+        def _decision(test: dict[str, Any] | None) -> str:
+            if not test:
+                return ""
+            return "rejects" if test.get("reject") else "fails to reject"
+
+        ks = inf.get("ks") or {}
+        primary = f"KS test {_decision(ks)} the {dist_name} fit (D = {fmt(ks.get('statistic'), decimals=3)}, p = {fmt(ks.get('p_value'), decimals=3)}, alpha = {fmt(alpha, decimals=3)})."
+
+        secondary_parts: list[str] = []
+        ad = inf.get("anderson")
+        if ad:
+            secondary_parts.append(
+                f"AD {_decision(ad)} (stat = {fmt(ad.get('statistic'), decimals=3)}, crit = {fmt(ad.get('critical_value'), decimals=3)})."
+            )
+        cvm = inf.get("cvm")
+        if cvm:
+            secondary_parts.append(
+                f"CvM {_decision(cvm)} (stat = {fmt(cvm.get('statistic'), decimals=3)}, p = {fmt(cvm.get('p_value'), decimals=3)})."
+            )
+        secondary = " ".join(secondary_parts) if secondary_parts else None
+
+        return {
+            "context": f"n = {n} | distribution = {dist_name} | alpha = {fmt(alpha, decimals=3)}",
+            "primary_finding": primary,
+            "secondary_finding": secondary,
+        }
+
+    def subtitle_text(self, desc: dict[str, Any], inf: dict[str, Any], chart_metadata: dict[str, Any]) -> str:
+        """Concise summary of test outcomes for the subtitle."""
+        if not inf or desc.get("n", 0) == 0 or desc.get("error"):
+            return ""
+
+        fmt = self.formatter.format_numeric_value
+        alpha = fmt(inf.get("params", {}).get("alpha"), decimals=3)
+
+        def _fmt_test(label: str, test: dict[str, Any] | None, fields: list[str]) -> str | None:
+            if not test:
+                return None
+            status = "reject" if test.get("reject") else "fail"
+            parts = [f"{label}: {status}"]
+            vals = []
+            for f in fields:
+                if f in test:
+                    vals.append(f"{f.split('_')[0]}={fmt(test[f], decimals=3)}")
+            if vals:
+                parts.append("(" + ", ".join(vals) + ")")
+            return " ".join(parts)
+
+        pieces = [_fmt_test("KS", inf.get("ks"), ["p_value", "statistic"])]
+        pieces.append(_fmt_test("AD", inf.get("anderson"), ["statistic"]))
+        pieces.append(_fmt_test("CvM", inf.get("cvm"), ["p_value", "statistic"]))
+        pieces = [p for p in pieces if p]
+        if not pieces:
+            return ""
+
+        return f"Goodness-of-fit at alpha={alpha}: " + "; ".join(pieces)
 
     def draw(
         self,
@@ -230,20 +328,44 @@ class ShapeECDFvsCDFPlot(BasePlot):
         """Render ECDF, theoretical CDF, KS gap marker, and a stats textbox."""
         # In error case: draw a minimal frame with error note (no lines)
         if "error" in desc:
-            ax.text(0.5, 0.5, f"Input error: {desc['error']}", ha="center", va="center", transform=ax.transAxes, color="red")
+            err_text = ax.text(
+                0.5,
+                0.5,
+                f"Input error: {desc['error']}",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                color=self.neutral_grey("dark"),
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.7),
+            )
+            self.register_annotations(ax, err_text)
             return fig, ax
 
-        x = desc["x"]
-        ecdf = desc["ecdf"]
-        cdf_theo = desc["cdf_theo"]
+        x = self.draw_cache_get("ecdf_cdf", "x")
+        ecdf = self.draw_cache_get("ecdf_cdf", "ecdf")
+        cdf_theo = self.draw_cache_get("ecdf_cdf", "cdf_theo")
+        ks_idx = self.draw_cache_get("ecdf_cdf", "ks_idx")
+        if x is None or ecdf is None or cdf_theo is None or ks_idx is None:
+            desc["skip_plot"] = True
+            return fig, ax
 
         if desc["n"] > 0:
-            ax.step(x, ecdf, where="post", label="Empirical CDF")
-            ax.plot(x, cdf_theo, "--", label=f"{self.ctx.distribution_name} CDF")
+            ecdf_color = palette[0] if len(palette) > 0 else None
+            cdf_color = palette[1] if len(palette) > 1 else None
+            gap_color = palette[2] if len(palette) > 2 else "red"
+
+            ax.step(x, ecdf, where="post", label="Empirical CDF", color=ecdf_color)
+            ax.plot(x, cdf_theo, "--", label=f"{self.ctx.distribution_name} CDF", color=cdf_color, linewidth=2)
 
             # KS max gap line
-            idx_gap = int(np.argmax(np.abs(ecdf - cdf_theo)))
-            ax.vlines(x[idx_gap], cdf_theo[idx_gap], ecdf[idx_gap], color="red", linewidth=1.5, label=f"KS D = {desc['ks_D']:.3f}")
+            ax.vlines(
+                x[ks_idx],
+                cdf_theo[ks_idx],
+                ecdf[ks_idx],
+                color=gap_color,
+                linewidth=1.5,
+                label=f"KS D = {desc.get('ks_D', np.nan):.3f}",
+            )
 
         # stats textbox (summary)
         lines = [f"n = {desc['n']}"]
@@ -257,6 +379,16 @@ class ShapeECDFvsCDFPlot(BasePlot):
         if "cvm" in inf:
             lines.append(f"CvM stat = {inf['cvm']['statistic']:.3f}, p = {inf['cvm']['p_value']:.3f}, reject = {inf['cvm']['reject']}")
 
-        ax.text(0.98, 0.02, "\n".join(lines), transform=ax.transAxes, ha="right", va="bottom", fontsize="small", bbox=dict(boxstyle="round", facecolor="white", alpha=0.5))
+        stats_box = ax.text(
+            0.98,
+            0.02,
+            "\n".join(lines),
+            transform=ax.transAxes,
+            ha="right",
+            va="bottom",
+            fontsize="small",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.5),
+        )
+        self.register_annotations(ax, stats_box)
 
         return fig, ax

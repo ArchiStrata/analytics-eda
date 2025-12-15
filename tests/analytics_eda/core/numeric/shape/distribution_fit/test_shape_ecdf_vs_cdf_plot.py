@@ -54,6 +54,16 @@ def test_invalid_distribution_name_raises_value_error():
                 },
                 "descriptive_stats": {"n": 0},
                 "inferential_stats": {"params": {"alpha": 0.05}},
+                "draft_descriptive_findings": {
+                    "context": "n = 0 | distribution = norm",
+                    "primary_finding": None,
+                    "secondary_finding": None,
+                },
+                "draft_inferential_findings": {
+                    "context": "n = 0 | distribution = norm | alpha = 0.05",
+                    "primary_finding": None,
+                    "secondary_finding": None,
+                },
             },
         ),
         # 1) Defaults on small normal-like data (norm): presence/type checks for tests & params
@@ -92,6 +102,15 @@ def test_invalid_distribution_name_raises_value_error():
                         "p_value": (lambda v: isinstance(v, float)),
                         "reject": (lambda v: isinstance(v, bool)),
                     },
+                },
+                "draft_descriptive_findings": {
+                    "context": "n = 5 | distribution = norm",
+                    "primary_finding": (lambda v: isinstance(v, str) and "KS max gap" in v),
+                    "secondary_finding": (lambda v: isinstance(v, str)),
+                },
+                "draft_inferential_findings": {
+                    "context": (lambda v: isinstance(v, str) and "alpha" in v),
+                    "primary_finding": (lambda v: isinstance(v, str) and "KS test" in v),
                 },
             },
         ),
@@ -139,6 +158,16 @@ def test_invalid_distribution_name_raises_value_error():
                 },
                 "chart_metadata": {
                     "title": "ECDF vs. Theoretical CDF of pos_req (fitted to lognorm)",
+                },
+                "draft_descriptive_findings": {
+                    "context": "n = 3 | distribution = lognorm",
+                    "primary_finding": None,
+                    "secondary_finding": None,
+                },
+                "draft_inferential_findings": {
+                    "context": "n = 3 | distribution = lognorm | alpha = 0.05",
+                    "primary_finding": None,
+                    "secondary_finding": None,
                 },
             },
         ),
@@ -211,6 +240,14 @@ def test_invalid_distribution_name_raises_value_error():
                         "p_value": (lambda v: isinstance(v, float)),
                         "reject": (lambda v: isinstance(v, bool)),
                     },
+                },
+                "draft_descriptive_findings": {
+                    "context": "n = 5 | distribution = lognorm",
+                    "primary_finding": (lambda v: isinstance(v, str) and "KS max gap" in v),
+                },
+                "draft_inferential_findings": {
+                    "context": (lambda v: isinstance(v, str) and "lognorm" in v),
+                    "primary_finding": (lambda v: isinstance(v, str) and "KS test" in v),
                 },
             },
         ),
